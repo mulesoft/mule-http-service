@@ -15,7 +15,7 @@ import org.mule.service.http.api.server.ServerNotFoundException;
 /**
  * Adapts a {@link ContextHttpServerFactory} to a {@link HttpServerFactory}.
  *
- * @since 4.0
+ * @since 1.0
  */
 public class ContextHttpServerFactoryAdapter implements HttpServerFactory {
 

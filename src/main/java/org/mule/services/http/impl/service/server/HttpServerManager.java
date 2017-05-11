@@ -21,7 +21,7 @@ import java.util.function.Supplier;
  * A Server managers is in charge to handle all ServerSocket connections and to handle incoming requests to an Execution Service
  * for processing.
  *
- * @since 4.0
+ * @since 1.0
  */
 public interface HttpServerManager {
 
