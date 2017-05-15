@@ -17,7 +17,7 @@ import java.util.Optional;
  * Factory object for {@link HttpServer} that partitions them considering a given creation context in which they can be later
  * shared.
  *
- * @since 4.0
+ * @since 1.0
  */
 public interface ContextHttpServerFactory {
 

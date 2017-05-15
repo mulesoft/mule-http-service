@@ -38,7 +38,7 @@ import java.util.function.Supplier;
 /**
  * Grizzly based {@link HttpServerFactory}.
  *
- * @since 4.0
+ * @since 1.0
  */
 public class HttpListenerConnectionManager implements ContextHttpServerFactory, Initialisable, Disposable {
 

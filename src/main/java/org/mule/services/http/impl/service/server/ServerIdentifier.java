@@ -9,7 +9,7 @@ package org.mule.services.http.impl.service.server;
 /**
  * Allows to identify a server by it's creation context and name.
  *
- * @since 4.0
+ * @since 1.0
  */
 public class ServerIdentifier {
 
