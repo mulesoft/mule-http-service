@@ -7,6 +7,7 @@
 package org.mule.services.http.impl.service.server.grizzly;
 
 import org.mule.runtime.api.scheduler.Scheduler;
+import org.mule.service.http.api.HttpConstants.Protocol;
 import org.mule.service.http.api.server.HttpServer;
 import org.mule.service.http.api.server.RequestHandler;
 import org.mule.service.http.api.server.RequestHandlerManager;
@@ -28,6 +29,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   private final TCPNIOTransport transport;
   private final ServerAddress serverAddress;
+  private Protocol protocol;
   private final HttpListenerRegistry listenerRegistry;
   private TCPNIOServerConnection serverConnection;
   private Supplier<Scheduler> schedulerSource;
@@ -37,8 +39,9 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private boolean stopping;
 
   public GrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport, HttpListenerRegistry listenerRegistry,
-                           Supplier<Scheduler> schedulerSource, Runnable schedulerDisposer) {
+                           Supplier<Scheduler> schedulerSource, Runnable schedulerDisposer, Protocol protocol) {
     this.serverAddress = serverAddress;
+    this.protocol = protocol;
     this.transport = transport;
     this.listenerRegistry = listenerRegistry;
     this.schedulerSource = schedulerSource;
@@ -79,6 +82,11 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   @Override
   public ServerAddress getServerAddress() {
     return serverAddress;
+  }
+
+  @Override
+  public Protocol getProtocol() {
+    return protocol;
   }
 
   @Override
