@@ -151,8 +151,11 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     DefaultServerAddress serverAddress = new DefaultServerAddress("someHost", listenerPort.getNumber());
     HttpServer server = getServer(serverAddress, identifier);
     DefaultServerAddress otherServerAddress = new DefaultServerAddress("otherHost", listenerPort.getNumber());
-    assertThat(serverManager.containsServerFor(otherServerAddress, identifier), is(true));
-    server.dispose();
+    try {
+      assertThat(serverManager.containsServerFor(otherServerAddress, identifier), is(true));
+    } finally {
+      server.dispose();
+    }
   }
 
   @Test
@@ -163,8 +166,11 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     HttpServer server = getServer(serverAddress, identifier);
     DefaultServerAddress otherServerAddress = new DefaultServerAddress("otherHost", listenerPort.getNumber());
     ServerIdentifier otherIdentifier = new ServerIdentifier("otherContext", name);
-    assertThat(serverManager.containsServerFor(otherServerAddress, otherIdentifier), is(false));
-    server.dispose();
+    try {
+      assertThat(serverManager.containsServerFor(otherServerAddress, otherIdentifier), is(false));
+    } finally {
+      server.dispose();
+    }
   }
 
   @Test

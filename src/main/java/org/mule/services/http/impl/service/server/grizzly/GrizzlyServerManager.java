@@ -20,7 +20,7 @@ import static org.mule.services.http.impl.service.client.HttpMessageLogger.Logge
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
-import org.mule.service.http.api.HttpConstants;
+import org.mule.service.http.api.HttpConstants.Protocol;
 import org.mule.service.http.api.server.HttpServer;
 import org.mule.service.http.api.server.RequestHandler;
 import org.mule.service.http.api.server.RequestHandlerManager;
@@ -295,7 +295,7 @@ public class GrizzlyServerManager implements HttpServerManager {
 
     public ManagedGrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport,
                                     HttpListenerRegistry listenerRegistry, Supplier<Scheduler> schedulerSupplier,
-                                    Runnable schedulerDisposer, ServerIdentifier identifier, HttpConstants.Protocol protocol) {
+                                    Runnable schedulerDisposer, ServerIdentifier identifier, Protocol protocol) {
       super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, protocol);
       this.identifier = identifier;
     }
@@ -353,7 +353,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     }
 
     @Override
-    public HttpConstants.Protocol getProtocol() {
+    public Protocol getProtocol() {
       return delegate.getProtocol();
     }
 

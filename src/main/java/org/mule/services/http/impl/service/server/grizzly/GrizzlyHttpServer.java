@@ -29,7 +29,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   private final TCPNIOTransport transport;
   private final ServerAddress serverAddress;
-  private Protocol protocol;
+  private final Protocol protocol;
   private final HttpListenerRegistry listenerRegistry;
   private TCPNIOServerConnection serverConnection;
   private Supplier<Scheduler> schedulerSource;

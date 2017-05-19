@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import static org.mule.service.http.api.HttpConstants.Method.GET;
 import static org.mule.service.http.api.HttpConstants.Method.POST;
 import static org.mule.service.http.api.HttpConstants.Method.PUT;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.util.StringUtils;
 import org.mule.service.http.api.HttpConstants.Method;
@@ -34,8 +35,10 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import ru.yandex.qatools.allure.annotations.Features;
 
 @SmallTest
+@Features(HTTP_SERVICE)
 public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
 
   public static final String TEST_IP = "127.0.0.1";

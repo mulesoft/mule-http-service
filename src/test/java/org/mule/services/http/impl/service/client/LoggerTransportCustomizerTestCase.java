@@ -10,6 +10,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
@@ -23,9 +24,11 @@ import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import ru.yandex.qatools.allure.annotations.Features;
 
 @RunWith(MockitoJUnitRunner.class)
 @SmallTest
+@Features(HTTP_SERVICE)
 public class LoggerTransportCustomizerTestCase extends AbstractMuleTestCase {
 
   @Mock
