@@ -8,16 +8,13 @@ package org.mule.services.http.impl.service.server.grizzly;
 
 import static org.glassfish.grizzly.http.util.HttpStatus.CONINTUE_100;
 import static org.glassfish.grizzly.http.util.HttpStatus.EXPECTATION_FAILED_417;
-import static org.mule.service.http.api.HttpConstants.Protocols.HTTP;
-import static org.mule.service.http.api.HttpConstants.Protocols.HTTPS;
+import static org.mule.service.http.api.HttpConstants.Protocol.HTTP;
+import static org.mule.service.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.service.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.services.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
 import org.mule.service.http.api.domain.entity.InputStreamHttpEntity;
-import org.mule.service.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.api.server.RequestHandler;
-import org.mule.service.http.api.server.async.HttpResponseReadyCallback;
-import org.mule.service.http.api.server.async.ResponseStatusCallback;
 import org.mule.services.http.impl.service.server.RequestHandlerProvider;
 
 import java.io.IOException;

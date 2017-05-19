@@ -7,8 +7,15 @@
 package org.mule.services.http.impl.service.server.grizzly;
 
 import static org.mockito.Mockito.mock;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HttpStory.RESPONSES;
 import org.mule.service.http.api.domain.message.response.HttpResponse;
 
+import ru.yandex.qatools.allure.annotations.Features;
+import ru.yandex.qatools.allure.annotations.Stories;
+
+@Features(HTTP_SERVICE)
+@Stories(RESPONSES)
 public class ResponseCompletionHandlerTestCase extends BaseResponseCompletionHandlerTestCase {
 
   private ResponseCompletionHandler handler = new ResponseCompletionHandler(ctx, request, mock(HttpResponse.class), callback);

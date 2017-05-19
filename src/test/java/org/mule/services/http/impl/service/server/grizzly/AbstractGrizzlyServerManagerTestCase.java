@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mule.service.http.api.HttpConstants.HttpStatus.OK;
 import org.mule.service.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.api.server.HttpServer;
+import org.mule.service.http.api.server.ServerAddress;
 import org.mule.service.http.api.server.ServerNotFoundException;
 import org.mule.service.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.api.tcp.TcpServerSocketProperties;
@@ -39,7 +40,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-public class GrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
+public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
 
   @Rule
   public DynamicPort listenerPort = new DynamicPort("listener.port");
@@ -49,7 +50,8 @@ public class GrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
   private ExecutorService selectorPool;
   private ExecutorService workerPool;
   private ExecutorService idleTimeoutExecutorService;
-  private GrizzlyServerManager serverManager;
+
+  protected GrizzlyServerManager serverManager;
 
   @Before
   public void before() {
@@ -68,6 +70,8 @@ public class GrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
     workerPool.shutdown();
     idleTimeoutExecutorService.shutdown();
   }
+
+  protected abstract HttpServer getServer(ServerAddress address, ServerIdentifier id) throws IOException;
 
   @Test
   public void managerDisposeClosesServerOpenConnections() throws IOException {
@@ -145,13 +149,13 @@ public class GrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
   public void serverWithSameNameInSameContextOverlaps() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
     DefaultServerAddress serverAddress = new DefaultServerAddress("someHost", listenerPort.getNumber());
-    HttpServer server = serverManager.createServerFor(serverAddress,
-                                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                                      (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                                      identifier);
+    HttpServer server = getServer(serverAddress, identifier);
     DefaultServerAddress otherServerAddress = new DefaultServerAddress("otherHost", listenerPort.getNumber());
-    assertThat(serverManager.containsServerFor(otherServerAddress, identifier), is(true));
-    server.dispose();
+    try {
+      assertThat(serverManager.containsServerFor(otherServerAddress, identifier), is(true));
+    } finally {
+      server.dispose();
+    }
   }
 
   @Test
@@ -159,23 +163,21 @@ public class GrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
     String name = "name";
     ServerIdentifier identifier = new ServerIdentifier("context", name);
     DefaultServerAddress serverAddress = new DefaultServerAddress("someHost", listenerPort.getNumber());
-    HttpServer server = serverManager.createServerFor(serverAddress,
-                                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                                      (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                                      identifier);
+    HttpServer server = getServer(serverAddress, identifier);
     DefaultServerAddress otherServerAddress = new DefaultServerAddress("otherHost", listenerPort.getNumber());
     ServerIdentifier otherIdentifier = new ServerIdentifier("otherContext", name);
-    assertThat(serverManager.containsServerFor(otherServerAddress, otherIdentifier), is(false));
-    server.dispose();
+    try {
+      assertThat(serverManager.containsServerFor(otherServerAddress, otherIdentifier), is(false));
+    } finally {
+      server.dispose();
+    }
   }
 
   @Test
   public void serverIsRemovedAfterDispose() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    HttpServer server = serverManager.createServerFor(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
-                                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                                      (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                                      identifier);
+    DefaultServerAddress serverAddress = new DefaultServerAddress("0.0.0.0", listenerPort.getNumber());
+    HttpServer server = getServer(serverAddress, identifier);
     server.start();
     server.stop();
     server.dispose();
@@ -187,10 +189,8 @@ public class GrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
   @Test
   public void onlyOwnerCanStartServer() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    HttpServer owner = serverManager.createServerFor(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
-                                                     () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                                     (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                                     identifier);
+    DefaultServerAddress serverAddress = new DefaultServerAddress("0.0.0.0", listenerPort.getNumber());
+    HttpServer owner = getServer(serverAddress, identifier);
     HttpServer reference = serverManager.lookupServer(identifier);
 
     assertThat(owner.isStopped(), is(true));
@@ -213,10 +213,8 @@ public class GrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
   @Test
   public void onlyOwnerCanStopServer() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    HttpServer owner = serverManager.createServerFor(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
-                                                     () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                                     (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                                     identifier);
+    DefaultServerAddress serverAddress = new DefaultServerAddress("0.0.0.0", listenerPort.getNumber());
+    HttpServer owner = getServer(serverAddress, identifier);
     HttpServer reference = serverManager.lookupServer(identifier);
 
     owner.start();
@@ -241,9 +239,7 @@ public class GrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
   public void onlyOwnerCanDisposeServer() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
     DefaultServerAddress serverAddress = new DefaultServerAddress("0.0.0.0", listenerPort.getNumber());
-    HttpServer owner = serverManager.createServerFor(serverAddress, () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                                     (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                                     identifier);
+    HttpServer owner = getServer(serverAddress, identifier);
     HttpServer reference = serverManager.lookupServer(identifier);
 
     assertThat(serverManager.containsServerFor(serverAddress, identifier), is(true));

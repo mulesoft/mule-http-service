@@ -6,7 +6,7 @@
  */
 package org.mule.services.http.impl.service.server.grizzly;
 
-import static org.mule.service.http.api.HttpConstants.Protocols.HTTPS;
+import static org.mule.service.http.api.HttpConstants.Protocol.HTTPS;
 
 import java.io.IOException;
 

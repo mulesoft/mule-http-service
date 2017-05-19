@@ -12,6 +12,8 @@ import static org.mule.service.http.api.HttpConstants.Method.GET;
 import static org.mule.service.http.api.HttpConstants.Method.OPTIONS;
 import static org.mule.service.http.api.HttpConstants.Method.PATCH;
 import static org.mule.service.http.api.HttpConstants.Method.POST;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HttpStory.LISTENERS;
 import org.mule.service.http.api.HttpConstants.Method;
 import org.mule.service.http.api.domain.message.request.HttpRequest;
 import org.mule.service.http.api.domain.message.request.HttpRequestBuilder;
@@ -20,8 +22,12 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
 
 import org.junit.Test;
+import ru.yandex.qatools.allure.annotations.Features;
+import ru.yandex.qatools.allure.annotations.Stories;
 
 @SmallTest
+@Features(HTTP_SERVICE)
+@Stories(LISTENERS)
 public class DefaultMethodRequestMatcherTestCase extends AbstractMuleTestCase {
 
   private HttpRequestBuilder requestBuilder = HttpRequest.builder().setUri("uri");

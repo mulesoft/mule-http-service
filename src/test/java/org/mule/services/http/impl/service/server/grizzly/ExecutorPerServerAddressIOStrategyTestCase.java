@@ -12,6 +12,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.when;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import org.mule.service.http.api.server.ServerAddress;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
@@ -28,8 +29,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import ru.yandex.qatools.allure.annotations.Features;
 
 @RunWith(MockitoJUnitRunner.class)
+@Features(HTTP_SERVICE)
 public class ExecutorPerServerAddressIOStrategyTestCase extends AbstractMuleTestCase {
 
   @Mock

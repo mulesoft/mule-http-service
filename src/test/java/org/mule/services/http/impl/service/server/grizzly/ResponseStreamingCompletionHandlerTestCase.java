@@ -9,13 +9,19 @@ package org.mule.services.http.impl.service.server.grizzly;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.services.http.impl.service.AllureConstants.HttpFeature.HttpStory.RESPONSES;
 import org.mule.service.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.service.http.api.domain.message.response.HttpResponse;
 
 import java.io.InputStream;
 
 import org.glassfish.grizzly.Transport;
+import ru.yandex.qatools.allure.annotations.Features;
+import ru.yandex.qatools.allure.annotations.Stories;
 
+@Features(HTTP_SERVICE)
+@Stories(RESPONSES)
 public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseCompletionHandlerTestCase {
 
   private ResponseStreamingCompletionHandler handler;
