@@ -6,9 +6,12 @@
  */
 package org.mule.services.http.impl.service.server.grizzly;
 
+import static java.lang.Integer.parseInt;
 import static org.mule.service.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.service.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.service.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
+
+import org.glassfish.grizzly.utils.BufferInputStream;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.util.StringUtils;
 import org.mule.service.http.api.domain.HttpProtocol;
@@ -28,13 +31,11 @@ import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.Protocol;
-import org.glassfish.grizzly.utils.BufferInputStream;
 
 public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRequest {
 
   private final HttpRequestPacket requestPacket;
   private final InputStream requestContent;
-  private final FilterChainContext filterChainContext;
   private final int contentLength;
   private final boolean isTransferEncodingChunked;
   private HttpProtocol protocol;
@@ -46,21 +47,19 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   private ParameterMap queryParams;
 
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent) {
-    this.filterChainContext = filterChainContext;
     this.requestPacket = (HttpRequestPacket) httpContent.getHttpHeader();
-    isTransferEncodingChunked = httpContent.getHttpHeader().isChunked();
+    isTransferEncodingChunked = requestPacket.isChunked();
     int contentLengthAsInt = 0;
     String contentLengthAsString = requestPacket.getHeader(CONTENT_LENGTH);
     if (contentLengthAsString != null) {
-      contentLengthAsInt = Integer.parseInt(contentLengthAsString);
+      contentLengthAsInt = parseInt(contentLengthAsString);
     }
     this.contentLength = contentLengthAsInt;
-    InputStream contentInputStream = new BufferInputStream(httpContent.getContent());
-    boolean contentIsIncomplete = !httpContent.isLast();
-    if (contentIsIncomplete) {
-      contentInputStream = new BlockingTransferInputStream(filterChainContext, contentInputStream);
+    if (httpContent.isLast()) {
+      requestContent = new BufferInputStream(httpContent.getContent());
+    } else {
+      requestContent = new BlockingTransferInputStream(requestPacket, filterChainContext);
     }
-    this.requestContent = contentInputStream;
   }
 
   @Override
