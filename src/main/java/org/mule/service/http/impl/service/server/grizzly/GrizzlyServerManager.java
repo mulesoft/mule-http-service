@@ -309,6 +309,7 @@ public class GrizzlyServerManager implements HttpServerManager {
 
     @Override
     public synchronized void dispose() {
+      logger.info("Disposing server.");
       super.dispose();
       ServerAddress serverAddress = this.getServerAddress();
       servers.remove(serverAddress);
