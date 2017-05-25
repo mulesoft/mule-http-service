@@ -331,7 +331,7 @@ public class GrizzlyHttpClient implements HttpClient {
     }
   }
 
-  protected HttpResponse createMuleResponse(Response response, InputStream inputStream) throws IOException {
+  private HttpResponse createMuleResponse(Response response, InputStream inputStream) throws IOException {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
     responseBuilder.setStatusCode(response.getStatusCode());
     responseBuilder.setReasonPhrase(response.getStatusText());
@@ -347,7 +347,7 @@ public class GrizzlyHttpClient implements HttpClient {
     return responseBuilder.build();
   }
 
-  protected Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
+  private Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
                                          HttpRequestAuthentication authentication)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, builder -> {
