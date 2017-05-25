@@ -348,7 +348,7 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                         HttpRequestAuthentication authentication)
+                                       HttpRequestAuthentication authentication)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, builder -> {
       builder.setMethod(request.getMethod());
