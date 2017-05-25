@@ -15,7 +15,6 @@ import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
-
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
@@ -40,6 +39,7 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 
+import com.ning.http.client.AsyncCompletionHandler;
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
@@ -47,6 +47,7 @@ import com.ning.http.client.BodyDeferringAsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
+import com.ning.http.client.ListenableFuture;
 import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Realm;
 import com.ning.http.client.Request;
@@ -64,6 +65,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -85,7 +87,8 @@ public class GrizzlyHttpClient implements HttpClient {
   private final int maxConnections;
   private final boolean usePersistentConnections;
   private final int connectionIdleTimeout;
-  private int responseBufferSize;
+  private final boolean streamingEnabled;
+  private final int responseBufferSize;
 
   private final String name;
   private Scheduler selectorScheduler;
@@ -104,6 +107,7 @@ public class GrizzlyHttpClient implements HttpClient {
     this.maxConnections = config.getMaxConnections();
     this.usePersistentConnections = config.isUsePersistentConnections();
     this.connectionIdleTimeout = config.getConnectionIdleTimeout();
+    this.streamingEnabled = config.isStreaming();
     this.responseBufferSize = config.getResponseBufferSize();
     this.name = config.getName();
 
@@ -236,7 +240,24 @@ public class GrizzlyHttpClient implements HttpClient {
   public HttpResponse send(HttpRequest request, int responseTimeout, boolean followRedirects,
                            HttpRequestAuthentication authentication)
       throws IOException, TimeoutException {
+    if (streamingEnabled) {
+      return sendAndDefer(request, responseTimeout, followRedirects, authentication);
+    } else {
+      return sendAndWait(request, responseTimeout, followRedirects, authentication);
+    }
+  }
 
+  /**
+   * Blocking send which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives and propagates a
+   * {@link PipedInputStream} as soon as the response headers are parsed.
+   * <p/>
+   * Because of the internal buffer used to hold the arriving chunks, the response MUST be eventually read or the worker threads
+   * will block waiting to allocate them. Likewise, read/write speed differences could cause issues. The buffer size can be
+   * customized for these reason.
+   */
+  public HttpResponse sendAndDefer(HttpRequest request, int responseTimeout, boolean followRedirects,
+                                   HttpRequestAuthentication authentication)
+      throws IOException, TimeoutException {
     Request grizzlyRequest = createGrizzlyRequest(request, responseTimeout, followRedirects, authentication);
     PipedOutputStream outPipe = new PipedOutputStream();
     PipedInputStream inPipe = new PipedInputStream(outPipe, responseBufferSize);
@@ -258,13 +279,53 @@ public class GrizzlyHttpClient implements HttpClient {
     }
   }
 
+  /**
+   * Blocking send which waits to load the whole response to memory before propagating it.
+   */
+  public HttpResponse sendAndWait(HttpRequest request, int responseTimeout, boolean followRedirects,
+                                  HttpRequestAuthentication authentication)
+      throws IOException, TimeoutException {
+    Request grizzlyRequest = createGrizzlyRequest(request, responseTimeout, followRedirects, authentication);
+    ListenableFuture<Response> future = asyncHttpClient.executeRequest(grizzlyRequest);
+    try {
+      // No timeout is used to get the value of the future object, as the responseTimeout configured in the request that
+      // is being sent will make the call throw a {@code TimeoutException} if this time is exceeded.
+      Response response = future.get();
+
+      // Under high load, sometimes the get() method returns null. Retrying once fixes the problem (see MULE-8712).
+      if (response == null) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("Null response returned by async client");
+        }
+        response = future.get();
+      }
+      return createMuleResponse(response, response.getResponseBodyAsStream());
+    } catch (InterruptedException e) {
+      throw new IOException(e);
+    } catch (ExecutionException e) {
+      if (e.getCause() instanceof TimeoutException) {
+        throw (TimeoutException) e.getCause();
+      } else if (e.getCause() instanceof IOException) {
+        throw (IOException) e.getCause();
+      } else {
+        throw new IOException(e);
+      }
+    }
+  }
+
   @Override
   public void send(HttpRequest request, int responseTimeout, boolean followRedirects, HttpRequestAuthentication authentication,
                    ResponseHandler handler) {
     try {
-      PipedOutputStream outPipe = new PipedOutputStream();
+      AsyncHandler<Response> asyncHandler;
+      if (streamingEnabled) {
+        asyncHandler = new ResponseBodyDeferringAsyncHandler(handler, new PipedOutputStream());
+      } else {
+        asyncHandler = new ResponseAsyncHandler(handler);
+      }
+
       asyncHttpClient.executeRequest(createGrizzlyRequest(request, responseTimeout, followRedirects, authentication),
-                                     new ResponseBodyDeferringAsyncHandler(handler, outPipe));
+                                     asyncHandler);
     } catch (Exception e) {
       handler.onFailure(e);
     }
@@ -399,6 +460,49 @@ public class GrizzlyHttpClient implements HttpClient {
     selectorScheduler.stop();
   }
 
+  /**
+   * Non blocking handler which waits to load the whole response to memory before propagating it.
+   */
+  private class ResponseAsyncHandler extends AsyncCompletionHandler<Response> {
+
+    private final ResponseHandler responseHandler;
+
+    public ResponseAsyncHandler(ResponseHandler handler) {
+      this.responseHandler = handler;
+    }
+
+    @Override
+    public Response onCompleted(Response response) throws Exception {
+      responseHandler.onCompletion(createMuleResponse(response, response.getResponseBodyAsStream()));
+      return null;
+    }
+
+    @Override
+    public void onThrowable(Throwable t) {
+      logger.warn("Error handling HTTP response.", t);
+      Exception exception;
+      if (t instanceof TimeoutException) {
+        exception = (TimeoutException) t;
+      } else if (t instanceof IOException) {
+        exception = (IOException) t;
+      } else {
+        exception = new IOException(t);
+      }
+      responseHandler.onFailure(exception);
+    }
+  }
+
+
+  /**
+   * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives,
+   * propagating an {@link PipedInputStream} as soon as the response headers are parsed.
+   * <p/>
+   * Because of the internal buffer used to hold the arriving chunks, the response MUST be eventually read or the worker threads
+   * will block waiting to allocate them. Likewise, read/write speed differences could cause issues. The buffer size can be
+   * customized for these reason.
+   * <p/>
+   * To avoid deadlocks, a hand off to another thread MUST be performed before consuming the response.
+   */
   private class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
 
     private volatile Response response;
