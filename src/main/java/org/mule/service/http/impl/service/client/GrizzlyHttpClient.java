@@ -13,6 +13,7 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.core.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
@@ -22,7 +23,6 @@ import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
 import org.mule.runtime.core.api.scheduler.SchedulerConfig;
 import org.mule.runtime.core.api.scheduler.SchedulerService;
 import org.mule.runtime.core.util.IOUtils;
-import org.mule.runtime.core.util.StringUtils;
 import org.mule.runtime.http.api.client.HttpAuthenticationType;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
@@ -183,7 +183,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   protected final ProxyServer buildProxy(ProxyConfig proxyConfig) {
     ProxyServer proxyServer;
-    if (!StringUtils.isEmpty(proxyConfig.getUsername())) {
+    if (!isEmpty(proxyConfig.getUsername())) {
       proxyServer =
           new ProxyServer(proxyConfig.getHost(), proxyConfig.getPort(), proxyConfig.getUsername(), proxyConfig.getPassword());
       if (proxyConfig instanceof NtlmProxyConfig) {
