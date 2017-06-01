@@ -7,15 +7,11 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.Integer.parseInt;
-
-import org.glassfish.grizzly.utils.BufferInputStream;
-
+import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
-
 import org.mule.runtime.api.exception.MuleRuntimeException;
-import org.mule.runtime.core.util.StringUtils;
 import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.http.api.domain.ParameterMap;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
@@ -33,6 +29,7 @@ import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.Protocol;
+import org.glassfish.grizzly.utils.BufferInputStream;
 
 public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRequest {
 
@@ -159,8 +156,8 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   @Override
   public String getUri() {
     if (this.uri == null) {
-      this.uri = requestPacket.getRequestURI()
-          + (StringUtils.isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString());
+      this.uri =
+          requestPacket.getRequestURI() + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString());
     }
     return this.uri;
   }

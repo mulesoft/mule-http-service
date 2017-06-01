@@ -12,7 +12,7 @@ import static org.mule.service.http.impl.service.server.grizzly.HttpParser.norma
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.config.i18n.CoreMessages;
-import org.mule.runtime.core.util.StringUtils;
+import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
