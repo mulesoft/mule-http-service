@@ -114,6 +114,11 @@
             <groupId>org.glassfish.grizzly</groupId>
             <artifactId>grizzly-websockets</artifactId>
         </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commonsIoVersion}</version>
+        </dependency>
 
         <dependency>
             <groupId>org.mule.tests</groupId>
