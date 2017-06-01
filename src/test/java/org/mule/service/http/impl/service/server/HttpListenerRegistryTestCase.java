@@ -17,15 +17,12 @@ import static org.mule.runtime.http.api.HttpConstants.Method.PUT;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
-import org.mule.runtime.core.util.StringUtils;
+import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.HttpConstants.Method;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.ServerAddress;
-import org.mule.service.http.impl.service.server.DefaultServerAddress;
-import org.mule.service.http.impl.service.server.HttpListenerRegistry;
-import org.mule.service.http.impl.service.server.NoListenerRequestHandler;
 import org.mule.service.http.impl.service.server.grizzly.AcceptsAllMethodsRequestMatcher;
 import org.mule.service.http.impl.service.server.grizzly.DefaultMethodRequestMatcher;
 import org.mule.service.http.impl.service.server.grizzly.ListenerRequestMatcher;

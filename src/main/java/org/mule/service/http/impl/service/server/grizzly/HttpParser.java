@@ -6,7 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static org.mule.runtime.core.util.StringUtils.WHITE_SPACE;
+import static org.mule.runtime.core.api.util.StringUtils.WHITE_SPACE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_DISPOSITION;
 
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
