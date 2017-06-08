@@ -7,17 +7,17 @@
 package org.mule.service.http.impl.service.client;
 
 import static java.lang.String.format;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.core.api.util.IOUtils;
-import org.mule.runtime.core.util.concurrent.Latch;
+import org.mule.runtime.core.api.util.concurrent.Latch;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.async.ResponseHandler;
@@ -37,7 +37,6 @@ import org.mule.tck.probe.Probe;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.junit.After;
 import org.junit.Before;
@@ -55,6 +54,7 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
   @Rule
   public DynamicPort serverPort = new DynamicPort("serverPort");
 
+  // Use a payload bigger than the default server and client buffer sizes (8 and 10 KB, respectively)
   private static final int RESPONSE_SIZE = 14 * 1024;
   private static final int WAIT_TIMEOUT = 5000;
   private static final int RESPONSE_TIMEOUT = 3000;
@@ -108,8 +108,7 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
 
         @Override
         public void onFailure(Exception exception) {
-          latch.release();
-          fail("Response should have been received despite latch being set.");
+          // Do nothing, probe will fail.
         }
       });
       pollingProber.check(new ResponseReceivedProbe(responseReference));
@@ -135,8 +134,7 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
 
         @Override
         public void onFailure(Exception exception) {
-          latch.release();
-          fail("Response should have been received despite latch being set.");
+          // Do nothing, probe will fail.
         }
       });
       verifyNotStreamed(responseReference);
@@ -164,13 +162,13 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
     HttpClient client = service.getClientFactory().create(clientBuilder.setStreaming(false).build());
     client.start();
     Reference<HttpResponse> responseReference = new Reference<>();
-    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    ExecutorService executorService = newSingleThreadExecutor();
     try {
       executorService.execute(() -> {
         try {
           responseReference.set(client.send(getRequest(), RESPONSE_TIMEOUT, true, null));
         } catch (Exception e) {
-          fail("Client failed executing request.");
+          // Do nothing, probe will fail.
         }
       });
       verifyNotStreamed(responseReference);
