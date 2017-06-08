@@ -16,6 +16,7 @@ public interface AllureConstants {
 
       String SERVER_MANAGEMENT = "Server Management";
       String RESPONSES = "Responses";
+      String STREAMING = "Streaming";
       String PARSING = "Parsing";
       String LISTENERS = "Listeners";
 
