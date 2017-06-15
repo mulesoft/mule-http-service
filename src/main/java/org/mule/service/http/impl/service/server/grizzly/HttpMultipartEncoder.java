@@ -25,9 +25,11 @@ import javax.mail.internet.MimeMultipart;
 import javax.mail.internet.ParseException;
 
 /**
- * Created by anafelisatti on 6/14/17.
+ * Creates multipart content from a composed {@link HttpEntity}.
+ *
+ * @since 1.0
  */
-public class HttpEncoder {
+public class HttpMultipartEncoder {
 
   private static final String FORM_DATA = "form-data";
   public static final String ATTACHMENT = "attachment";
@@ -63,7 +65,7 @@ public class HttpEncoder {
   }
 
   public static byte[] toByteArray(HttpEntity multipartEntity, String contentType) throws IOException {
-    MimeMultipart mimeMultipartContent = HttpEncoder.toMimeMultipart(multipartEntity, contentType);
+    MimeMultipart mimeMultipartContent = HttpMultipartEncoder.toMimeMultipart(multipartEntity, contentType);
     final ByteArrayOutputStream byteArrayOutputStream;
     byteArrayOutputStream = new ByteArrayOutputStream();
     try {
