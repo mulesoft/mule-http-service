@@ -63,7 +63,11 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
           throw new MuleRuntimeException(createStaticMessage("Error sending multipart response"), e);
         }
       } else {
-        bytes = body.getBytes();
+        try {
+          bytes = body.getBytes();
+        } catch (IOException e) {
+          throw new MuleRuntimeException(createStaticMessage("Error sending response"), e);
+        }
       }
       grizzlyBuffer = Buffers.wrap(ctx.getMemoryManager(), bytes);
     }

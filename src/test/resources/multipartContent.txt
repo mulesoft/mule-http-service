@@ -1,0 +1,12 @@
+--the-boundary
+Content-Disposition: form-data; name="img"; filename="a.png"
+Content-Type: application/json
+
+{
+	"key" : "value"
+}
+--the-boundary
+Content-Disposition: form-data; name="foo"
+
+bar
+--the-boundary

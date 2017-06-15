@@ -24,7 +24,6 @@ public class StreamedMultipartHttpEntity implements HttpEntity {
 
   private InputStream content;
   private String contentType;
-  private Collection<HttpPart> parts;
 
   public StreamedMultipartHttpEntity(InputStream content, String contentType) {
     this.content = content;
@@ -53,9 +52,6 @@ public class StreamedMultipartHttpEntity implements HttpEntity {
 
   @Override
   public Collection<HttpPart> getParts() throws IOException, UnsupportedOperationException {
-    if (parts == null) {
-      parts = HttpParser.parseMultipartContent(content, contentType);
-    }
-    return parts;
+    return HttpParser.parseMultipartContent(content, contentType);
   }
 }
