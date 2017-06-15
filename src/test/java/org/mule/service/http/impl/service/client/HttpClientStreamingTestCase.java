@@ -197,7 +197,7 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
   }
 
   private void verifyBody(HttpResponse response) throws IOException {
-    assertThat(IOUtils.toString(((InputStreamHttpEntity) response.getEntity()).getInputStream()).length(), is(RESPONSE_SIZE));
+    assertThat(IOUtils.toString(response.getEntity().getContent()).length(), is(RESPONSE_SIZE));
   }
 
   private String getUrl() {

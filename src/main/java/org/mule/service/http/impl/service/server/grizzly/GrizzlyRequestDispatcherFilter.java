@@ -13,8 +13,6 @@ import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.runtime.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
-
-import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.service.http.impl.service.server.RequestHandlerProvider;
 
@@ -71,7 +69,7 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
       final RequestHandler requestHandler = requestHandlerProvider.getRequestHandler(ip, port, httpRequest);
       requestHandler.handleRequest(requestContext, (httpResponse, responseStatusCallback) -> {
         try {
-          if (httpResponse.getEntity() instanceof InputStreamHttpEntity) {
+          if (httpResponse.getEntity().isStreaming()) {
             new ResponseStreamingCompletionHandler(ctx, request, httpResponse, responseStatusCallback).start();
           } else {
             new ResponseCompletionHandler(ctx, request, httpResponse, responseStatusCallback).start();

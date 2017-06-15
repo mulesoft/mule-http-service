@@ -9,7 +9,6 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.config.i18n.CoreMessages;
-import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
@@ -42,11 +41,11 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
 
   public ResponseStreamingCompletionHandler(final FilterChainContext ctx, final HttpRequestPacket request,
                                             final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
-    Preconditions.checkArgument((httpResponse.getEntity() instanceof InputStreamHttpEntity),
-                                "http response must have an input stream entity");
+    Preconditions.checkArgument((httpResponse.getEntity().isStreaming()),
+                                "HTTP response entity must be stream based");
     this.ctx = ctx;
     httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
-    inputStream = ((InputStreamHttpEntity) httpResponse.getEntity()).getInputStream();
+    inputStream = httpResponse.getEntity().getContent();
     memoryManager = ctx.getConnection().getTransport().getMemoryManager();
     this.responseStatusCallback = responseStatusCallback;
   }

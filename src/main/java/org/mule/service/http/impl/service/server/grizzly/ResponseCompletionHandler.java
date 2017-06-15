@@ -6,15 +6,12 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
-
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.util.Preconditions;
-import org.mule.runtime.core.config.i18n.CoreMessages;
-import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
-import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
-import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
@@ -43,8 +40,8 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
 
   public ResponseCompletionHandler(final FilterChainContext ctx, final HttpRequestPacket httpRequestPacket,
                                    final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
-    Preconditions.checkArgument((!(httpResponse.getEntity() instanceof InputStreamHttpEntity)),
-                                "response entity cannot be input stream");
+    Preconditions.checkArgument((!(httpResponse.getEntity().isStreaming())),
+                                "HTTP response entity cannot be stream based");
     this.ctx = ctx;
     this.httpResponsePacket = buildHttpResponsePacket(httpRequestPacket, httpResponse);
     this.httpResponseContent = buildResponseContent(httpResponse);
@@ -54,16 +51,26 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   public HttpContent buildResponseContent(final HttpResponse httpResponse) {
     final HttpEntity body = httpResponse.getEntity();
     Buffer grizzlyBuffer = null;
-    if (body != null && !(body instanceof EmptyHttpEntity)) {
-      if (body instanceof ByteArrayHttpEntity) {
-        grizzlyBuffer = Buffers.wrap(ctx.getMemoryManager(), ((ByteArrayHttpEntity) body).getContent());
+    if (body != null) {
+      byte[] bytes;
+      if (body.isComposed()) {
+        try {
+          bytes = HttpEncoder.toByteArray(body, httpResponse.getHeaderValueIgnoreCase(CONTENT_TYPE));
+          if (!httpResponsePacket.isChunked()) {
+            httpResponsePacket.setContentLength(bytes.length);
+          }
+        } catch (IOException e) {
+          throw new MuleRuntimeException(createStaticMessage("Error sending multipart response"), e);
+        }
       } else {
-        throw new MuleRuntimeException(CoreMessages.createStaticMessage("At this point only a ByteArray entity is allowed"));
+        bytes = body.getBytes();
       }
+      grizzlyBuffer = Buffers.wrap(ctx.getMemoryManager(), bytes);
     }
+
     HttpContent.Builder contentBuilder = HttpContent.builder(httpResponsePacket);
     // For some reason, grizzly tries to send Transfer-Encoding: chunk even if the content-length is set.
-    if (httpResponse.getHeaderValueIgnoreCase(CONTENT_LENGTH) != null) {
+    if (httpResponse.getHeaderValueIgnoreCase(CONTENT_LENGTH) != null || httpResponsePacket.getContentLength() > 0) {
       contentBuilder.last(true);
     }
     return contentBuilder.content(grizzlyBuffer).build();

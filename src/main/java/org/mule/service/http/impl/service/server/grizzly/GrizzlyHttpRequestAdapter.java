@@ -11,16 +11,14 @@ import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
-import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.http.api.domain.ParameterMap;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
-import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
-import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.BaseHttpMessage;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
+import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
 import java.io.InputStream;
 import java.util.Collection;
@@ -123,26 +121,21 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
 
   @Override
   public HttpEntity getEntity() {
-    try {
-      if (this.body == null) {
-        final String contentTypeValue = getHeaderValueIgnoreCase(CONTENT_TYPE);
-        if (contentTypeValue != null && contentTypeValue.contains("multipart")) {
-          final Collection<HttpPart> parts = HttpParser.parseMultipartContent(requestContent, contentTypeValue);
-          this.body = new MultipartHttpEntity(parts);
+    if (this.body == null) {
+      final String contentTypeValue = getHeaderValueIgnoreCase(CONTENT_TYPE);
+      if (contentTypeValue != null && contentTypeValue.contains("multipart")) {
+        this.body = new StreamedMultipartHttpEntity(requestContent, contentTypeValue);
+      } else {
+        if (isTransferEncodingChunked) {
+          this.body = new InputStreamHttpEntity(requestContent);
+        } else if (contentLength > 0) {
+          this.body = new InputStreamHttpEntity(contentLength, requestContent);
         } else {
-          if (isTransferEncodingChunked) {
-            this.body = new InputStreamHttpEntity(requestContent);
-          } else if (contentLength > 0) {
-            this.body = new InputStreamHttpEntity(contentLength, requestContent);
-          } else {
-            this.body = new EmptyHttpEntity();
-          }
+          this.body = new EmptyHttpEntity();
         }
       }
-      return this.body;
-    } catch (Exception e) {
-      throw new MuleRuntimeException(e);
     }
+    return this.body;
   }
 
   @Override
@@ -162,17 +155,4 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
     return this.uri;
   }
 
-  @Override
-  public InputStreamHttpEntity getInputStreamEntity() {
-    if (this.requestContent == null) {
-      return null;
-    }
-    if (isTransferEncodingChunked) {
-      return new InputStreamHttpEntity(requestContent);
-    }
-    if (contentLength > 0) {
-      return new InputStreamHttpEntity(contentLength, requestContent);
-    }
-    return null;
-  }
 }
