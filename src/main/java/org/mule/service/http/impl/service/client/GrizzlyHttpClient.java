@@ -13,6 +13,7 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
@@ -349,7 +350,7 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private HttpEntity createEntity(InputStream stream, String contentType) {
-    if (contentType != null && contentType.startsWith("multipart")) {
+    if (contentType != null && contentType.startsWith(MULTIPART_MIXED.getPrimaryType())) {
       return new StreamedMultipartHttpEntity(stream, contentType);
     } else {
       return new InputStreamHttpEntity(stream);

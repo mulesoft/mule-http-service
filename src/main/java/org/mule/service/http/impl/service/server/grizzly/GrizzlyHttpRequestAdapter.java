@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.Integer.parseInt;
+import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
@@ -123,7 +124,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   public HttpEntity getEntity() {
     if (this.body == null) {
       final String contentTypeValue = getHeaderValueIgnoreCase(CONTENT_TYPE);
-      if (contentTypeValue != null && contentTypeValue.contains("multipart")) {
+      if (contentTypeValue != null && contentTypeValue.contains(MULTIPART_MIXED.getPrimaryType())) {
         this.body = new StreamedMultipartHttpEntity(requestContent, contentTypeValue);
       } else {
         if (isTransferEncodingChunked) {

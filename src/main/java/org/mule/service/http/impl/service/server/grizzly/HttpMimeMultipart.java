@@ -8,9 +8,6 @@ package org.mule.service.http.impl.service.server.grizzly;
 
 import javax.mail.internet.MimeMultipart;
 
-/**
- *
- */
 public class HttpMimeMultipart extends MimeMultipart {
 
   public HttpMimeMultipart(String contentType, String subtype) {
