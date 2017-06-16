@@ -55,6 +55,7 @@ public class HttpMultipartEncoder {
         internetHeaders.addHeader(CONTENT_TYPE, part.getContentType());
       }
       try {
+        // TODO: MULE-12827 - Support HTTP multipart streaming
         final byte[] partContent = IOUtils.toByteArray(part.getInputStream());
         mimeMultipartContent.addBodyPart(new MimeBodyPart(internetHeaders, partContent));
       } catch (Exception e) {
