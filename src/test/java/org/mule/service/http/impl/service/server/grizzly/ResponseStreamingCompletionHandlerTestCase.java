@@ -11,15 +11,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.RESPONSES;
-
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.service.http.impl.service.server.grizzly.BaseResponseCompletionHandler;
-import org.mule.service.http.impl.service.server.grizzly.ResponseStreamingCompletionHandler;
 
 import java.io.InputStream;
 
 import org.glassfish.grizzly.Transport;
+import org.junit.Before;
 import ru.yandex.qatools.allure.annotations.Features;
 import ru.yandex.qatools.allure.annotations.Stories;
 
@@ -29,9 +27,9 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
 
   private ResponseStreamingCompletionHandler handler;
 
-  @Override
+  @Before
   public void setUp() {
-    super.setUp();
+    when(ctx.getConnection()).thenReturn(connection);
     when(connection.getTransport()).thenReturn(mock(Transport.class, RETURNS_DEEP_STUBS));
     InputStream mockStream = mock(InputStream.class);
     handler = new ResponseStreamingCompletionHandler(ctx,

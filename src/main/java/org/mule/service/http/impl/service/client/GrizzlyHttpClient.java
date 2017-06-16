@@ -13,8 +13,10 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
@@ -30,14 +32,14 @@ import org.mule.runtime.http.api.client.HttpRequestAuthentication;
 import org.mule.runtime.http.api.client.async.ResponseHandler;
 import org.mule.runtime.http.api.client.proxy.NtlmProxyConfig;
 import org.mule.runtime.http.api.client.proxy.ProxyConfig;
-import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
+import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
-import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
+import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
 import com.ning.http.client.AsyncCompletionHandler;
 import com.ning.http.client.AsyncHandler;
@@ -335,7 +337,7 @@ public class GrizzlyHttpClient implements HttpClient {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
     responseBuilder.setStatusCode(response.getStatusCode());
     responseBuilder.setReasonPhrase(response.getStatusText());
-    responseBuilder.setEntity(new InputStreamHttpEntity(inputStream));
+    responseBuilder.setEntity(createEntity(inputStream, response.getHeader(CONTENT_TYPE.toLowerCase())));
 
     if (response.hasResponseHeaders()) {
       for (String header : response.getHeaders().keySet()) {
@@ -345,6 +347,14 @@ public class GrizzlyHttpClient implements HttpClient {
       }
     }
     return responseBuilder.build();
+  }
+
+  private HttpEntity createEntity(InputStream stream, String contentType) {
+    if (contentType != null && contentType.startsWith(MULTIPART_MIXED.getPrimaryType())) {
+      return new StreamedMultipartHttpEntity(stream, contentType);
+    } else {
+      return new InputStreamHttpEntity(stream);
+    }
   }
 
   private Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
@@ -383,14 +393,10 @@ public class GrizzlyHttpClient implements HttpClient {
       }
 
       if (request.getEntity() != null) {
-        if (request.getEntity() instanceof InputStreamHttpEntity) {
-          builder.setBody(new InputStreamBodyGenerator(((InputStreamHttpEntity) request.getEntity()).getInputStream()));
-        } else if (request.getEntity() instanceof ByteArrayHttpEntity) {
-          builder.setBody(((ByteArrayHttpEntity) request.getEntity()).getContent());
-        } else if (request.getEntity() instanceof MultipartHttpEntity) {
-          MultipartHttpEntity multipartHttpEntity = (MultipartHttpEntity) request.getEntity();
-
-          for (HttpPart part : multipartHttpEntity.getParts()) {
+        if (request.getEntity().isStreaming()) {
+          builder.setBody(new InputStreamBodyGenerator(request.getEntity().getContent()));
+        } else if (request.getEntity().isComposed()) {
+          for (HttpPart part : request.getEntity().getParts()) {
             if (part.getFileName() != null) {
               builder.addBodyPart(new ByteArrayPart(part.getName(), IOUtils.toByteArray(part.getInputStream()),
                                                     part.getContentType(), null, part.getFileName()));
@@ -399,6 +405,8 @@ public class GrizzlyHttpClient implements HttpClient {
               builder.addBodyPart(new ByteArrayPart(part.getName(), content, part.getContentType(), null));
             }
           }
+        } else {
+          builder.setBody(request.getEntity().getBytes());
         }
       }
 

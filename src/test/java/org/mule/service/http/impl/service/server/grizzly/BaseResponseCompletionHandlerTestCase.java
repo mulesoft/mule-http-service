@@ -14,9 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
-import org.mule.service.http.impl.service.server.grizzly.BaseResponseCompletionHandler;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import java.io.IOException;
@@ -24,7 +22,6 @@ import java.io.IOException;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpRequestPacket;
-import org.junit.Before;
 import org.junit.Test;
 
 public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMuleTestCase {
@@ -36,11 +33,6 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
   protected ResponseStatusCallback callback = spy(ResponseStatusCallback.class);
 
   protected abstract BaseResponseCompletionHandler getHandler();
-
-  @Before
-  public void setUp() {
-    when(ctx.getConnection()).thenReturn(connection);
-  }
 
   @Test
   public void failedTaskAvoidsResponse() {
@@ -55,7 +47,5 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
     getHandler().cancelled();
     verify(callback, atLeastOnce()).responseSendFailure(any(Throwable.class));
   }
-
-
 
 }

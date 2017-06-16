@@ -7,13 +7,14 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.RESPONSES;
-
+import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
+import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.service.http.impl.service.server.grizzly.BaseResponseCompletionHandler;
-import org.mule.service.http.impl.service.server.grizzly.ResponseCompletionHandler;
 
+import org.junit.Before;
 import ru.yandex.qatools.allure.annotations.Features;
 import ru.yandex.qatools.allure.annotations.Stories;
 
@@ -21,11 +22,21 @@ import ru.yandex.qatools.allure.annotations.Stories;
 @Stories(RESPONSES)
 public class ResponseCompletionHandlerTestCase extends BaseResponseCompletionHandlerTestCase {
 
-  private ResponseCompletionHandler handler = new ResponseCompletionHandler(ctx, request, mock(HttpResponse.class), callback);
+  HttpResponse responseMock;
+
+  @Before
+  public void setUp() {
+    HttpEntity entity = new ByteArrayHttpEntity(new byte[1]);
+    responseMock = mock(HttpResponse.class);
+    when(responseMock.getEntity()).thenReturn(entity);
+    when(ctx.getConnection()).thenReturn(connection);
+    when(connection.getMemoryManager()).thenReturn(null);
+    when(ctx.getMemoryManager()).thenReturn(null);
+  }
 
   @Override
   protected BaseResponseCompletionHandler getHandler() {
-    return handler;
+    return new ResponseCompletionHandler(ctx, request, responseMock, callback);
   }
 
 }
