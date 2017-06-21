@@ -13,7 +13,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
 import org.mule.runtime.http.api.domain.HttpProtocol;
-import org.mule.runtime.http.api.domain.ParameterMap;
+import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
@@ -41,8 +41,8 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   private String path;
   private String method;
   private HttpEntity body;
-  private ParameterMap headers;
-  private ParameterMap queryParams;
+  private MultiMap<String, String> headers;
+  private MultiMap<String, String> queryParams;
 
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent) {
     this.requestPacket = (HttpRequestPacket) httpContent.getHttpHeader();
@@ -110,7 +110,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   }
 
   private void initializeHeaders() {
-    this.headers = new ParameterMap();
+    this.headers = new MultiMap<>();
     for (String grizzlyHeaderName : requestPacket.getHeaders().names()) {
       final Iterable<String> headerValues = requestPacket.getHeaders().values(grizzlyHeaderName);
       for (String headerValue : headerValues) {
@@ -140,7 +140,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   }
 
   @Override
-  public ParameterMap getQueryParams() {
+  public MultiMap<String, String> getQueryParams() {
     if (queryParams == null) {
       queryParams = decodeQueryString(requestPacket.getQueryString());
     }
