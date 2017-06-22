@@ -117,7 +117,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
         this.headers.put(grizzlyHeaderName, headerValue);
       }
     }
-    this.headers = this.headers.toImmutableParameterMap();
+    this.headers = this.headers.toImmutableMultiMap();
   }
 
   @Override
