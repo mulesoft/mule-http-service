@@ -366,9 +366,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
       populateHeaders(request, builder);
 
-      for (String queryParamName : request.getQueryParams().keySet()) {
-        builder.addQueryParam(queryParamName, request.getQueryParams().get(queryParamName));
-      }
+      request.getQueryParams().entryList().forEach(entry -> builder.addQueryParam(entry.getKey(), entry.getValue()));
 
       if (authentication != null) {
         Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder().setPrincipal(authentication.getUsername())
