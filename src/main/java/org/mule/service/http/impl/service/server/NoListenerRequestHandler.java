@@ -7,7 +7,7 @@
 package org.mule.service.http.impl.service.server;
 
 import static java.lang.String.format;
-import static org.apache.commons.lang3.StringEscapeUtils.escapeHtml4;
+import static org.apache.commons.text.StringEscapeUtils.escapeHtml4;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.NOT_FOUND;
 
 /**
@@ -32,6 +32,5 @@ public class NoListenerRequestHandler extends ErrorRequestHandler {
   protected String getResolvedEntity(String uri) {
     return format(entityFormat, escapeHtml4(uri));
   }
-
 
 }
