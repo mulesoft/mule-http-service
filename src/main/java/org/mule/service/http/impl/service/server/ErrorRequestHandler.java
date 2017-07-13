@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server;
 
+import static java.lang.String.format;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
@@ -24,7 +25,7 @@ public class ErrorRequestHandler implements RequestHandler {
 
   private int statusCode;
   private String reasonPhrase;
-  private String entityFormat;
+  protected String entityFormat;
 
   public ErrorRequestHandler(int statusCode, String reasonPhrase, String entityFormat) {
     this.statusCode = statusCode;
@@ -34,7 +35,7 @@ public class ErrorRequestHandler implements RequestHandler {
 
   @Override
   public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
-    String resolvedEntity = String.format(entityFormat, requestContext.getRequest().getUri());
+    String resolvedEntity = getResolvedEntity(requestContext.getRequest().getUri());
     responseCallback.responseReady(HttpResponse.builder()
         .setStatusCode(statusCode).setReasonPhrase(reasonPhrase)
         .setEntity(new InputStreamHttpEntity(new ByteArrayInputStream(resolvedEntity.getBytes()))).build(),
@@ -42,8 +43,8 @@ public class ErrorRequestHandler implements RequestHandler {
 
                                      @Override
                                      public void responseSendFailure(Throwable exception) {
-                                       logger.warn(String.format("Error while sending %s response %s", statusCode,
-                                                                 exception.getMessage()));
+                                       logger.warn(format("Error while sending %s response %s", statusCode,
+                                                          exception.getMessage()));
                                        if (logger.isDebugEnabled()) {
                                          logger.debug("exception thrown", exception);
                                        }
@@ -53,4 +54,9 @@ public class ErrorRequestHandler implements RequestHandler {
                                      public void responseSendSuccessfully() {}
                                    });
   }
+
+  protected String getResolvedEntity(String uri) {
+    return format(entityFormat, uri);
+  }
+
 }
