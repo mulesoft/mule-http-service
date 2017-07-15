@@ -12,14 +12,12 @@ import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
-
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
-
-import java.io.IOException;
 
 import org.junit.Test;
 import io.qameta.allure.Feature;
@@ -32,7 +30,7 @@ public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerMana
   private final TlsContextFactory tlsContextFactory = TlsContextFactory.builder().buildDefault();
 
   @Override
-  protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws IOException {
+  protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
     return serverManager.createSslServerFor(tlsContextFactory, () -> muleContext.getSchedulerService().ioScheduler(), address,
                                             true,
                                             (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),

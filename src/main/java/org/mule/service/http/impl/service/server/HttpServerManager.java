@@ -10,9 +10,9 @@ import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 
-import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
@@ -40,11 +40,11 @@ public interface HttpServerManager {
    * @param usePersistentConnections if true, the connections will be kept open for subsequent requests
    * @param connectionIdleTimeout the amount of milliseconds to keep open an idle connection @return the create Server handler
    * @param identifier the id of the server
-   * @throws IOException if it was not possible to create the Server. Most likely because the host and port is already in use.
+   * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already in use.
    */
   HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
                              boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier)
-      throws IOException;
+      throws ServerCreationException;
 
   /**
    *
@@ -55,12 +55,12 @@ public interface HttpServerManager {
    * @param connectionIdleTimeout the amount of milliseconds to keep open an idle connection
    * @param identifier the id of the server
    * @return the create Server handler
-   * @throws IOException if it was not possible to create the Server. Most likely because the host and port is already in use.
+   * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already in use.
    */
   HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
                                 ServerAddress serverAddress, boolean usePersistentConnections, int connectionIdleTimeout,
                                 ServerIdentifier identifier)
-      throws IOException;
+      throws ServerCreationException;
 
   /**
    *

@@ -6,9 +6,9 @@
  */
 package org.mule.service.http.impl.service.server;
 
-import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
+import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 
 import java.util.Optional;
@@ -27,9 +27,9 @@ public interface ContextHttpServerFactory {
    * @param configuration a {@link HttpServerConfiguration} specifying the desired server.
    * @param context the context under which this server will be created
    * @return a newly built {@link HttpServer} based on the {@code configuration}.
-   * @throws ConnectionException if the server cannot be created based on the configuration.
+   * @throws ServerCreationException if the server cannot be created based on the configuration.
    */
-  HttpServer create(HttpServerConfiguration configuration, String context) throws ConnectionException;
+  HttpServer create(HttpServerConfiguration configuration, String context) throws ServerCreationException;
 
   /**
    * Allows to retrieve a previously created {@link HttpServer}. This will only be possible if used from the same context.

@@ -21,7 +21,6 @@ import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.core.api.util.concurrent.Latch;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
-import org.mule.runtime.http.api.client.async.ResponseHandler;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -101,18 +100,9 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
     client.start();
     final Reference<HttpResponse> responseReference = new Reference<>();
     try {
-      client.send(getRequest(), RESPONSE_TIMEOUT, true, null, new ResponseHandler() {
-
-        @Override
-        public void onCompletion(HttpResponse response) {
-          responseReference.set(response);
-        }
-
-        @Override
-        public void onFailure(Exception exception) {
-          // Do nothing, probe will fail.
-        }
-      });
+      client.sendAsync(getRequest(), RESPONSE_TIMEOUT, true, null).whenComplete(
+                                                                                (response, exception) -> responseReference
+                                                                                    .set(response));
       pollingProber.check(new ResponseReceivedProbe(responseReference));
       verifyStreamed(responseReference.get());
     } finally {
@@ -127,18 +117,9 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
     client.start();
     final Reference<HttpResponse> responseReference = new Reference<>();
     try {
-      client.send(getRequest(), RESPONSE_TIMEOUT, true, null, new ResponseHandler() {
-
-        @Override
-        public void onCompletion(HttpResponse response) {
-          responseReference.set(response);
-        }
-
-        @Override
-        public void onFailure(Exception exception) {
-          // Do nothing, probe will fail.
-        }
-      });
+      client.sendAsync(getRequest(), RESPONSE_TIMEOUT, true, null).whenComplete(
+                                                                                (response, exception) -> responseReference
+                                                                                    .set(response));
       verifyNotStreamed(responseReference);
     } finally {
       client.stop();

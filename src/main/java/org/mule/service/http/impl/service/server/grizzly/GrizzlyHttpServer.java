@@ -49,7 +49,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   }
 
   @Override
-  public synchronized void start() throws IOException {
+  public synchronized HttpServer start() throws IOException {
     this.scheduler = schedulerSource != null ? schedulerSource.get() : null;
     serverConnection = transport.bind(serverAddress.getIp(), serverAddress.getPort());
     serverConnection.addCloseListener((closeable, type) -> {
@@ -61,13 +61,15 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       schedulerDisposer.run();
     });
     stopped = false;
+    return this;
   }
 
   @Override
-  public synchronized void stop() {
+  public synchronized HttpServer stop() {
     stopping = true;
     try {
       transport.unbind(serverConnection);
+      return this;
     } finally {
       stopping = false;
       stopped = true;
