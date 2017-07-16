@@ -22,11 +22,11 @@ import org.mule.service.http.impl.service.server.ServerIdentifier;
 import java.io.IOException;
 
 import org.junit.Test;
-import ru.yandex.qatools.allure.annotations.Features;
-import ru.yandex.qatools.allure.annotations.Stories;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 
-@Features(HTTP_SERVICE)
-@Stories(SERVER_MANAGEMENT)
+@Feature(HTTP_SERVICE)
+@Story(SERVER_MANAGEMENT)
 public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManagerTestCase {
 
   private final TlsContextFactory tlsContextFactory = TlsContextFactory.builder().buildDefault();

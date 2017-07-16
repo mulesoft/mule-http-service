@@ -24,11 +24,11 @@ import java.io.IOException;
 
 import org.junit.Before;
 import org.junit.Test;
-import ru.yandex.qatools.allure.annotations.Features;
-import ru.yandex.qatools.allure.annotations.Stories;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 
-@Features(HTTP_SERVICE)
-@Stories("Entities")
+@Feature(HTTP_SERVICE)
+@Story("Entities")
 public class StreamedMultipartHttpEntityTestCase extends AbstractMuleTestCase {
 
   private HttpEntity entity;

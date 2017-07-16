@@ -18,11 +18,11 @@ import java.io.InputStream;
 
 import org.glassfish.grizzly.Transport;
 import org.junit.Before;
-import ru.yandex.qatools.allure.annotations.Features;
-import ru.yandex.qatools.allure.annotations.Stories;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 
-@Features(HTTP_SERVICE)
-@Stories(RESPONSES)
+@Feature(HTTP_SERVICE)
+@Story(RESPONSES)
 public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseCompletionHandlerTestCase {
 
   private ResponseStreamingCompletionHandler handler;

@@ -36,10 +36,10 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import ru.yandex.qatools.allure.annotations.Features;
+import io.qameta.allure.Feature;
 
 @SmallTest
-@Features(HTTP_SERVICE)
+@Feature(HTTP_SERVICE)
 public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
 
   public static final String TEST_IP = "127.0.0.1";

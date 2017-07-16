@@ -27,11 +27,11 @@ import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import ru.yandex.qatools.allure.annotations.Features;
+import io.qameta.allure.Feature;
 
 @RunWith(MockitoJUnitRunner.class)
 @SmallTest
-@Features(HTTP_SERVICE)
+@Feature(HTTP_SERVICE)
 public class LoggerTransportCustomizerTestCase extends AbstractMuleTestCase {
 
   @Mock
