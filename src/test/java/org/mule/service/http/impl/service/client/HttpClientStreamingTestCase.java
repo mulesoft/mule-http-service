@@ -15,6 +15,7 @@ import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.STREAMING;
+
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.core.api.util.concurrent.Latch;
@@ -42,13 +43,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import ru.yandex.qatools.allure.annotations.Description;
-import ru.yandex.qatools.allure.annotations.Features;
-import ru.yandex.qatools.allure.annotations.Stories;
+import io.qameta.allure.Description;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
+import io.qameta.allure.junit4.DisplayName;
 
-@Features(HTTP_SERVICE)
-@Stories(STREAMING)
-@Description("Validates HTTP client behaviour against a streaming server.")
+@Feature(HTTP_SERVICE)
+@Story(STREAMING)
+@DisplayName("Validates HTTP client behaviour against a streaming server.")
 public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
 
   @Rule

@@ -32,10 +32,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import ru.yandex.qatools.allure.annotations.Features;
+import io.qameta.allure.Feature;
 
 @RunWith(MockitoJUnitRunner.class)
-@Features(HTTP_SERVICE)
+@Feature(HTTP_SERVICE)
 public class ExecutorPerServerAddressIOStrategyTestCase extends AbstractMuleTestCase {
 
   @Mock

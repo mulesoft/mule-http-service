@@ -16,12 +16,12 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
 
 import org.junit.Test;
-import ru.yandex.qatools.allure.annotations.Features;
-import ru.yandex.qatools.allure.annotations.Stories;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 
 @SmallTest
-@Features(HTTP_SERVICE)
-@Stories(PARSING)
+@Feature(HTTP_SERVICE)
+@Story(PARSING)
 public class HttpParserTestCase extends AbstractMuleTestCase {
 
   @Test

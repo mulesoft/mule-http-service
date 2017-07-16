@@ -24,12 +24,12 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
 
 import org.junit.Test;
-import ru.yandex.qatools.allure.annotations.Features;
-import ru.yandex.qatools.allure.annotations.Stories;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 
 @SmallTest
-@Features(HTTP_SERVICE)
-@Stories(LISTENERS)
+@Feature(HTTP_SERVICE)
+@Story(LISTENERS)
 public class DefaultMethodRequestMatcherTestCase extends AbstractMuleTestCase {
 
   private HttpRequestBuilder requestBuilder = HttpRequest.builder().setUri("uri");

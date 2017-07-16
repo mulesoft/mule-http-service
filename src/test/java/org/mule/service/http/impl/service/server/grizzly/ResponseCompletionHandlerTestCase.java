@@ -15,11 +15,11 @@ import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
 import org.junit.Before;
-import ru.yandex.qatools.allure.annotations.Features;
-import ru.yandex.qatools.allure.annotations.Stories;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 
-@Features(HTTP_SERVICE)
-@Stories(RESPONSES)
+@Feature(HTTP_SERVICE)
+@Story(RESPONSES)
 public class ResponseCompletionHandlerTestCase extends BaseResponseCompletionHandlerTestCase {
 
   HttpResponse responseMock;
