@@ -37,8 +37,8 @@ public class ErrorRequestHandler implements RequestHandler {
   public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
     String resolvedEntity = getResolvedEntity(requestContext.getRequest().getUri());
     responseCallback.responseReady(HttpResponse.builder()
-        .setStatusCode(statusCode).setReasonPhrase(reasonPhrase)
-        .setEntity(new InputStreamHttpEntity(new ByteArrayInputStream(resolvedEntity.getBytes()))).build(),
+        .statusCode(statusCode).reasonPhrase(reasonPhrase)
+        .entity(new InputStreamHttpEntity(new ByteArrayInputStream(resolvedEntity.getBytes()))).build(),
                                    new ResponseStatusCallback() {
 
                                      @Override

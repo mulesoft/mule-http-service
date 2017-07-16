@@ -34,9 +34,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
     InputStream mockStream = mock(InputStream.class);
     handler = new ResponseStreamingCompletionHandler(ctx,
                                                      request,
-                                                     HttpResponse.builder().setEntity(new InputStreamHttpEntity(mockStream))
-                                                         .build(),
-
+                                                     HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build(),
                                                      callback);
   }
 

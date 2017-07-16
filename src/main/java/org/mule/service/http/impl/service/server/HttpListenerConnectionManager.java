@@ -23,6 +23,7 @@ import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
@@ -122,7 +123,8 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
       return httpServerManager.createServerFor(serverAddress, schedulerSupplier, usePersistentConnections,
                                                connectionIdleTimeout, identifier);
     } else {
-      throw new ServerCreationException(format(SERVER_ALREADY_EXISTS_FORMAT, serverAddress.getPort(), serverAddress.getIp()));
+      throw new ServerAlreadyExistsException(format(SERVER_ALREADY_EXISTS_FORMAT, serverAddress.getPort(),
+                                                    serverAddress.getIp()));
     }
   }
 
@@ -138,7 +140,8 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
       return httpServerManager.createSslServerFor(tlsContext, schedulerSupplier, serverAddress, usePersistentConnections,
                                                   connectionIdleTimeout, identifier);
     } else {
-      throw new ServerCreationException(format(SERVER_ALREADY_EXISTS_FORMAT, serverAddress.getPort(), serverAddress.getIp()));
+      throw new ServerAlreadyExistsException(format(SERVER_ALREADY_EXISTS_FORMAT, serverAddress.getPort(),
+                                                    serverAddress.getIp()));
     }
   }
 

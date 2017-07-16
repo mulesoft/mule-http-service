@@ -19,7 +19,6 @@ import org.mule.runtime.http.api.HttpConstants.Method;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.request.HttpRequestBuilder;
 import org.mule.runtime.http.api.server.MethodRequestMatcher;
-import org.mule.service.http.impl.service.server.grizzly.DefaultMethodRequestMatcher;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
 
@@ -32,7 +31,7 @@ import io.qameta.allure.Story;
 @Story(LISTENERS)
 public class DefaultMethodRequestMatcherTestCase extends AbstractMuleTestCase {
 
-  private HttpRequestBuilder requestBuilder = HttpRequest.builder().setUri("uri");
+  private HttpRequestBuilder requestBuilder = HttpRequest.builder().uri("uri");
 
   @Test(expected = IllegalArgumentException.class)
   public void doNotAcceptsEmptyString() {
@@ -49,16 +48,16 @@ public class DefaultMethodRequestMatcherTestCase extends AbstractMuleTestCase {
 
     final MethodRequestMatcher matcher =
         new DefaultMethodRequestMatcher(GET);
-    assertThat(matcher.matches(requestBuilder.setMethod(GET).build()), is(true));
-    assertThat(matcher.matches(requestBuilder.setMethod(POST).build()), is(false));
+    assertThat(matcher.matches(requestBuilder.method(GET).build()), is(true));
+    assertThat(matcher.matches(requestBuilder.method(POST).build()), is(false));
   }
 
   @Test
   public void acceptSeveralMethods() {
     final MethodRequestMatcher matcher = new DefaultMethodRequestMatcher(GET, POST, PATCH);
-    assertThat(matcher.matches(requestBuilder.setMethod(GET).build()), is(true));
-    assertThat(matcher.matches(requestBuilder.setMethod(POST).build()), is(true));
-    assertThat(matcher.matches(requestBuilder.setMethod(PATCH).build()), is(true));
-    assertThat(matcher.matches(requestBuilder.setMethod(OPTIONS).build()), is(false));
+    assertThat(matcher.matches(requestBuilder.method(GET).build()), is(true));
+    assertThat(matcher.matches(requestBuilder.method(POST).build()), is(true));
+    assertThat(matcher.matches(requestBuilder.method(PATCH).build()), is(true));
+    assertThat(matcher.matches(requestBuilder.method(OPTIONS).build()), is(false));
   }
 }

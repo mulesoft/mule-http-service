@@ -85,7 +85,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
                                                             new ServerIdentifier("context", "name"));
     final ResponseStatusCallback responseStatusCallback = mock(ResponseStatusCallback.class);
     server.addRequestHandler("/path", (requestContext, responseCallback) -> {
-      responseCallback.responseReady(HttpResponse.builder().setStatusCode(OK.getStatusCode()).build(),
+      responseCallback.responseReady(HttpResponse.builder().statusCode(OK.getStatusCode()).build(),
                                      responseStatusCallback);
     });
     server.start();

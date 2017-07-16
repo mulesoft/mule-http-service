@@ -337,9 +337,9 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private HttpResponse createMuleResponse(Response response, InputStream inputStream) throws IOException {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
-    responseBuilder.setStatusCode(response.getStatusCode());
-    responseBuilder.setReasonPhrase(response.getStatusText());
-    responseBuilder.setEntity(createEntity(inputStream, response.getHeader(CONTENT_TYPE.toLowerCase())));
+    responseBuilder.statusCode(response.getStatusCode());
+    responseBuilder.reasonPhrase(response.getStatusText());
+    responseBuilder.entity(createEntity(inputStream, response.getHeader(CONTENT_TYPE.toLowerCase())));
 
     if (response.hasResponseHeaders()) {
       for (String header : response.getHeaders().keySet()) {

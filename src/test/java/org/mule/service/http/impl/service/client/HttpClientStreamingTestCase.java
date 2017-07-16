@@ -162,7 +162,7 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
   }
 
   private HttpRequest getRequest() {
-    return HttpRequest.builder().setUri(getUrl()).build();
+    return HttpRequest.builder().uri(getUrl()).build();
   }
 
   private void verifyStreamed(HttpResponse response) throws IOException {
@@ -189,9 +189,9 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
 
   private HttpResponse setUpHttpResponse() {
     return HttpResponse.builder()
-        .setStatusCode(OK.getStatusCode())
-        .setReasonPhrase(OK.getReasonPhrase())
-        .setEntity(new InputStreamHttpEntity(new FillAndWaitStream()))
+        .statusCode(OK.getStatusCode())
+        .reasonPhrase(OK.getReasonPhrase())
+        .entity(new InputStreamHttpEntity(new FillAndWaitStream()))
         .build();
   }
 

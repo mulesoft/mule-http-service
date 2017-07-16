@@ -26,6 +26,7 @@ import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
@@ -176,7 +177,7 @@ public class GrizzlyServerManager implements HttpServerManager {
       logger.debug("Creating https server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     }
     if (servers.containsKey(serverAddress)) {
-      throw new ServerCreationException(format("There's already a server for %s.", serverAddress));
+      throw new ServerAlreadyExistsException(format("There's already a server for %s.", serverAddress));
     }
     startTransportIfNotStarted();
     sslFilterDelegate.addFilterForAddress(serverAddress, createSslFilter(tlsContextFactory));
@@ -201,7 +202,7 @@ public class GrizzlyServerManager implements HttpServerManager {
       logger.debug("Creating http server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     }
     if (servers.containsKey(serverAddress)) {
-      throw new ServerCreationException(format("There's already a server for %s.", serverAddress));
+      throw new ServerAlreadyExistsException(format("There's already a server for %s.", serverAddress));
     }
     startTransportIfNotStarted();
     httpServerFilterDelegate.addFilterForAddress(serverAddress,
