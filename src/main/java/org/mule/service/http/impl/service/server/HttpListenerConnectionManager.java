@@ -40,8 +40,6 @@ import java.util.function.Supplier;
  */
 public class HttpListenerConnectionManager implements ContextHttpServerFactory, Initialisable, Disposable {
 
-  public static final String SERVER_ALREADY_EXISTS_FORMAT =
-      "A server in port(%s) already exists for ip(%s) or one overlapping it (0.0.0.0).";
   private static final String LISTENER_THREAD_NAME_PREFIX = "http.listener";
 
   private final SchedulerService schedulerService;
@@ -123,8 +121,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
       return httpServerManager.createServerFor(serverAddress, schedulerSupplier, usePersistentConnections,
                                                connectionIdleTimeout, identifier);
     } else {
-      throw new ServerAlreadyExistsException(format(SERVER_ALREADY_EXISTS_FORMAT, serverAddress.getPort(),
-                                                    serverAddress.getIp()));
+      throw new ServerAlreadyExistsException(serverAddress);
     }
   }
 
@@ -140,8 +137,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
       return httpServerManager.createSslServerFor(tlsContext, schedulerSupplier, serverAddress, usePersistentConnections,
                                                   connectionIdleTimeout, identifier);
     } else {
-      throw new ServerAlreadyExistsException(format(SERVER_ALREADY_EXISTS_FORMAT, serverAddress.getPort(),
-                                                    serverAddress.getIp()));
+      throw new ServerAlreadyExistsException(serverAddress);
     }
   }
 

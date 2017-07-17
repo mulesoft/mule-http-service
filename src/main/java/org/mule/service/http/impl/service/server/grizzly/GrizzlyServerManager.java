@@ -177,7 +177,7 @@ public class GrizzlyServerManager implements HttpServerManager {
       logger.debug("Creating https server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     }
     if (servers.containsKey(serverAddress)) {
-      throw new ServerAlreadyExistsException(format("There's already a server for %s.", serverAddress));
+      throw new ServerAlreadyExistsException(serverAddress);
     }
     startTransportIfNotStarted();
     sslFilterDelegate.addFilterForAddress(serverAddress, createSslFilter(tlsContextFactory));
@@ -202,7 +202,7 @@ public class GrizzlyServerManager implements HttpServerManager {
       logger.debug("Creating http server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     }
     if (servers.containsKey(serverAddress)) {
-      throw new ServerAlreadyExistsException(format("There's already a server for %s.", serverAddress));
+      throw new ServerAlreadyExistsException(serverAddress);
     }
     startTransportIfNotStarted();
     httpServerFilterDelegate.addFilterForAddress(serverAddress,
