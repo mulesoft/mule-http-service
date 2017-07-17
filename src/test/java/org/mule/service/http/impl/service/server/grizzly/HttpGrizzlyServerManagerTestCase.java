@@ -12,13 +12,11 @@ import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
-
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
-
-import java.io.IOException;
 
 import org.junit.Test;
 import io.qameta.allure.Feature;
@@ -29,7 +27,7 @@ import io.qameta.allure.Story;
 public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManagerTestCase {
 
   @Override
-  protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws IOException {
+  protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
     return serverManager.createServerFor(address, () -> muleContext.getSchedulerService().ioScheduler(), true,
                                          (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), id);
   }

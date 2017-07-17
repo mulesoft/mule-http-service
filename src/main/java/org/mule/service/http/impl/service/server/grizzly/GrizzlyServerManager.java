@@ -26,6 +26,8 @@ import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
+import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
 import org.mule.service.http.impl.service.client.HttpMessageLogger;
@@ -139,15 +141,15 @@ public class GrizzlyServerManager implements HttpServerManager {
    * Starts the transport if not started. This is because it should be started lazily when the first server is registered
    * (otherwise there will be Grizzly threads even if there is no HTTP usage in any app).
    */
-  private void startTransportIfNotStarted() throws IOException {
+  private void startTransportIfNotStarted() throws ServerCreationException {
     withContextClassLoader(this.getClass().getClassLoader(), () -> {
       if (!transportStarted) {
         transportStarted = true;
         transport.start();
       }
       return null;
-    }, IOException.class, e -> {
-      throw new IOException(e);
+    }, ServerCreationException.class, e -> {
+      throw new ServerCreationException("Transport failed at startup.", e);
     });
   }
 
@@ -170,13 +172,12 @@ public class GrizzlyServerManager implements HttpServerManager {
   public HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
                                        final ServerAddress serverAddress, boolean usePersistentConnections,
                                        int connectionIdleTimeout, ServerIdentifier identifier)
-      throws IOException {
+      throws ServerCreationException {
     if (logger.isDebugEnabled()) {
       logger.debug("Creating https server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     }
     if (servers.containsKey(serverAddress)) {
-      throw new IllegalStateException(String.format("Could not create a server for %s since there's already one.",
-                                                    serverAddress));
+      throw new ServerAlreadyExistsException(serverAddress);
     }
     startTransportIfNotStarted();
     sslFilterDelegate.addFilterForAddress(serverAddress, createSslFilter(tlsContextFactory));
@@ -196,13 +197,12 @@ public class GrizzlyServerManager implements HttpServerManager {
   @Override
   public HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
                                     boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier)
-      throws IOException {
+      throws ServerCreationException {
     if (logger.isDebugEnabled()) {
       logger.debug("Creating http server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     }
     if (servers.containsKey(serverAddress)) {
-      throw new IllegalStateException(String.format("Could not create a server for %s since there's already one.",
-                                                    serverAddress));
+      throw new ServerAlreadyExistsException(serverAddress);
     }
     startTransportIfNotStarted();
     httpServerFilterDelegate.addFilterForAddress(serverAddress,
@@ -302,9 +302,9 @@ public class GrizzlyServerManager implements HttpServerManager {
     }
 
     @Override
-    public synchronized void start() throws IOException {
+    public synchronized HttpServer start() throws IOException {
       idleExecutorPerServerAddressMap.get(this.getServerAddress()).start();
-      super.start();
+      return super.start();
     }
 
     @Override
@@ -334,13 +334,13 @@ public class GrizzlyServerManager implements HttpServerManager {
     }
 
     @Override
-    public void start() throws IOException {
-      // Do nothing
+    public HttpServer start() throws IOException {
+      return this;
     }
 
     @Override
-    public void stop() {
-      // Do nothing
+    public HttpServer stop() {
+      return this;
     }
 
     @Override

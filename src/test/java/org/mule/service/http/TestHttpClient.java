@@ -15,13 +15,13 @@ import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpService;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.HttpRequestAuthentication;
-import org.mule.runtime.http.api.client.async.ResponseHandler;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.SimpleUnitTestSupportSchedulerService;
 
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
@@ -85,9 +85,9 @@ public class TestHttpClient extends ExternalResource implements org.mule.runtime
   }
 
   @Override
-  public void send(HttpRequest request, int responseTimeout, boolean followRedirects, HttpRequestAuthentication authentication,
-                   ResponseHandler handler) {
-    httpClient.send(request, responseTimeout, followRedirects, authentication, handler);
+  public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, int responseTimeout, boolean followRedirects,
+                                                   HttpRequestAuthentication authentication) {
+    return httpClient.sendAsync(request, responseTimeout, followRedirects, authentication);
   }
 
   public static class Builder {

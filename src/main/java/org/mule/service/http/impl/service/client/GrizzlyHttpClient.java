@@ -29,7 +29,6 @@ import org.mule.runtime.http.api.client.HttpAuthenticationType;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.HttpRequestAuthentication;
-import org.mule.runtime.http.api.client.async.ResponseHandler;
 import org.mule.runtime.http.api.client.proxy.NtlmProxyConfig;
 import org.mule.runtime.http.api.client.proxy.ProxyConfig;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
@@ -67,6 +66,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -316,28 +316,30 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   @Override
-  public void send(HttpRequest request, int responseTimeout, boolean followRedirects, HttpRequestAuthentication authentication,
-                   ResponseHandler handler) {
+  public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, int responseTimeout, boolean followRedirects,
+                                                   HttpRequestAuthentication authentication) {
+    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
       if (streamingEnabled) {
-        asyncHandler = new ResponseBodyDeferringAsyncHandler(handler, new PipedOutputStream());
+        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, new PipedOutputStream());
       } else {
-        asyncHandler = new ResponseAsyncHandler(handler);
+        asyncHandler = new ResponseAsyncHandler(future);
       }
 
       asyncHttpClient.executeRequest(createGrizzlyRequest(request, responseTimeout, followRedirects, authentication),
                                      asyncHandler);
     } catch (Exception e) {
-      handler.onFailure(e);
+      future.completeExceptionally(e);
     }
+    return future;
   }
 
   private HttpResponse createMuleResponse(Response response, InputStream inputStream) throws IOException {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
-    responseBuilder.setStatusCode(response.getStatusCode());
-    responseBuilder.setReasonPhrase(response.getStatusText());
-    responseBuilder.setEntity(createEntity(inputStream, response.getHeader(CONTENT_TYPE.toLowerCase())));
+    responseBuilder.statusCode(response.getStatusCode());
+    responseBuilder.reasonPhrase(response.getStatusText());
+    responseBuilder.entity(createEntity(inputStream, response.getHeader(CONTENT_TYPE.toLowerCase())));
 
     if (response.hasResponseHeaders()) {
       for (String header : response.getHeaders().keySet()) {
@@ -471,15 +473,15 @@ public class GrizzlyHttpClient implements HttpClient {
    */
   private class ResponseAsyncHandler extends AsyncCompletionHandler<Response> {
 
-    private final ResponseHandler responseHandler;
+    private final CompletableFuture<HttpResponse> future;
 
-    public ResponseAsyncHandler(ResponseHandler handler) {
-      this.responseHandler = handler;
+    public ResponseAsyncHandler(CompletableFuture<HttpResponse> future) {
+      this.future = future;
     }
 
     @Override
     public Response onCompleted(Response response) throws Exception {
-      responseHandler.onCompletion(createMuleResponse(response, response.getResponseBodyAsStream()));
+      future.complete(createMuleResponse(response, response.getResponseBodyAsStream()));
       return null;
     }
 
@@ -494,7 +496,7 @@ public class GrizzlyHttpClient implements HttpClient {
       } else {
         exception = new IOException(t);
       }
-      responseHandler.onFailure(exception);
+      future.completeExceptionally(exception);
     }
   }
 
@@ -514,14 +516,14 @@ public class GrizzlyHttpClient implements HttpClient {
     private volatile Response response;
     private final OutputStream output;
     private final InputStream input;
-    private final ResponseHandler responseHandler;
+    private final CompletableFuture<HttpResponse> future;
     private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
     private final AtomicBoolean handled = new AtomicBoolean(false);
 
-    public ResponseBodyDeferringAsyncHandler(ResponseHandler responseHandler, PipedOutputStream output)
+    public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, PipedOutputStream output)
         throws IOException {
       this.output = output;
-      this.responseHandler = responseHandler;
+      this.future = future;
       this.input = new PipedInputStream(output, responseBufferSize);
     }
 
@@ -541,7 +543,7 @@ public class GrizzlyHttpClient implements HttpClient {
         } else {
           exception = new IOException(t);
         }
-        responseHandler.onFailure(exception);
+        future.completeExceptionally(exception);
       } else {
         logger.warn("Error handling HTTP response stream: ", t);
       }
@@ -588,9 +590,9 @@ public class GrizzlyHttpClient implements HttpClient {
       if (!handled.getAndSet(true)) {
         response = responseBuilder.build();
         try {
-          responseHandler.onCompletion(createMuleResponse(response, input));
+          future.complete(createMuleResponse(response, input));
         } catch (IOException e) {
-          responseHandler.onFailure(e);
+          future.completeExceptionally(e);
         }
       }
     }

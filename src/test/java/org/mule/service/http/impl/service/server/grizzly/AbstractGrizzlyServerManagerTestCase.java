@@ -15,22 +15,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
-import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 import org.mule.tck.junit4.AbstractMuleContextTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -73,10 +71,10 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     idleTimeoutExecutorService.shutdown();
   }
 
-  protected abstract HttpServer getServer(ServerAddress address, ServerIdentifier id) throws IOException;
+  protected abstract HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException;
 
   @Test
-  public void managerDisposeClosesServerOpenConnections() throws IOException {
+  public void managerDisposeClosesServerOpenConnections() throws Exception {
     final GrizzlyServerManager serverManager =
         new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, new HttpListenerRegistry(),
                                  new DefaultTcpServerSocketProperties());
@@ -87,7 +85,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
                                                             new ServerIdentifier("context", "name"));
     final ResponseStatusCallback responseStatusCallback = mock(ResponseStatusCallback.class);
     server.addRequestHandler("/path", (requestContext, responseCallback) -> {
-      responseCallback.responseReady(HttpResponse.builder().setStatusCode(OK.getStatusCode()).build(),
+      responseCallback.responseReady(HttpResponse.builder().statusCode(OK.getStatusCode()).build(),
                                      responseStatusCallback);
     });
     server.start();

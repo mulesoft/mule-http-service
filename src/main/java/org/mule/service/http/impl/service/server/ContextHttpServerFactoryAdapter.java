@@ -6,10 +6,10 @@
  */
 package org.mule.service.http.impl.service.server;
 
-import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
+import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 
 /**
@@ -28,7 +28,7 @@ public class ContextHttpServerFactoryAdapter implements HttpServerFactory {
   }
 
   @Override
-  public HttpServer create(HttpServerConfiguration configuration) throws ConnectionException {
+  public HttpServer create(HttpServerConfiguration configuration) throws ServerCreationException {
     return delegate.create(configuration, context);
   }
 
