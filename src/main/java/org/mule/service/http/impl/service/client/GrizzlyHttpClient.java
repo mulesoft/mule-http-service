@@ -11,6 +11,7 @@ import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderCon
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.getInteger;
+import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
@@ -80,7 +81,7 @@ import org.slf4j.LoggerFactory;
 public class GrizzlyHttpClient implements HttpClient {
 
   private static final int DEFAULT_SELECTOR_THREADS =
-      getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREADS", getRuntime().availableProcessors());
+      getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREADS", max(getRuntime().availableProcessors(), 2));
   private static final int MAX_CONNECTION_LIFETIME = 30 * 60 * 1000;
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);

@@ -9,6 +9,7 @@ package org.mule.service.http.impl.service.server;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.getInteger;
+import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
@@ -43,7 +44,7 @@ import java.util.function.Supplier;
 public class HttpListenerConnectionManager implements ContextHttpServerFactory, Initialisable, Disposable {
 
   private static final int DEFAULT_SELECTOR_THREADS =
-      getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREADS", getRuntime().availableProcessors());
+      getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREADS", max(getRuntime().availableProcessors(), 2);
   private static final String LISTENER_THREAD_NAME_PREFIX = "http.listener";
 
   private final SchedulerService schedulerService;
@@ -70,7 +71,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
     // TODO - MULE-11116: Analyze how to allow users to configure this
     TcpServerSocketProperties tcpServerSocketProperties = new DefaultTcpServerSocketProperties();
 
-    selectorScheduler = schedulerService.customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREADS + 1)
+    selectorScheduler = schedulerService.customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREADS)
         .withName(LISTENER_THREAD_NAME_PREFIX), MAX_VALUE);
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
     idleTimeoutScheduler =
