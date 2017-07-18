@@ -44,7 +44,8 @@ import java.util.function.Supplier;
 public class HttpListenerConnectionManager implements ContextHttpServerFactory, Initialisable, Disposable {
 
   private static final int DEFAULT_SELECTOR_THREADS =
-      getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREADS", max(getRuntime().availableProcessors(), 2);
+      getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREADS",
+                 max(getRuntime().availableProcessors(), 2));
   private static final String LISTENER_THREAD_NAME_PREFIX = "http.listener";
 
   private final SchedulerService schedulerService;
