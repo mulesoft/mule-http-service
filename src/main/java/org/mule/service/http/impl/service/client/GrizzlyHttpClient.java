@@ -10,6 +10,8 @@ import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
 import static java.lang.Integer.MAX_VALUE;
+import static java.lang.Integer.getInteger;
+import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
@@ -78,6 +80,8 @@ import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
+  private static final int DEFAULT_SELECTOR_THREADS =
+      getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREADS", max(getRuntime().availableProcessors(), 2));
   private static final int MAX_CONNECTION_LIFETIME = 30 * 60 * 1000;
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
@@ -119,8 +123,8 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public void start() {
-    selectorScheduler = schedulerService.customScheduler(schedulersConfig
-        .withMaxConcurrentTasks(getRuntime().availableProcessors() + 1).withName(name), MAX_VALUE);
+    selectorScheduler = schedulerService
+        .customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREADS).withName(name), MAX_VALUE);
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
@@ -502,8 +506,8 @@ public class GrizzlyHttpClient implements HttpClient {
 
 
   /**
-   * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives,
-   * propagating an {@link PipedInputStream} as soon as the response headers are parsed.
+   * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives, propagating an
+   * {@link PipedInputStream} as soon as the response headers are parsed.
    * <p/>
    * Because of the internal buffer used to hold the arriving chunks, the response MUST be eventually read or the worker threads
    * will block waiting to allocate them. Likewise, read/write speed differences could cause issues. The buffer size can be
