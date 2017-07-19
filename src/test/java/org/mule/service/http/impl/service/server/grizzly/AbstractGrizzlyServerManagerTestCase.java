@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Runtime.getRuntime;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.Matchers.equalTo;
@@ -60,7 +61,8 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     idleTimeoutExecutorService = newCachedThreadPool();
     HttpListenerRegistry registry = new HttpListenerRegistry();
     DefaultTcpServerSocketProperties socketProperties = new DefaultTcpServerSocketProperties();
-    serverManager = new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, registry, socketProperties);
+    serverManager = new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, registry, socketProperties,
+                                             getRuntime().availableProcessors());
   }
 
   @After
@@ -77,7 +79,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   public void managerDisposeClosesServerOpenConnections() throws Exception {
     final GrizzlyServerManager serverManager =
         new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, new HttpListenerRegistry(),
-                                 new DefaultTcpServerSocketProperties());
+                                 new DefaultTcpServerSocketProperties(), getRuntime().availableProcessors());
 
     final HttpServer server = serverManager.createServerFor(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
                                                             () -> muleContext.getSchedulerService().ioScheduler(), true,

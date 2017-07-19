@@ -75,7 +75,7 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   public GrizzlyServerManager(ExecutorService selectorPool, ExecutorService workerPool,
                               ExecutorService idleTimeoutExecutorService, HttpListenerRegistry httpListenerRegistry,
-                              TcpServerSocketProperties serverSocketProperties) {
+                              TcpServerSocketProperties serverSocketProperties, int selectorCount) {
     this.httpListenerRegistry = httpListenerRegistry;
     requestHandlerFilter = new GrizzlyRequestDispatcherFilter(httpListenerRegistry);
     sslFilterDelegate = new GrizzlyAddressDelegateFilter<>();
@@ -98,6 +98,7 @@ public class GrizzlyServerManager implements HttpServerManager {
 
     transport.setNIOChannelDistributor(new RoundRobinConnectionDistributor(transport, true, true));
 
+    transport.setSelectorRunnersCount(selectorCount);
     transport.setWorkerThreadPool(workerPool);
     transport.setKernelThreadPool(selectorPool);
 

@@ -22,10 +22,12 @@ public class IOStrategyTransportCustomizer implements TransportCustomizer {
 
   private ExecutorService selectorPool;
   private ExecutorService workerPool;
+  private int selectorCount;
 
-  public IOStrategyTransportCustomizer(ExecutorService selectorPool, ExecutorService workerPool) {
+  public IOStrategyTransportCustomizer(ExecutorService selectorPool, ExecutorService workerPool, int selectorCount) {
     this.selectorPool = selectorPool;
     this.workerPool = workerPool;
+    this.selectorCount = selectorCount;
   }
 
   @Override
@@ -33,5 +35,6 @@ public class IOStrategyTransportCustomizer implements TransportCustomizer {
     transport.setIOStrategy(SameThreadIOStrategy.getInstance());
     transport.setKernelThreadPool(selectorPool);
     transport.setWorkerThreadPool(workerPool);
+    transport.setSelectorRunnersCount(selectorCount);
   }
 }
