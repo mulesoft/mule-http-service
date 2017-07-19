@@ -80,8 +80,9 @@ import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
-  private static final int DEFAULT_SELECTOR_THREADS =
-      getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREADS", max(getRuntime().availableProcessors(), 2));
+  private static final int DEFAULT_SELECTOR_THREAD_COUNT =
+      getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
+                 max(getRuntime().availableProcessors(), 2));
   private static final int MAX_CONNECTION_LIFETIME = 30 * 60 * 1000;
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
@@ -124,7 +125,7 @@ public class GrizzlyHttpClient implements HttpClient {
   @Override
   public void start() {
     selectorScheduler = schedulerService
-        .customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREADS).withName(name), MAX_VALUE);
+        .customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT).withName(name), MAX_VALUE);
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
@@ -211,7 +212,8 @@ public class GrizzlyHttpClient implements HttpClient {
     GrizzlyAsyncHttpProviderConfig providerConfig = new GrizzlyAsyncHttpProviderConfig();
     CompositeTransportCustomizer compositeTransportCustomizer = new CompositeTransportCustomizer();
     compositeTransportCustomizer
-        .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler));
+        .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler,
+                                                                  DEFAULT_SELECTOR_THREAD_COUNT));
     compositeTransportCustomizer.addTransportCustomizer(new LoggerTransportCustomizer());
 
     if (clientSocketProperties != null) {
