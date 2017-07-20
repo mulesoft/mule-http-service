@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Integer.getInteger;
 import static java.lang.Integer.valueOf;
 import static java.lang.String.format;
 import static java.lang.System.getProperty;
@@ -59,6 +60,8 @@ public class GrizzlyServerManager implements HttpServerManager {
   // Defines the maximum size in bytes accepted for the http request header section (request line + headers)
   public static final String MAXIMUM_HEADER_SECTION_SIZE_PROPERTY_KEY = SYSTEM_PROPERTY_PREFIX + "http.headerSectionSize";
   private static final int MAX_KEEP_ALIVE_REQUESTS = -1;
+  private static final int MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR =
+      getInteger(GrizzlyServerManager.class.getName() + ".MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR", 8);
   private final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
   private final GrizzlyAddressDelegateFilter<HttpServerFilter> httpServerFilterDelegate;
   private final TCPNIOTransport transport;
@@ -96,7 +99,10 @@ public class GrizzlyServerManager implements HttpServerManager {
 
     transport = transportBuilder.build();
 
-    transport.setNIOChannelDistributor(new RoundRobinConnectionDistributor(transport, true, true));
+    transport
+        .setNIOChannelDistributor(new RoundRobinConnectionDistributor(transport,
+                                                                      selectorCount > MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR,
+                                                                      true));
 
     transport.setSelectorRunnersCount(selectorCount);
     transport.setWorkerThreadPool(workerPool);

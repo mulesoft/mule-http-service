@@ -13,6 +13,7 @@ import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
+
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
@@ -29,7 +30,6 @@ import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
-import org.mule.service.http.impl.service.client.GrizzlyHttpClient;
 import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 
 import java.net.UnknownHostException;
@@ -44,7 +44,8 @@ import java.util.function.Supplier;
 public class HttpListenerConnectionManager implements ContextHttpServerFactory, Initialisable, Disposable {
 
   private static final int DEFAULT_SELECTOR_THREAD_COUNT =
-      getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT", 2);
+      getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
+                 max(getRuntime().availableProcessors(), 2));
   private static final String LISTENER_THREAD_NAME_PREFIX = "http.listener";
 
   private final SchedulerService schedulerService;
