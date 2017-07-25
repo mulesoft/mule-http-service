@@ -9,7 +9,6 @@ package org.mule.service.http.impl.service.server;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.service.http.impl.service.server.grizzly.DefaultMethodRequestMatcher.getMethodsListRepresentation;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
-
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
@@ -18,11 +17,10 @@ import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
+import org.mule.service.http.impl.service.server.grizzly.AcceptsAllMethodsRequestMatcher;
 
-import com.google.common.base.Joiner;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,8 +30,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.google.common.base.Joiner;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 public class HttpListenerRegistry implements RequestHandlerProvider {
 
@@ -376,7 +376,11 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
     }
 
     public void addRequestHandlerMatcherPair(final RequestHandlerMatcherPair requestHandlerMatcherPair) {
-      this.requestHandlerMatcherPairs.add(requestHandlerMatcherPair);
+      if (requestHandlerMatcherPair.getRequestMatcher().getMethodRequestMatcher() instanceof AcceptsAllMethodsRequestMatcher) {
+        this.requestHandlerMatcherPairs.add(requestHandlerMatcherPair);
+      } else {
+        this.requestHandlerMatcherPairs.add(0, requestHandlerMatcherPair);
+      }
     }
 
     public void addChildPathMap(final String path, final PathMap pathMap) {
