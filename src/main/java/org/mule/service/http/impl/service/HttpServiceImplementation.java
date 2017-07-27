@@ -6,12 +6,15 @@
  */
 package org.mule.service.http.impl.service;
 
+import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
+import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_MULE_CONTEXT;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_SCHEDULER_BASE_CONFIG;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.disposeIfNeeded;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
 import static org.mule.runtime.core.api.scheduler.SchedulerConfig.config;
 import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.Startable;
 import org.mule.runtime.api.lifecycle.Stoppable;
@@ -30,6 +33,7 @@ import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.glassfish.grizzly.CloseReason;
 import org.slf4j.Logger;
 
 /**
@@ -37,6 +41,13 @@ import org.slf4j.Logger;
  * create {@link HttpClient}s.
  */
 public class HttpServiceImplementation implements HttpService, Startable, Stoppable {
+
+  static {
+    // Force the initialization of CloseReason's static fields so it is done in the service classloader instead of lazily, which
+    // may cause a leak of the plugin/app classloaders from the IOException generated.
+    final CloseReason locallyClosedReason = LOCALLY_CLOSED_REASON;
+    final CloseReason remotelyClosedReason = REMOTELY_CLOSED_REASON;
+  }
 
   private static final Logger logger = getLogger(HttpServiceImplementation.class);
   private static final String CONTAINER_CONTEXT = "container";
