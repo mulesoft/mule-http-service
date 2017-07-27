@@ -14,7 +14,7 @@
 
     <artifactId>mule-service-http</artifactId>
     <packaging>mule-service</packaging>
-    <version>1.0.0-BETA.x-SNAPSHOT</version>
+    <version>1.0.0-FD.1</version>
 
     <properties>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
