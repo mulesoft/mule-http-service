@@ -105,6 +105,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private SSLContext sslContext;
   private final TlsContextFactory defaultTlsContextFactory = TlsContextFactory.builder().buildDefault();
 
+  public static final String HOST_SEPARATOR = ",";
 
   public GrizzlyHttpClient(HttpClientConfiguration config, SchedulerService schedulerService, SchedulerConfig schedulersConfig) {
     this.tlsContextFactory = config.getTlsContextFactory();
@@ -203,6 +204,11 @@ public class GrizzlyHttpClient implements HttpClient {
       }
     } else {
       proxyServer = new ProxyServer(proxyConfig.getHost(), proxyConfig.getPort());
+    }
+    if (proxyConfig.getNonProxyHosts() != null && !proxyConfig.getNonProxyHosts().isEmpty()) {
+      for (final String host : proxyConfig.getNonProxyHosts().split(HOST_SEPARATOR)) {
+        proxyServer.addNonProxyHost(host.trim());
+      }
     }
     return proxyServer;
   }
