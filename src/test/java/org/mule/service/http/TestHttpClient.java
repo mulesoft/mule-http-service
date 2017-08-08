@@ -14,7 +14,7 @@ import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpService;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
-import org.mule.runtime.http.api.client.HttpRequestAuthentication;
+import org.mule.runtime.http.api.client.auth.HttpAuthentication;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
@@ -79,14 +79,14 @@ public class TestHttpClient extends ExternalResource implements org.mule.runtime
 
   @Override
   public HttpResponse send(HttpRequest request, int responseTimeout, boolean followRedirects,
-                           HttpRequestAuthentication authentication)
+                           HttpAuthentication authentication)
       throws IOException, TimeoutException {
     return httpClient.send(request, responseTimeout, followRedirects, authentication);
   }
 
   @Override
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                                   HttpRequestAuthentication authentication) {
+                                                   HttpAuthentication authentication) {
     return httpClient.sendAsync(request, responseTimeout, followRedirects, authentication);
   }
 

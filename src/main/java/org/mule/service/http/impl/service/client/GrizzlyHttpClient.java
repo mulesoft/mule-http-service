@@ -27,11 +27,10 @@ import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
 import org.mule.runtime.core.api.scheduler.SchedulerConfig;
 import org.mule.runtime.core.api.scheduler.SchedulerService;
 import org.mule.runtime.core.api.util.IOUtils;
-import org.mule.runtime.http.api.client.HttpAuthenticationType;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
-import org.mule.runtime.http.api.client.HttpRequestAuthentication;
-import org.mule.runtime.http.api.client.proxy.NtlmProxyConfig;
+import org.mule.runtime.http.api.client.auth.HttpAuthentication;
+import org.mule.runtime.http.api.client.auth.HttpAuthenticationType;
 import org.mule.runtime.http.api.client.proxy.ProxyConfig;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
@@ -193,8 +192,8 @@ public class GrizzlyHttpClient implements HttpClient {
     if (!isEmpty(proxyConfig.getUsername())) {
       proxyServer =
           new ProxyServer(proxyConfig.getHost(), proxyConfig.getPort(), proxyConfig.getUsername(), proxyConfig.getPassword());
-      if (proxyConfig instanceof NtlmProxyConfig) {
-        proxyServer.setNtlmDomain(((NtlmProxyConfig) proxyConfig).getNtlmDomain());
+      if (proxyConfig instanceof ProxyConfig.NtlmProxyConfig) {
+        proxyServer.setNtlmDomain(((ProxyConfig.NtlmProxyConfig) proxyConfig).getNtlmDomain());
         try {
           proxyServer.setNtlmHost(getHostName());
         } catch (UnknownHostException e) {
@@ -246,7 +245,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public HttpResponse send(HttpRequest request, int responseTimeout, boolean followRedirects,
-                           HttpRequestAuthentication authentication)
+                           HttpAuthentication authentication)
       throws IOException, TimeoutException {
     if (streamingEnabled) {
       return sendAndDefer(request, responseTimeout, followRedirects, authentication);
@@ -264,7 +263,7 @@ public class GrizzlyHttpClient implements HttpClient {
    * customized for these reason.
    */
   public HttpResponse sendAndDefer(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                   HttpRequestAuthentication authentication)
+                                   HttpAuthentication authentication)
       throws IOException, TimeoutException {
     Request grizzlyRequest = createGrizzlyRequest(request, responseTimeout, followRedirects, authentication);
     PipedOutputStream outPipe = new PipedOutputStream();
@@ -291,7 +290,7 @@ public class GrizzlyHttpClient implements HttpClient {
    * Blocking send which waits to load the whole response to memory before propagating it.
    */
   public HttpResponse sendAndWait(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                  HttpRequestAuthentication authentication)
+                                  HttpAuthentication authentication)
       throws IOException, TimeoutException {
     Request grizzlyRequest = createGrizzlyRequest(request, responseTimeout, followRedirects, authentication);
     ListenableFuture<Response> future = asyncHttpClient.executeRequest(grizzlyRequest);
@@ -323,7 +322,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                                   HttpRequestAuthentication authentication) {
+                                                   HttpAuthentication authentication) {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
@@ -366,7 +365,7 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                       HttpRequestAuthentication authentication)
+                                       HttpAuthentication authentication)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, builder -> {
       builder.setMethod(request.getMethod());
@@ -377,19 +376,21 @@ public class GrizzlyHttpClient implements HttpClient {
       request.getQueryParams().entryList().forEach(entry -> builder.addQueryParam(entry.getKey(), entry.getValue()));
 
       if (authentication != null) {
-        Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder().setPrincipal(authentication.getUsername())
-            .setPassword(authentication.getPassword()).setUsePreemptiveAuth(authentication.isPreemptive());
+        Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder()
+            .setPrincipal(authentication.getUsername())
+            .setPassword(authentication.getPassword())
+            .setUsePreemptiveAuth(authentication.isPreemptive());
 
         if (authentication.getType() == HttpAuthenticationType.BASIC) {
           realmBuilder.setScheme(Realm.AuthScheme.BASIC);
         } else if (authentication.getType() == HttpAuthenticationType.DIGEST) {
           realmBuilder.setScheme(Realm.AuthScheme.DIGEST);
         } else if (authentication.getType() == HttpAuthenticationType.NTLM) {
-          String domain = authentication.getDomain();
+          String domain = ((HttpAuthentication.HttpNtlmAuthentication) authentication).getDomain();
           if (domain != null) {
             realmBuilder.setNtlmDomain(domain);
           }
-          String workstation = authentication.getWorkstation();
+          String workstation = ((HttpAuthentication.HttpNtlmAuthentication) authentication).getWorkstation();
           String ntlmHost = workstation != null ? workstation : getHostName();
           realmBuilder.setNtlmHost(ntlmHost).setScheme(NTLM);
         }
