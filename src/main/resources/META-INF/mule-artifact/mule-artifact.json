@@ -1,0 +1,13 @@
+{
+  "name": "HTTP service",
+  "minMuleVersion": "4.0.0",
+  "serviceProviderClassName": "org.mule.service.http.impl.provider.HttpServiceProvider",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "maven",
+    "attributes": {}
+  },
+  "bundleDescriptorLoader": {
+    "id": "maven",
+    "attributes": {}
+  }
+}
