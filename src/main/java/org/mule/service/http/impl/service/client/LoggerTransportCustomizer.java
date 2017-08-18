@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import static java.lang.Thread.currentThread;
 import static org.mule.service.http.impl.service.client.HttpMessageLogger.LoggerType.REQUESTER;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
@@ -29,7 +30,7 @@ public class LoggerTransportCustomizer implements TransportCustomizer {
   @Override
   public void customize(TCPNIOTransport transport, FilterChainBuilder filterChainBuilder) {
     HttpCodecFilter httpCodecFilter = findHttpCodecFilter(filterChainBuilder);
-    httpCodecFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(REQUESTER));
+    httpCodecFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(REQUESTER, currentThread().getContextClassLoader()));
   }
 
   private HttpCodecFilter findHttpCodecFilter(FilterChainBuilder filterChainBuilder) {

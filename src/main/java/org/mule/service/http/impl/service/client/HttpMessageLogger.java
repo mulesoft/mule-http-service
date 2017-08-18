@@ -6,6 +6,8 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
+
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.http.HttpProbe;
@@ -20,13 +22,15 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
   private static final Logger logger = LoggerFactory.getLogger(HttpMessageLogger.class);
 
   private final LoggerType loggerType;
+  private final ClassLoader classLoader;
 
   public enum LoggerType {
     LISTENER, REQUESTER
   }
 
-  public HttpMessageLogger(final LoggerType loggerType) {
+  public HttpMessageLogger(final LoggerType loggerType, ClassLoader classLoader) {
     this.loggerType = loggerType;
+    this.classLoader = classLoader;
   }
 
   @Override
@@ -40,9 +44,11 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
   }
 
   private void logBuffer(Buffer buffer) {
-    if (logger.isDebugEnabled()) {
-      logger.debug(loggerType.name() + "\n" + buffer.toStringContent());
-    }
+    withContextClassLoader(classLoader, () -> {
+      if (logger.isDebugEnabled()) {
+        logger.debug(loggerType.name() + "\n" + buffer.toStringContent());
+      }
+    });
   }
 
 }
