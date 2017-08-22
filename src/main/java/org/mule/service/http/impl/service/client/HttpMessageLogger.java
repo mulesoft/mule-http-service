@@ -49,9 +49,12 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
 
   private void logBuffer(Buffer buffer, Map<String, String> logContext) {
     if (logger.isDebugEnabled()) {
-      ThreadContext.putAll(logContext);
-      logger.debug(loggerType.name() + "\n" + buffer.toStringContent());
-      ThreadContext.removeAll(logContext.keySet());
+      try {
+        ThreadContext.putAll(logContext);
+        logger.debug(loggerType.name() + "\n" + buffer.toStringContent());
+      } finally {
+        ThreadContext.removeAll(logContext.keySet());
+      }
     }
   }
 

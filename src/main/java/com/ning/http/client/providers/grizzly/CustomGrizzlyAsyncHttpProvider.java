@@ -26,6 +26,8 @@ import org.apache.logging.log4j.ThreadContext;
 /**
  * Implementation of a {@link GrizzlyAsyncHttpProvider} that propagates the
  * contents of the {@link ThreadContext} as an attribute of the connection.
+ * 
+ * @since 1.0
  */
 public class CustomGrizzlyAsyncHttpProvider extends GrizzlyAsyncHttpProvider {
 
