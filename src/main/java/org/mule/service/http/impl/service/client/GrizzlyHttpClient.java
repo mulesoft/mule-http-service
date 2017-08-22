@@ -57,7 +57,7 @@ import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.Response;
 import com.ning.http.client.generators.InputStreamBodyGenerator;
 import com.ning.http.client.multipart.ByteArrayPart;
-import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
+import com.ning.http.client.providers.grizzly.CustomGrizzlyAsyncHttpProvider;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
 
 import java.io.IOException;
@@ -140,7 +140,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
     AsyncHttpClientConfig config = builder.build();
 
-    asyncHttpClient = new AsyncHttpClient(new GrizzlyAsyncHttpProvider(config), config);
+    asyncHttpClient = new AsyncHttpClient(new CustomGrizzlyAsyncHttpProvider(config), config);
   }
 
   private void configureTlsContext(AsyncHttpClientConfig.Builder builder) {

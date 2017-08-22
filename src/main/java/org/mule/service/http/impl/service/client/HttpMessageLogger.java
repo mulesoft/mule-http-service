@@ -6,6 +6,9 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import java.util.Collections;
+import java.util.Map;
+import org.apache.logging.log4j.ThreadContext;
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.http.HttpProbe;
@@ -31,17 +34,27 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
 
   @Override
   public void onDataReceivedEvent(Connection connection, Buffer buffer) {
-    logBuffer(buffer);
+    logBuffer(buffer, getLogContext(connection));
   }
 
   @Override
   public void onDataSentEvent(Connection connection, Buffer buffer) {
-    logBuffer(buffer);
+    logBuffer(buffer, getLogContext(connection));
   }
 
-  private void logBuffer(Buffer buffer) {
+  private static Map<String, String> getLogContext(Connection connection) {
+    Map<String, String> logContext = (Map<String, String>) connection.getAttributes().getAttribute("logContext");
+    return logContext == null ? Collections.<String, String>emptyMap() : logContext;
+  }
+
+  private void logBuffer(Buffer buffer, Map<String, String> logContext) {
     if (logger.isDebugEnabled()) {
-      logger.debug(loggerType.name() + "\n" + buffer.toStringContent());
+      try {
+        ThreadContext.putAll(logContext);
+        logger.debug(loggerType.name() + "\n" + buffer.toStringContent());
+      } finally {
+        ThreadContext.removeAll(logContext.keySet());
+      }
     }
   }
 
