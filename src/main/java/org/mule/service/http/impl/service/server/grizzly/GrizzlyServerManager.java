@@ -10,6 +10,7 @@ import static java.lang.Integer.getInteger;
 import static java.lang.Integer.valueOf;
 import static java.lang.String.format;
 import static java.lang.System.getProperty;
+import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
@@ -276,7 +277,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     idleExecutorPerServerAddressMap.put(serverAddress, idleExecutor);
     HttpServerFilter httpServerFilter =
         new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), ka, idleExecutor.getIdleTimeoutDelayedExecutor());
-    httpServerFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(LISTENER));
+    httpServerFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(LISTENER, currentThread().getContextClassLoader()));
     httpServerFilter.setAllowPayloadForUndefinedHttpMethods(true);
     return httpServerFilter;
   }
