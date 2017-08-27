@@ -64,4 +64,8 @@ public class DefaultClientConnection implements ClientConnection {
     return null;
   }
 
+  public SSLSession getSslSession() {
+    return sslSession;
+  }
+
 }
