@@ -84,7 +84,6 @@ public class HttpMultipartEncoder {
         } else {
           mimeMultipartContent.addBodyPart(new MimeBodyPart(internetHeaders, partContent));
         }
-
       } catch (Exception e) {
         throw new MuleRuntimeException(e);
       }

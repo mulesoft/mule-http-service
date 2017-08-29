@@ -14,12 +14,13 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.metadata.MediaType.APPLICATION_JSON;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import org.junit.Before;
@@ -31,11 +32,25 @@ import io.qameta.allure.Story;
 @Story("Entities")
 public class StreamedMultipartHttpEntityTestCase extends AbstractMuleTestCase {
 
+  private static final String MULTIPART_CONTENT =
+      "--the-boundary\n"
+          + "Content-Disposition: form-data; name=\"img\"; filename=\"a.png\"\n"
+          + "Content-Type: application/json\n"
+          + "\n"
+          + "{\n"
+          + "\t\"key\" : \"value\"\n"
+          + "}\n"
+          + "--the-boundary\n"
+          + "Content-Disposition: form-data; name=\"foo\"\n"
+          + "\n"
+          + "bar\n"
+          + "--the-boundary\n";
+
   private HttpEntity entity;
 
   @Before
   public void setUp() throws IOException {
-    entity = new StreamedMultipartHttpEntity(IOUtils.getResourceAsStream("multipartContent.txt", this.getClass()),
+    entity = new StreamedMultipartHttpEntity(new ByteArrayInputStream(MULTIPART_CONTENT.getBytes()),
                                              "multipart/form-data; boundary=the-boundary");
   }
 
@@ -51,7 +66,7 @@ public class StreamedMultipartHttpEntityTestCase extends AbstractMuleTestCase {
 
   @Test
   public void providesArrayIfUnparsed() throws IOException {
-    assertThat(entity.getBytes(), is(equalTo(IOUtils.getResourceAsString("multipartContent.txt", this.getClass()).getBytes())));
+    assertThat(entity.getBytes(), is(equalTo(MULTIPART_CONTENT.getBytes())));
   }
 
   @Test
@@ -62,7 +77,7 @@ public class StreamedMultipartHttpEntityTestCase extends AbstractMuleTestCase {
 
   @Test
   public void providesStreamIfUnparsed() throws IOException {
-    assertThat(IOUtils.toString(entity.getContent()), is(IOUtils.getResourceAsString("multipartContent.txt", this.getClass())));
+    assertThat(IOUtils.toString(entity.getContent()), is(MULTIPART_CONTENT));
   }
 
   @Test

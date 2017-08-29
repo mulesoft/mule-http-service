@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.service.http.impl.service;
+package org.mule.service.http.impl;
 
 public interface AllureConstants {
 
@@ -18,6 +18,7 @@ public interface AllureConstants {
       String RESPONSES = "Responses";
       String STREAMING = "Streaming";
       String PARSING = "Parsing";
+      String MULTIPART = "Multipart";
       String LISTENERS = "Listeners";
 
     }

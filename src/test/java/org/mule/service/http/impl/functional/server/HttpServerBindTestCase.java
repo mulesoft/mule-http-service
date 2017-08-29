@@ -4,14 +4,12 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.service.http.impl.service.server;
+package org.mule.service.http.impl.functional.server;
 
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
-import org.mule.service.http.impl.service.HttpServiceImplementation;
-import org.mule.tck.SimpleUnitTestSupportSchedulerService;
-import org.mule.tck.junit4.AbstractMuleTestCase;
+import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
 
 import java.net.InetSocketAddress;
@@ -25,7 +23,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 @Feature(HTTP_SERVICE)
-public class ServerBindTestCase extends AbstractMuleTestCase {
+public class HttpServerBindTestCase extends AbstractHttpServiceTestCase {
 
   @Rule
   public DynamicPort usedPort = new DynamicPort("usedPort");
@@ -33,7 +31,6 @@ public class ServerBindTestCase extends AbstractMuleTestCase {
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
 
-  private HttpServiceImplementation service = new HttpServiceImplementation(new SimpleUnitTestSupportSchedulerService());
   private ServerSocket serverSocket;
 
   @Before
