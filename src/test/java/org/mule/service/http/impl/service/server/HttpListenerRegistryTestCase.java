@@ -14,7 +14,7 @@ import static org.mockito.Mockito.when;
 import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.runtime.http.api.HttpConstants.Method.PUT;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.util.StringUtils;

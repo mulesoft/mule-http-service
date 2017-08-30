@@ -12,11 +12,9 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.when;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 
 import org.mule.runtime.http.api.server.ServerAddress;
-import org.mule.service.http.impl.service.server.grizzly.ExecutorPerServerAddressIOStrategy;
-import org.mule.service.http.impl.service.server.grizzly.ExecutorProvider;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import java.net.InetAddress;

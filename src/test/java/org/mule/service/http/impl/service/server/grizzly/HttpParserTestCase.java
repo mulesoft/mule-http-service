@@ -6,8 +6,8 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.PARSING;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.PARSING;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;

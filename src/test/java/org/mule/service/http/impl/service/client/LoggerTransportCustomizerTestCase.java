@@ -10,11 +10,9 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
-import org.mule.service.http.impl.service.client.HttpMessageLogger;
-import org.mule.service.http.impl.service.client.LoggerTransportCustomizer;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
 

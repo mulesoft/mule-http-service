@@ -12,8 +12,8 @@ import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 import static org.mule.runtime.http.api.HttpConstants.Method.OPTIONS;
 import static org.mule.runtime.http.api.HttpConstants.Method.PATCH;
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.LISTENERS;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.LISTENERS;
 
 import org.mule.runtime.http.api.HttpConstants.Method;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;

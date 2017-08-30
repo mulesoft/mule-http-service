@@ -54,7 +54,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
       byte[] bytes;
       if (body.isComposed()) {
         try {
-          bytes = HttpMultipartEncoder.toByteArray(body, httpResponse.getHeaderValueIgnoreCase(CONTENT_TYPE));
+          bytes = HttpMultipartEncoder.toByteArray(body, httpResponsePacket.getHeader(CONTENT_TYPE));
           if (!httpResponsePacket.isChunked()) {
             httpResponsePacket.setContentLength(bytes.length);
           }

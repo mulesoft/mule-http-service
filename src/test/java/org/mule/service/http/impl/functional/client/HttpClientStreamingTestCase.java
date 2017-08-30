@@ -4,18 +4,16 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.service.http.impl.service.client;
+package org.mule.service.http.impl.functional.client;
 
-import static java.lang.String.format;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.STREAMING;
-
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.core.api.util.concurrent.Latch;
@@ -24,13 +22,6 @@ import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.server.HttpServer;
-import org.mule.runtime.http.api.server.HttpServerConfiguration;
-import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
-import org.mule.service.http.impl.service.HttpServiceImplementation;
-import org.mule.tck.SimpleUnitTestSupportSchedulerService;
-import org.mule.tck.junit4.AbstractMuleTestCase;
-import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.tck.probe.PollingProber;
 import org.mule.tck.probe.Probe;
 
@@ -38,22 +29,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import io.qameta.allure.junit4.DisplayName;
+import org.junit.Before;
+import org.junit.Test;
 
 @Feature(HTTP_SERVICE)
 @Story(STREAMING)
 @DisplayName("Validates HTTP client behaviour against a streaming server.")
-public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
-
-  @Rule
-  public DynamicPort serverPort = new DynamicPort("serverPort");
+public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
   // Use a payload bigger than the default server and client buffer sizes (8 and 10 KB, respectively)
   private static final int RESPONSE_SIZE = 14 * 1024;
@@ -64,33 +50,12 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
 
   private static Latch latch;
 
-  private HttpServiceImplementation service = new HttpServiceImplementation(new SimpleUnitTestSupportSchedulerService());
   private HttpClientConfiguration.Builder clientBuilder = new HttpClientConfiguration.Builder().setName("streaming-test");
   private PollingProber pollingProber = new PollingProber(TIMEOUT_MILLIS, POLL_DELAY_MILLIS);
-  private HttpServer server;
 
   @Before
-  public void setUp() throws Exception {
+  public void createLatch() {
     latch = new Latch();
-    service.start();
-    server = service.getServerFactory().create(new HttpServerConfiguration.Builder()
-        .setHost("localhost")
-        .setPort(serverPort.getNumber())
-        .setName("streaming-test")
-        .build());
-    server.start();
-    server.addRequestHandler("/",
-                             (requestContext, responseCallback) -> responseCallback.responseReady(setUpHttpResponse(),
-                                                                                                  new IgnoreResponseStatusCallback()));
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    if (server != null) {
-      server.stop();
-      server.dispose();
-    }
-    service.stop();
   }
 
   @Test
@@ -162,7 +127,7 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
   }
 
   private HttpRequest getRequest() {
-    return HttpRequest.builder().uri(getUrl()).build();
+    return HttpRequest.builder().uri(getUri()).build();
   }
 
   private void verifyStreamed(HttpResponse response) throws IOException {
@@ -183,11 +148,8 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
     assertThat(IOUtils.toString(response.getEntity().getContent()).length(), is(RESPONSE_SIZE));
   }
 
-  private String getUrl() {
-    return format("http://localhost:%s/", serverPort.getValue());
-  }
-
-  private HttpResponse setUpHttpResponse() {
+  @Override
+  protected HttpResponse setUpHttpResponse(HttpRequest request) {
     return HttpResponse.builder()
         .statusCode(OK.getStatusCode())
         .reasonPhrase(OK.getReasonPhrase())
@@ -218,18 +180,6 @@ public class HttpClientStreamingTestCase extends AbstractMuleTestCase {
     }
   }
 
-  private class IgnoreResponseStatusCallback implements ResponseStatusCallback {
-
-    @Override
-    public void responseSendFailure(Throwable throwable) {
-      // Do nothing
-    }
-
-    @Override
-    public void responseSendSuccessfully() {
-      // Do nothing
-    }
-  }
 
   private class ResponseReceivedProbe implements Probe {
 

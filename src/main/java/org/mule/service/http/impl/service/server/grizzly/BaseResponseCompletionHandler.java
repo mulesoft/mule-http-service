@@ -6,9 +6,14 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.String.format;
+import static org.mule.runtime.core.api.util.UUID.getUUID;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
+import static org.mule.runtime.http.api.HttpHeaders.Values.BOUNDARY;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
+import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -24,6 +29,7 @@ import org.slf4j.Logger;
 public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandler<WriteResult> {
 
   private static final Logger LOGGER = getLogger(BaseResponseCompletionHandler.class);
+  private static final String MULTIPART_CONTENT_TYPE_FORMAT = "%s; %s=\"%s\"";
 
   protected HttpResponsePacket buildHttpResponsePacket(HttpRequestPacket sourceRequest, HttpResponse httpResponse) {
     final HttpResponsePacket.Builder responsePacketBuilder = HttpResponsePacket.builder(sourceRequest)
@@ -34,6 +40,16 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
       final Collection<String> values = httpResponse.getHeaderValues(headerName);
       for (String value : values) {
         responsePacketBuilder.header(headerName, value);
+      }
+    }
+    if (httpResponse.getEntity().isComposed()) {
+      String contentType = httpResponse.getHeaderValueIgnoreCase(CONTENT_TYPE);
+      if (contentType == null) {
+        responsePacketBuilder.header(CONTENT_TYPE,
+                                     format(MULTIPART_CONTENT_TYPE_FORMAT, MULTIPART_FORM_DATA, BOUNDARY, getUUID()));
+      } else if (!contentType.contains(BOUNDARY)) {
+        responsePacketBuilder.removeHeader(CONTENT_TYPE);
+        responsePacketBuilder.header(CONTENT_TYPE, format(MULTIPART_CONTENT_TYPE_FORMAT, contentType, BOUNDARY, getUUID()));
       }
     }
     HttpResponsePacket httpResponsePacket = responsePacketBuilder.build();

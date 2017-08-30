@@ -9,8 +9,8 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HTTP_SERVICE;
-import static org.mule.service.http.impl.service.AllureConstants.HttpFeature.HttpStory.RESPONSES;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
