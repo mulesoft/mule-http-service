@@ -42,13 +42,13 @@ import org.junit.Test;
 public class HttpServerMixedPartTestCase extends AbstractHttpServiceTestCase {
 
   private static final String MIXED_CONTENT =
-      "--the-boundary\n"
-          + "Content-Type: text/plain\n"
-          + "Custom: myHeader\n"
-          + "Content-Disposition: attachment; name=\"field\"\n"
-          + "\n"
-          + "My data here\n"
-          + "--the-boundary--\n";
+      "--the-boundary\r\n"
+          + "Content-Type: text/plain\r\n"
+          + "Custom: myHeader\r\n"
+          + "Content-Disposition: attachment; name=\"field\"\r\n"
+          + "\r\n"
+          + "My data here\r\n"
+          + "--the-boundary--\r\n";
 
   @Rule
   public DynamicPort port = new DynamicPort("port");
@@ -86,7 +86,7 @@ public class HttpServerMixedPartTestCase extends AbstractHttpServiceTestCase {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       HttpGet httpPost = new HttpGet("http://localhost:" + port.getValue());
       try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-        assertThat(IOUtils.toString(response.getEntity().getContent()).replace("\r", ""), is(equalTo(MIXED_CONTENT)));
+        assertThat(IOUtils.toString(response.getEntity().getContent()), is(equalTo(MIXED_CONTENT)));
       }
     }
   }

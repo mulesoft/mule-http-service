@@ -10,6 +10,7 @@ import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
@@ -21,7 +22,6 @@ import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
-import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
@@ -110,12 +110,13 @@ public class HttpClientOutboundPartsTestCase extends AbstractHttpClientTestCase 
       HttpPart part = parts.iterator().next();
       assertThat(part.getName(), is("part1"));
       assertThat(part.getContentType(), is(TEXT_PLAIN));
-      return response.statusCode(200).addHeader(CONTENT_LENGTH, "2").entity(new ByteArrayHttpEntity("OK".getBytes())).build();
+      return response.statusCode(OK.getStatusCode()).addHeader(CONTENT_LENGTH, "2")
+          .entity(new ByteArrayHttpEntity(OK.getReasonPhrase().getBytes())).build();
     } catch (Exception e) {
       // Move on
     }
 
-    return response.statusCode(500).addHeader(CONTENT_LENGTH, "0").entity(new EmptyHttpEntity()).build();
+    return response.statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).addHeader(CONTENT_LENGTH, "0").build();
   }
 
 }

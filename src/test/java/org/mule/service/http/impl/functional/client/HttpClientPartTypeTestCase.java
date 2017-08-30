@@ -12,6 +12,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.metadata.MediaType.JSON;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
@@ -20,7 +22,6 @@ import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
-import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
@@ -64,13 +65,14 @@ public class HttpClientPartTypeTestCase extends AbstractHttpClientTestCase {
     try {
       Collection<HttpPart> parts = request.getEntity().getParts();
       if (parts.size() == 1 && parts.stream().anyMatch(part -> JSON.toRfcString().equals(part.getContentType()))) {
-        return response.statusCode(200).addHeader(CONTENT_LENGTH, "2").entity(new ByteArrayHttpEntity("OK".getBytes())).build();
+        return response.statusCode(OK.getStatusCode()).addHeader(CONTENT_LENGTH, "2")
+            .entity(new ByteArrayHttpEntity(OK.getReasonPhrase().getBytes())).build();
       }
     } catch (IOException e) {
       // Move on
     }
 
-    return response.statusCode(500).addHeader(CONTENT_LENGTH, "0").entity(new EmptyHttpEntity()).build();
+    return response.statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).addHeader(CONTENT_LENGTH, "0").build();
   }
 
   @Test
@@ -82,7 +84,7 @@ public class HttpClientPartTypeTestCase extends AbstractHttpClientTestCase {
         .method(POST)
         .uri(getUri())
         .entity(multipart)
-        .build(), 30000, true, null);
+        .build(), TIMEOUT, true, null);
     assertThat(IOUtils.toString(response.getEntity().getContent()), is(equalTo("OK")));
   }
 

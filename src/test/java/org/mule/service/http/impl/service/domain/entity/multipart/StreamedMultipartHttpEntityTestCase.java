@@ -33,18 +33,18 @@ import io.qameta.allure.Story;
 public class StreamedMultipartHttpEntityTestCase extends AbstractMuleTestCase {
 
   private static final String MULTIPART_CONTENT =
-      "--the-boundary\n"
-          + "Content-Disposition: form-data; name=\"img\"; filename=\"a.png\"\n"
-          + "Content-Type: application/json\n"
-          + "\n"
-          + "{\n"
-          + "\t\"key\" : \"value\"\n"
-          + "}\n"
-          + "--the-boundary\n"
-          + "Content-Disposition: form-data; name=\"foo\"\n"
-          + "\n"
-          + "bar\n"
-          + "--the-boundary\n";
+      "--the-boundary\r\n"
+          + "Content-Disposition: form-data; name=\"img\"; filename=\"a.png\"\r\n"
+          + "Content-Type: application/json\r\n"
+          + "\r\n"
+          + "{\r\n"
+          + "\t\"key\" : \"value\"\r\n"
+          + "}\r\n"
+          + "--the-boundary\r\n"
+          + "Content-Disposition: form-data; name=\"foo\"\r\n"
+          + "\r\n"
+          + "bar\r\n"
+          + "--the-boundary\r\n";
 
   private HttpEntity entity;
 
@@ -95,8 +95,8 @@ public class StreamedMultipartHttpEntityTestCase extends AbstractMuleTestCase {
     assertThat(part1.getContentType(), is(APPLICATION_JSON.toRfcString()));
     assertThat(part1.getName(), is("img"));
     assertThat(part1.getFileName(), is("a.png"));
-    assertThat(IOUtils.toString(part1.getInputStream()), is("{\n"
-        + "\t\"key\" : \"value\"\n"
+    assertThat(IOUtils.toString(part1.getInputStream()), is("{\r\n"
+        + "\t\"key\" : \"value\"\r\n"
         + "}"));
 
     HttpPart part2 = (HttpPart) parts[1];

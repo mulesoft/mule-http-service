@@ -8,6 +8,7 @@ package org.mule.service.http.impl.functional.client;
 
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
+import static java.lang.String.format;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -61,8 +62,8 @@ public class HttpPartDispositionTestCase extends AbstractHttpClientTestCase {
     } else {
       contentDispositionHeader = "";
     }
-    byte[] body = String.format(MULTIPART_FORMAT, BOUNDARY, contentDispositionHeader).getBytes();
-    response.addHeader(CONTENT_TYPE, String.format("multipart/form-data; boundary=%s", BOUNDARY));
+    byte[] body = format(MULTIPART_FORMAT, BOUNDARY, contentDispositionHeader).getBytes();
+    response.addHeader(CONTENT_TYPE, format("multipart/form-data; boundary=%s", BOUNDARY));
     response.addHeader(CONTENT_LENGTH, String.valueOf(body.length));
     response.statusCode(OK.getStatusCode());
     response.entity(new ByteArrayHttpEntity(body));
