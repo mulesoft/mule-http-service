@@ -14,7 +14,6 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
@@ -64,7 +63,6 @@ public class HttpPartDispositionTestCase extends AbstractHttpClientTestCase {
     }
     byte[] body = format(MULTIPART_FORMAT, BOUNDARY, contentDispositionHeader).getBytes();
     response.addHeader(CONTENT_TYPE, format("multipart/form-data; boundary=%s", BOUNDARY));
-    response.addHeader(CONTENT_LENGTH, String.valueOf(body.length));
     response.statusCode(OK.getStatusCode());
     response.entity(new ByteArrayHttpEntity(body));
     return response.build();

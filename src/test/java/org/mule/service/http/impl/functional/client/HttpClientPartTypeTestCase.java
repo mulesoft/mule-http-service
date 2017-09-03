@@ -15,7 +15,6 @@ import static org.mule.runtime.api.metadata.MediaType.JSON;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
 import org.mule.runtime.core.api.util.IOUtils;
@@ -65,14 +64,13 @@ public class HttpClientPartTypeTestCase extends AbstractHttpClientTestCase {
     try {
       Collection<HttpPart> parts = request.getEntity().getParts();
       if (parts.size() == 1 && parts.stream().anyMatch(part -> JSON.toRfcString().equals(part.getContentType()))) {
-        return response.statusCode(OK.getStatusCode()).addHeader(CONTENT_LENGTH, "2")
-            .entity(new ByteArrayHttpEntity(OK.getReasonPhrase().getBytes())).build();
+        return response.statusCode(OK.getStatusCode()).entity(new ByteArrayHttpEntity(OK.getReasonPhrase().getBytes())).build();
       }
     } catch (IOException e) {
       // Move on
     }
 
-    return response.statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).addHeader(CONTENT_LENGTH, "0").build();
+    return response.statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build();
   }
 
   @Test

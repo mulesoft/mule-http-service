@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -24,6 +25,7 @@ import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.http.HttpServerFilter;
+import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.memory.Buffers;
 
 /**
@@ -35,6 +37,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   private final HttpResponsePacket httpResponsePacket;
   private final HttpContent httpResponseContent;
   private final ResponseStatusCallback responseStatusCallback;
+  private final Protocol protocol;
   private boolean isDone;
   private boolean contentSend;
 
@@ -42,6 +45,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
                                    final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
     checkArgument((!(httpResponse.getEntity().isStreaming())), "HTTP response entity cannot be stream based");
     this.ctx = ctx;
+    this.protocol = httpRequestPacket.getProtocol();
     this.httpResponsePacket = buildHttpResponsePacket(httpRequestPacket, httpResponse);
     this.httpResponseContent = buildResponseContent(httpResponse);
     this.responseStatusCallback = responseStatusCallback;
@@ -55,9 +59,6 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
       if (body.isComposed()) {
         try {
           bytes = HttpMultipartEncoder.toByteArray(body, httpResponsePacket.getHeader(CONTENT_TYPE));
-          if (!httpResponsePacket.isChunked()) {
-            httpResponsePacket.setContentLength(bytes.length);
-          }
         } catch (IOException e) {
           throw new MuleRuntimeException(createStaticMessage("Error sending multipart response"), e);
         }
@@ -67,6 +68,12 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
         } catch (IOException e) {
           throw new MuleRuntimeException(createStaticMessage("Error sending response"), e);
         }
+      }
+      // Since we have the bytes, we'll try to default to Content-Length, unless it's HTTP 1.0 because we can only indicate
+      // streaming by not having any headers set there
+      if (!protocol.equals(HTTP_1_0) && !httpResponsePacket.isChunked() &&
+          httpResponse.getHeaderValueIgnoreCase(CONTENT_LENGTH) == null) {
+        httpResponsePacket.setContentLength(bytes.length);
       }
       grizzlyBuffer = Buffers.wrap(ctx.getMemoryManager(), bytes);
     }

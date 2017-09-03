@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static org.glassfish.grizzly.http.Protocol.HTTP_1_1;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
@@ -14,9 +15,9 @@ import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
-import org.junit.Before;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
+import org.junit.Before;
 
 @Feature(HTTP_SERVICE)
 @Story(RESPONSES)
@@ -28,6 +29,7 @@ public class ResponseCompletionHandlerTestCase extends BaseResponseCompletionHan
   public void setUp() {
     HttpEntity entity = new ByteArrayHttpEntity(new byte[1]);
     responseMock = mock(HttpResponse.class);
+    when(request.getProtocol()).thenReturn(HTTP_1_1);
     when(responseMock.getEntity()).thenReturn(entity);
     when(ctx.getConnection()).thenReturn(connection);
     when(connection.getMemoryManager()).thenReturn(null);

@@ -13,8 +13,6 @@ import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
-import static org.mule.runtime.http.api.HttpHeaders.Values.CHUNKED;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
 import org.mule.runtime.core.api.util.IOUtils;
@@ -69,7 +67,7 @@ public class HttpServerMixedPartTestCase extends AbstractHttpServiceTestCase {
       part.addHeader("Custom", "myHeader");
       responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(singletonList(part)))
           .addHeader(CONTENT_TYPE, MULTIPART_MIXED.toRfcString() + "; boundary=\"the-boundary\"")
-          .addHeader(TRANSFER_ENCODING, CHUNKED).build(), new IgnoreResponseStatusCallback());
+          .build(), new IgnoreResponseStatusCallback());
 
     });
   }
