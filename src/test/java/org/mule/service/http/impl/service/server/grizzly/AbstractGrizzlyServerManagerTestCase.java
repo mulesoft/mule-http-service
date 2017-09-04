@@ -102,7 +102,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
       BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
       String t;
       while ((t = br.readLine()) != null) {
-        if (t.equals("0")) {
+        if (t.equals("")) {
           break;
         }
       }

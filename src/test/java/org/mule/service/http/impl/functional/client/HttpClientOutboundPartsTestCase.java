@@ -14,7 +14,6 @@ import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
 import org.mule.runtime.api.lifecycle.CreateException;
@@ -110,13 +109,12 @@ public class HttpClientOutboundPartsTestCase extends AbstractHttpClientTestCase 
       HttpPart part = parts.iterator().next();
       assertThat(part.getName(), is("part1"));
       assertThat(part.getContentType(), is(TEXT_PLAIN));
-      return response.statusCode(OK.getStatusCode()).addHeader(CONTENT_LENGTH, "2")
-          .entity(new ByteArrayHttpEntity(OK.getReasonPhrase().getBytes())).build();
+      return response.statusCode(OK.getStatusCode()).entity(new ByteArrayHttpEntity(OK.getReasonPhrase().getBytes())).build();
     } catch (Exception e) {
       // Move on
     }
 
-    return response.statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).addHeader(CONTENT_LENGTH, "0").build();
+    return response.statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build();
   }
 
 }

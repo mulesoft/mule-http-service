@@ -15,8 +15,6 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
-import static org.mule.runtime.http.api.HttpHeaders.Values.CHUNKED;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
@@ -74,26 +72,23 @@ public class HttpServerPartsTestCase extends AbstractHttpServiceTestCase {
       IgnoreResponseStatusCallback statusCallback = new IgnoreResponseStatusCallback();
       try {
         Collection<HttpPart> parts = requestContext.getRequest().getEntity().getParts();
-        responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(parts))
-            .addHeader(TRANSFER_ENCODING, CHUNKED).build(), statusCallback);
+        responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(parts)).build(), statusCallback);
       } catch (IOException e) {
         responseCallback.responseReady(HttpResponse.builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build(),
                                        statusCallback);
       }
     });
     server.addRequestHandler(NO_HEADER, (requestContext, responseCallback) -> {
-      responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(createPart()))
-          .addHeader(TRANSFER_ENCODING, CHUNKED).build(), new IgnoreResponseStatusCallback());
+      responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(createPart())).build(),
+                                     new IgnoreResponseStatusCallback());
     });
     server.addRequestHandler(PARTIAL_HEADER, (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(createPart()))
-          .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA)
-          .addHeader(TRANSFER_ENCODING, CHUNKED).build(), new IgnoreResponseStatusCallback());
+          .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA).build(), new IgnoreResponseStatusCallback());
     });
     server.addRequestHandler(FULL_HEADER, (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(createPart()))
-          .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA + BOUNDARY_PART)
-          .addHeader(TRANSFER_ENCODING, CHUNKED).build(), new IgnoreResponseStatusCallback());
+          .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA + BOUNDARY_PART).build(), new IgnoreResponseStatusCallback());
     });
   }
 
