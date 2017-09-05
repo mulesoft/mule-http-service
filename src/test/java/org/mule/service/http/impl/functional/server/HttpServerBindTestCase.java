@@ -35,7 +35,6 @@ public class HttpServerBindTestCase extends AbstractHttpServiceTestCase {
 
   @Before
   public void setUp() throws Exception {
-    service.start();
     serverSocket = new ServerSocket();
     serverSocket.bind(new InetSocketAddress("localhost", usedPort.getNumber()));
   }
@@ -43,7 +42,6 @@ public class HttpServerBindTestCase extends AbstractHttpServiceTestCase {
   @After
   public void tearDown() throws Exception {
     serverSocket.close();
-    service.stop();
   }
 
   @Test
