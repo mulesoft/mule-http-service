@@ -46,6 +46,10 @@ public class HttpPartDispositionTestCase extends AbstractHttpClientTestCase {
 
   private HttpClient client;
 
+  public HttpPartDispositionTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Before
   public void createClient() {
     client = service.getClientFactory().create(new HttpClientConfiguration.Builder().setName("multipart-test").build());

@@ -7,36 +7,53 @@
 package org.mule.service.http.impl.functional;
 
 import static junit.framework.TestCase.fail;
-import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.core.api.util.ClassUtils;
+import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.SimpleUnitTestSupportSchedulerService;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
+import java.util.Collections;
+
+import com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext;
 import org.junit.After;
 import org.junit.Before;
-import org.slf4j.Logger;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Base class for all HTTP service functional tests. The service implementation will be loaded based on it's class name, allowing
  * tests to customize it.
  */
+@RunWith(Parameterized.class)
 public class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
 
-  private static final Logger LOGGER = getLogger(AbstractHttpServiceTestCase.class);
-
-  public static String serviceToLoad = HttpServiceImplementation.class.getName();
+  @Parameter
+  public String serviceToLoad;
 
   protected HttpServiceImplementation service;
   private SimpleUnitTestSupportSchedulerService schedulerService;
+
+  @Parameters(name = "{0}")
+  public static Iterable<Object[]> params() {
+    if (ParameterContext.isParameterSet()) {
+      return Collections.singletonList(ParameterContext.getParameter(Object[].class));
+    } else {
+      return Collections.singletonList(new String[] {HttpServiceImplementation.class.getName()});
+    }
+  }
+
+  public AbstractHttpServiceTestCase(String serviceToLoad) {
+    this.serviceToLoad = serviceToLoad;
+  }
 
   @Before
   public void createServices() throws Exception {
     schedulerService = new SimpleUnitTestSupportSchedulerService();
     service = (HttpServiceImplementation) ClassUtils.instantiateClass(serviceToLoad, new Object[] {schedulerService},
                                                                       this.getClass().getClassLoader());
-    LOGGER.info("Running HTTP service test using implementation: " + serviceToLoad);
     service.start();
   }
 

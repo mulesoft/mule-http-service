@@ -72,6 +72,10 @@ public abstract class HttpServerTransferTestCase extends AbstractHttpServiceTest
   private HttpServer server;
   protected Pair<String, String> headerToSend;
 
+  public HttpServerTransferTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Before
   public void setUp() throws Exception {
     server = service.getServerFactory().create(new HttpServerConfiguration.Builder()

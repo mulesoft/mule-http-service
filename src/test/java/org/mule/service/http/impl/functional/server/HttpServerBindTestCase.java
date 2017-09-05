@@ -33,6 +33,10 @@ public class HttpServerBindTestCase extends AbstractHttpServiceTestCase {
 
   private ServerSocket serverSocket;
 
+  public HttpServerBindTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Before
   public void setUp() throws Exception {
     service.start();
