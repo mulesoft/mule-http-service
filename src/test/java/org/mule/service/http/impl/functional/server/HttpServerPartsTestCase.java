@@ -60,6 +60,10 @@ public class HttpServerPartsTestCase extends AbstractHttpServiceTestCase {
 
   private HttpServer server;
 
+  public HttpServerPartsTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Before
   public void setUp() throws Exception {
     server = service.getServerFactory().create(new HttpServerConfiguration.Builder()

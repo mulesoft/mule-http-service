@@ -53,6 +53,10 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   private HttpClientConfiguration.Builder clientBuilder = new HttpClientConfiguration.Builder().setName("streaming-test");
   private PollingProber pollingProber = new PollingProber(TIMEOUT_MILLIS, POLL_DELAY_MILLIS);
 
+  public HttpClientStreamingTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Before
   public void createLatch() {
     latch = new Latch();

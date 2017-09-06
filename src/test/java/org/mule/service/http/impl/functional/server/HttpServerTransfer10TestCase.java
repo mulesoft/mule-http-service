@@ -29,6 +29,10 @@ import org.junit.Test;
 
 public class HttpServerTransfer10TestCase extends HttpServerTransferTestCase {
 
+  public HttpServerTransfer10TestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Override
   public HttpVersion getVersion() {
     return HTTP_1_0;

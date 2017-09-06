@@ -29,6 +29,10 @@ public abstract class AbstractHttpClientTestCase extends AbstractHttpServiceTest
 
   protected HttpServer server;
 
+  public AbstractHttpClientTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Before
   public void setUp() throws Exception {
     server = service.getServerFactory().create(getServerConfigurationBuilder().build());

@@ -44,6 +44,10 @@ public class HttpClientPartTypeTestCase extends AbstractHttpClientTestCase {
   private byte[] dataBytes = "{ \'I am a JSON attachment!\' }".getBytes(UTF_8);
   private HttpClient client;
 
+  public HttpClientPartTypeTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Before
   public void createClient() {
     HttpClientConfiguration clientConf = new HttpClientConfiguration.Builder().setName("multipart-test").build();

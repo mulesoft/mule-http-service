@@ -47,6 +47,10 @@ public class HttpClientOutboundPartsTestCase extends AbstractHttpClientTestCase 
 
   private HttpClient client;
 
+  public HttpClientOutboundPartsTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
   @Before
   public void createClient() throws CreateException {
     client = service.getClientFactory().create(new HttpClientConfiguration.Builder()
