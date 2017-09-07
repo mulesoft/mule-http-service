@@ -18,7 +18,7 @@
 
     <properties>
         <asyncHttpClientVersion>1.13</asyncHttpClientVersion>
-        <grizzlyVersion>2.3.31</grizzlyVersion>
+        <grizzlyVersion>2.3.33</grizzlyVersion>
 
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
