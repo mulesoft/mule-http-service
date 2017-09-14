@@ -10,7 +10,7 @@ import static java.util.Collections.singletonList;
 
 import org.mule.runtime.api.service.ServiceDefinition;
 import org.mule.runtime.api.service.ServiceProvider;
-import org.mule.runtime.core.api.scheduler.SchedulerService;
+import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.http.api.HttpService;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 
