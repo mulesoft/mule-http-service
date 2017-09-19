@@ -40,10 +40,10 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
 
   private static final String RESPONSE = "TEST";
   private static final String REQUEST = "tests";
-  public static final String BYTE = "/byte";
-  public static final String MULTIPART = "/multipart";
-  public static final String STREAM = "/stream";
-  public static final String CHUNKED = "/chunked";
+  private static final String BYTE = "/byte";
+  private static final String MULTIPART = "/multipart";
+  private static final String STREAM = "/stream";
+  private static final String CHUNKED = "/chunked";
 
   private HttpClient client;
 
@@ -53,7 +53,7 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
 
   @Before
   public void createClient() {
-    HttpClientConfiguration clientConf = new HttpClientConfiguration.Builder().setName("multipart-test").build();
+    HttpClientConfiguration clientConf = new HttpClientConfiguration.Builder().setName("transfer-type-test").build();
     client = service.getClientFactory().create(clientConf);
     client.start();
   }
