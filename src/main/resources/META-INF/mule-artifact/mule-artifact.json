@@ -1,6 +1,7 @@
 {
   "name": "HTTP service",
   "minMuleVersion": "4.0.0",
+  "requiredProduct": "MULE",
   "serviceProviderClassName": "org.mule.service.http.impl.provider.HttpServiceProvider",
   "classLoaderModelLoaderDescriptor": {
     "id": "mule",
