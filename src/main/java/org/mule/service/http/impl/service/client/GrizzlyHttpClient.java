@@ -12,13 +12,17 @@ import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderCon
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
+import static java.lang.Long.parseLong;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
+import static java.lang.String.valueOf;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
@@ -350,7 +354,9 @@ public class GrizzlyHttpClient implements HttpClient {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
     responseBuilder.statusCode(response.getStatusCode());
     responseBuilder.reasonPhrase(response.getStatusText());
-    responseBuilder.entity(createEntity(inputStream, response.getHeader(CONTENT_TYPE.toLowerCase())));
+    String contentType = response.getHeader(CONTENT_TYPE.toLowerCase());
+    String contentLength = response.getHeader(CONTENT_LENGTH.toLowerCase());
+    responseBuilder.entity(createEntity(inputStream, contentType, contentLength));
 
     if (response.hasResponseHeaders()) {
       for (String header : response.getHeaders().keySet()) {
@@ -362,11 +368,23 @@ public class GrizzlyHttpClient implements HttpClient {
     return responseBuilder.build();
   }
 
-  private HttpEntity createEntity(InputStream stream, String contentType) {
+  private HttpEntity createEntity(InputStream stream, String contentType, String contentLength) {
+    Long contentLengthAsLong = -1L;
+    if (contentLength != null) {
+      contentLengthAsLong = parseLong(contentLength);
+    }
     if (contentType != null && contentType.startsWith(MULTIPART_MIXED.getPrimaryType())) {
-      return new StreamedMultipartHttpEntity(stream, contentType);
+      if (contentLengthAsLong >= 0) {
+        return new StreamedMultipartHttpEntity(stream, contentType, contentLengthAsLong);
+      } else {
+        return new StreamedMultipartHttpEntity(stream, contentType);
+      }
     } else {
-      return new InputStreamHttpEntity(stream);
+      if (contentLengthAsLong >= 0) {
+        return new InputStreamHttpEntity(stream, contentLengthAsLong);
+      } else {
+        return new InputStreamHttpEntity(stream);
+      }
     }
   }
 
@@ -450,6 +468,13 @@ public class GrizzlyHttpClient implements HttpClient {
       for (String headerValue : request.getHeaderValues(headerName)) {
         builder.addHeader(headerName, headerValue);
       }
+    }
+
+    // If there's no transfer type specified, check the entity length to prioritize content length transfer
+    boolean hasNoTransferEncoding = request.getHeaderValueIgnoreCase(TRANSFER_ENCODING) == null;
+    boolean hasNoContentLength = request.getHeaderValueIgnoreCase(CONTENT_LENGTH) == null;
+    if (hasNoTransferEncoding && hasNoContentLength && request.getEntity().getLength().isPresent()) {
+      builder.addHeader(CONTENT_LENGTH, valueOf(request.getEntity().getLength().get()));
     }
 
     // If persistent connections are disabled, the "Connection: close" header must be explicitly added. AHC will

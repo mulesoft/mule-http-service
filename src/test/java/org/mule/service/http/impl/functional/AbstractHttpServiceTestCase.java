@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.functional;
 
 import static junit.framework.TestCase.fail;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import org.mule.runtime.core.api.util.ClassUtils;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
@@ -14,9 +15,11 @@ import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.SimpleUnitTestSupportSchedulerService;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
+import com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext;
+
 import java.util.Collections;
 
-import com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext;
+import io.qameta.allure.Feature;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -28,6 +31,7 @@ import org.junit.runners.Parameterized.Parameters;
  * tests to customize it.
  */
 @RunWith(Parameterized.class)
+@Feature(HTTP_SERVICE)
 public class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
 
   @Parameter

@@ -16,7 +16,6 @@ import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
@@ -30,7 +29,6 @@ import org.mule.tck.junit4.rule.DynamicPort;
 import java.io.IOException;
 import java.util.Collection;
 
-import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -43,7 +41,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-@Feature(HTTP_SERVICE)
 @Story(MULTIPART)
 public class HttpServerPartsTestCase extends AbstractHttpServiceTestCase {
 

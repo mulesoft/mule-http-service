@@ -20,6 +20,7 @@ public interface AllureConstants {
       String PARSING = "Parsing";
       String MULTIPART = "Multipart";
       String LISTENERS = "Listeners";
+      String TRANSFER_TYPE = "Transfer Type";
 
     }
 

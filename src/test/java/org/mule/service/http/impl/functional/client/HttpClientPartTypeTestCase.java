@@ -15,7 +15,6 @@ import static org.mule.runtime.api.metadata.MediaType.JSON;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.client.HttpClient;
@@ -31,13 +30,11 @@ import java.io.IOException;
 import java.util.Collection;
 
 import io.qameta.allure.Description;
-import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-@Feature(HTTP_SERVICE)
 @Story(MULTIPART)
 public class HttpClientPartTypeTestCase extends AbstractHttpClientTestCase {
 

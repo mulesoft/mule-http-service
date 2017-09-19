@@ -6,14 +6,14 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.lang.Integer.parseInt;
+import static java.lang.Long.parseLong;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
-import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.api.util.MultiMap;
+import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
@@ -34,7 +34,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
 
   private final HttpRequestPacket requestPacket;
   private final InputStream requestContent;
-  private final int contentLength;
+  private final long contentLength;
   private final boolean isTransferEncodingChunked;
   private HttpProtocol protocol;
   private String uri;
@@ -47,12 +47,12 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent) {
     this.requestPacket = (HttpRequestPacket) httpContent.getHttpHeader();
     isTransferEncodingChunked = requestPacket.isChunked();
-    int contentLengthAsInt = 0;
+    long contentLengthAsLong = -1L;
     String contentLengthAsString = requestPacket.getHeader(CONTENT_LENGTH);
     if (contentLengthAsString != null) {
-      contentLengthAsInt = parseInt(contentLengthAsString);
+      contentLengthAsLong = parseLong(contentLengthAsString);
     }
-    this.contentLength = contentLengthAsInt;
+    this.contentLength = contentLengthAsLong;
     if (httpContent.isLast()) {
       requestContent = new BufferInputStream(httpContent.getContent());
     } else {
@@ -125,12 +125,16 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
     if (this.body == null) {
       final String contentTypeValue = getHeaderValueIgnoreCase(CONTENT_TYPE);
       if (contentTypeValue != null && contentTypeValue.contains(MULTIPART_MIXED.getPrimaryType())) {
-        this.body = new StreamedMultipartHttpEntity(requestContent, contentTypeValue);
+        if (contentLength >= 0) {
+          this.body = new StreamedMultipartHttpEntity(requestContent, contentTypeValue, contentLength);
+        } else {
+          this.body = new StreamedMultipartHttpEntity(requestContent, contentTypeValue);
+        }
       } else {
         if (isTransferEncodingChunked) {
           this.body = new InputStreamHttpEntity(requestContent);
-        } else if (contentLength > 0) {
-          this.body = new InputStreamHttpEntity(contentLength, requestContent);
+        } else if (contentLength >= 0) {
+          this.body = new InputStreamHttpEntity(requestContent, contentLength);
         } else {
           this.body = new EmptyHttpEntity();
         }

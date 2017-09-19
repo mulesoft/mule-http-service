@@ -6,7 +6,6 @@
  */
 package org.mule.service.http.impl.functional.server;
 
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
@@ -15,14 +14,12 @@ import org.mule.tck.junit4.rule.DynamicPort;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 
-import io.qameta.allure.Feature;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-@Feature(HTTP_SERVICE)
 public class HttpServerBindTestCase extends AbstractHttpServiceTestCase {
 
   @Rule

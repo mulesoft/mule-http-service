@@ -15,7 +15,6 @@ import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.core.api.util.IOUtils;
@@ -29,13 +28,11 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 
 import java.util.Collection;
 
-import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-@Feature(HTTP_SERVICE)
 @Story(MULTIPART)
 public class HttpPartDispositionTestCase extends AbstractHttpClientTestCase {
 

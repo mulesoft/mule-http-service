@@ -12,7 +12,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.core.api.util.IOUtils;
@@ -30,13 +29,11 @@ import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
 
 import io.qameta.allure.Description;
-import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import io.qameta.allure.junit4.DisplayName;
 import org.junit.Before;
 import org.junit.Test;
 
-@Feature(HTTP_SERVICE)
 @Story(STREAMING)
 @DisplayName("Validates HTTP client behaviour against a streaming server.")
 public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {

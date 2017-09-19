@@ -7,8 +7,11 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.String.format;
+import static java.lang.String.valueOf;
+import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
 import static org.mule.runtime.core.api.util.UUID.getUUID;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.BOUNDARY;
@@ -19,11 +22,13 @@ import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
 import java.util.Collection;
+import java.util.Optional;
 
 import org.glassfish.grizzly.EmptyCompletionHandler;
 import org.glassfish.grizzly.WriteResult;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
+import org.glassfish.grizzly.http.Protocol;
 import org.slf4j.Logger;
 
 public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandler<WriteResult> {
@@ -52,9 +57,19 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
         responsePacketBuilder.header(CONTENT_TYPE, format(MULTIPART_CONTENT_TYPE_FORMAT, contentType, BOUNDARY, getUUID()));
       }
     }
+    boolean hasTransferEncoding = httpResponse.getHeaderValueIgnoreCase(TRANSFER_ENCODING) != null;
+    boolean hasContentLength = httpResponse.getHeaderValueIgnoreCase(CONTENT_LENGTH) != null;
+
+    // If there's no transfer type specified, check the entity length to prioritize content length transfer (unless it's 1.0)
+    Optional<Long> length = httpResponse.getEntity().getLength();
+    Protocol protocol = sourceRequest.getProtocol();
+    if (!hasTransferEncoding && !hasContentLength && length.isPresent() && !protocol.equals(HTTP_1_0)) {
+      responsePacketBuilder.header(CONTENT_LENGTH, valueOf(length.get()));
+    }
+
     HttpResponsePacket httpResponsePacket = responsePacketBuilder.build();
-    httpResponsePacket.setProtocol(sourceRequest.getProtocol());
-    if (httpResponse.getHeaderValueIgnoreCase(TRANSFER_ENCODING) != null) {
+    httpResponsePacket.setProtocol(protocol);
+    if (hasTransferEncoding) {
       httpResponsePacket.setChunked(true);
     }
 
