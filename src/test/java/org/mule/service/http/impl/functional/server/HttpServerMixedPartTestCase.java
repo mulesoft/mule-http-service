@@ -13,7 +13,6 @@ import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
@@ -24,7 +23,6 @@ import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
 
-import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -35,7 +33,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-@Feature(HTTP_SERVICE)
 @Story(MULTIPART)
 public class HttpServerMixedPartTestCase extends AbstractHttpServiceTestCase {
 

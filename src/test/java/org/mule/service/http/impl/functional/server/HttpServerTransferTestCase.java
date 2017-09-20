@@ -16,7 +16,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CHUNKED;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.TRANSFER_TYPE;
 import org.mule.runtime.api.util.Pair;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -35,7 +35,7 @@ import org.mule.tck.junit4.rule.DynamicPort;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
-import io.qameta.allure.Feature;
+import io.qameta.allure.Story;
 import org.apache.http.Header;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -48,7 +48,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-@Feature(HTTP_SERVICE)
+@Story(TRANSFER_TYPE)
 public abstract class HttpServerTransferTestCase extends AbstractHttpServiceTestCase {
 
   protected static final String DATA = "My awesome data";

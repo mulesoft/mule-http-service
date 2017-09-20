@@ -37,7 +37,7 @@ public abstract class AbstractHttpClientTestCase extends AbstractHttpServiceTest
   public void setUp() throws Exception {
     server = service.getServerFactory().create(getServerConfigurationBuilder().build());
     server.start();
-    server.addRequestHandler("/",
+    server.addRequestHandler("/*",
                              (requestContext, responseCallback) -> responseCallback
                                  .responseReady(setUpHttpResponse(requestContext.getRequest()),
                                                 new IgnoreResponseStatusCallback()));

@@ -23,10 +23,10 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
-import org.junit.Before;
-import org.junit.Test;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
+import org.junit.Before;
+import org.junit.Test;
 
 @Feature(HTTP_SERVICE)
 @Story("Entities")
@@ -105,4 +105,14 @@ public class StreamedMultipartHttpEntityTestCase extends AbstractMuleTestCase {
     assertThat(part2.getFileName(), is(nullValue()));
     assertThat(IOUtils.toString(part2.getInputStream()), is("bar"));
   }
+
+  @Test
+  public void hasNoSizeUnlessSpecified() {
+    assertThat(entity.getLength().isPresent(), is(false));
+    HttpEntity specifiedEntity = new StreamedMultipartHttpEntity(new ByteArrayInputStream(MULTIPART_CONTENT.getBytes()),
+                                                                 "multipart/form-data; boundary=the-boundary",
+                                                                 (long) MULTIPART_CONTENT.length());
+    assertThat(specifiedEntity.getLength().get(), is((long) MULTIPART_CONTENT.length()));
+  }
+
 }
