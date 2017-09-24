@@ -131,12 +131,12 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
           this.body = new StreamedMultipartHttpEntity(requestContent, contentTypeValue);
         }
       } else {
-        if (isTransferEncodingChunked) {
-          this.body = new InputStreamHttpEntity(requestContent);
-        } else if (contentLength >= 0) {
+        if (contentLength > 0) {
           this.body = new InputStreamHttpEntity(requestContent, contentLength);
-        } else {
+        } else if (contentLength == 0) {
           this.body = new EmptyHttpEntity();
+        } else {
+          this.body = new InputStreamHttpEntity(requestContent);
         }
       }
     }

@@ -36,6 +36,7 @@ import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
 import org.mule.runtime.http.api.client.auth.HttpAuthenticationType;
 import org.mule.runtime.http.api.client.proxy.ProxyConfig;
+import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
@@ -380,8 +381,10 @@ public class GrizzlyHttpClient implements HttpClient {
         return new StreamedMultipartHttpEntity(stream, contentType);
       }
     } else {
-      if (contentLengthAsLong >= 0) {
+      if (contentLengthAsLong > 0) {
         return new InputStreamHttpEntity(stream, contentLengthAsLong);
+      } else if (contentLengthAsLong == 0) {
+        return new EmptyHttpEntity();
       } else {
         return new InputStreamHttpEntity(stream);
       }
