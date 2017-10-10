@@ -7,6 +7,7 @@
 
 package org.mule.service.http;
 
+import static java.lang.Integer.MAX_VALUE;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
 
@@ -20,12 +21,14 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.SimpleUnitTestSupportSchedulerService;
 
+import org.junit.rules.ExternalResource;
+
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
-
-import org.junit.rules.ExternalResource;
 
 /**
  * Defines a {@link org.mule.runtime.http.api.client.HttpClient} using a default implementation of {@link HttpService}
@@ -81,13 +84,13 @@ public class TestHttpClient extends ExternalResource implements org.mule.runtime
   public HttpResponse send(HttpRequest request, int responseTimeout, boolean followRedirects,
                            HttpAuthentication authentication)
       throws IOException, TimeoutException {
-    return httpClient.send(request, responseTimeout, followRedirects, authentication);
+    return httpClient.send(request, isDebugging() ? MAX_VALUE : responseTimeout, followRedirects, authentication);
   }
 
   @Override
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, int responseTimeout, boolean followRedirects,
                                                    HttpAuthentication authentication) {
-    return httpClient.sendAsync(request, responseTimeout, followRedirects, authentication);
+    return httpClient.sendAsync(request, isDebugging() ? MAX_VALUE : responseTimeout, followRedirects, authentication);
   }
 
   public static class Builder {
@@ -155,5 +158,30 @@ public class TestHttpClient extends ExternalResource implements org.mule.runtime
 
       return httpClient;
     }
+  }
+
+  /**
+   * Parses arguments passed to the runtime environment for debug flags
+   * <p>
+   * Options specified in:
+   * <ul>
+   * <li><a href="http://docs.oracle.com/javase/6/docs/technotes/guides/jpda/conninv.html#Invocation" >javase-6</a></li>
+   * <li><a href="http://docs.oracle.com/javase/7/docs/technotes/guides/jpda/conninv.html#Invocation" >javase-7</a></li>
+   * <li><a href="http://docs.oracle.com/javase/8/docs/technotes/guides/jpda/conninv.html#Invocation" >javase-8</a></li>
+   *
+   *
+   * @param arguments the arguments passed to the runtime environment, usually this will be
+   *        {@link RuntimeMXBean#getInputArguments()}
+   * @return true if the current JVM was started in debug mode, false otherwise.
+   */
+  private static boolean isDebugging() {
+    for (final String argument : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
+      if ("-Xdebug".equals(argument)) {
+        return true;
+      } else if (argument.startsWith("-agentlib:jdwp")) {
+        return true;
+      }
+    }
+    return false;
   }
 }
