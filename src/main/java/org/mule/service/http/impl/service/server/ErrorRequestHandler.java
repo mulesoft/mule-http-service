@@ -7,6 +7,8 @@
 package org.mule.service.http.impl.service.server;
 
 import static java.lang.String.format;
+import static org.mule.runtime.api.metadata.MediaType.TEXT;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
@@ -38,7 +40,8 @@ public class ErrorRequestHandler implements RequestHandler {
     String resolvedEntity = getResolvedEntity(requestContext.getRequest().getUri());
     responseCallback.responseReady(HttpResponse.builder()
         .statusCode(statusCode).reasonPhrase(reasonPhrase)
-        .entity(new InputStreamHttpEntity(new ByteArrayInputStream(resolvedEntity.getBytes()))).build(),
+        .entity(new InputStreamHttpEntity(new ByteArrayInputStream(resolvedEntity.getBytes())))
+        .addHeader(CONTENT_TYPE, TEXT.toRfcString()).build(),
                                    new ResponseStatusCallback() {
 
                                      @Override
