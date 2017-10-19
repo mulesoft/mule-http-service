@@ -592,7 +592,7 @@ public class GrizzlyHttpClient implements HttpClient {
             logger.warn("HTTP response stream was closed before being read but response streams must always be consumed.");
           }
         } else {
-          logger.warn("Error handling HTTP response stream.");
+          logger.warn("Error handling HTTP response stream. Set log level to DEBUG for details.");
         }
         logger.debug("HTTP response stream error was ", t);
       }
