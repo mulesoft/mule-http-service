@@ -26,10 +26,10 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
-import org.mule.runtime.api.tls.TlsContextFactory;
-import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
+import org.mule.runtime.api.tls.TlsContextFactory;
+import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
@@ -528,7 +528,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
     @Override
     public void onThrowable(Throwable t) {
-      logger.warn("Error handling HTTP response.", t);
+      logger.debug("Error handling HTTP response.", t);
       Exception exception;
       if (t instanceof TimeoutException) {
         exception = (TimeoutException) t;
@@ -560,6 +560,7 @@ public class GrizzlyHttpClient implements HttpClient {
     private final CompletableFuture<HttpResponse> future;
     private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
     private final AtomicBoolean handled = new AtomicBoolean(false);
+    private AtomicBoolean warned = new AtomicBoolean(false);
 
     public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, PipedOutputStream output)
         throws IOException {
@@ -573,7 +574,7 @@ public class GrizzlyHttpClient implements HttpClient {
       try {
         closeOut();
       } catch (IOException e) {
-        logger.warn("Error closing HTTP response stream: ", e);
+        logger.debug("Error closing HTTP response stream", e);
       }
       if (!handled.getAndSet(true)) {
         Exception exception;
@@ -586,7 +587,14 @@ public class GrizzlyHttpClient implements HttpClient {
         }
         future.completeExceptionally(exception);
       } else {
-        logger.warn("Error handling HTTP response stream: ", t);
+        if (t.getMessage() != null && t.getMessage().contains("Pipe closed")) {
+          if (!warned.getAndSet(true)) {
+            logger.warn("HTTP response stream was closed before being read but response streams must always be consumed.");
+          }
+        } else {
+          logger.warn("Error handling HTTP response stream.");
+        }
+        logger.debug("HTTP response stream error was ", t);
       }
     }
 
