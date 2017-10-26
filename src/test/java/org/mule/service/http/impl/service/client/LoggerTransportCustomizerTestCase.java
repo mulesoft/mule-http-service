@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.service.http.impl.service.HttpMessageLogger;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
 

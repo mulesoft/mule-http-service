@@ -7,12 +7,12 @@
 package org.mule.service.http.impl.functional.client;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
+import static org.mule.service.http.impl.functional.FillAndWaitStream.RESPONSE_SIZE;
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.api.util.concurrent.Latch;
@@ -21,11 +21,11 @@ import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.service.http.impl.functional.FillAndWaitStream;
 import org.mule.tck.probe.PollingProber;
 import org.mule.tck.probe.Probe;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
 
 import io.qameta.allure.Description;
@@ -38,9 +38,6 @@ import org.junit.Test;
 @DisplayName("Validates HTTP client behaviour against a streaming server.")
 public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
-  // Use a payload bigger than the default server and client buffer sizes (8 and 10 KB, respectively)
-  private static final int RESPONSE_SIZE = 14 * 1024;
-  private static final int WAIT_TIMEOUT = 5000;
   private static final int RESPONSE_TIMEOUT = 3000;
   private static final int TIMEOUT_MILLIS = 1000;
   private static final int POLL_DELAY_MILLIS = 200;
@@ -154,31 +151,8 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     return HttpResponse.builder()
         .statusCode(OK.getStatusCode())
         .reasonPhrase(OK.getReasonPhrase())
-        .entity(new InputStreamHttpEntity(new FillAndWaitStream()))
+        .entity(new InputStreamHttpEntity(new FillAndWaitStream(latch)))
         .build();
-  }
-
-  /**
-   * Custom {@link InputStream} that will fill the internal buffers and over to a specific size, then wait before completing.
-   */
-  private class FillAndWaitStream extends InputStream {
-
-    private int sent = 0;
-
-    @Override
-    public int read() throws IOException {
-      if (sent < RESPONSE_SIZE) {
-        sent++;
-        return 42;
-      } else {
-        try {
-          latch.await(WAIT_TIMEOUT, MILLISECONDS);
-        } catch (InterruptedException e) {
-          // Do nothing
-        }
-        return -1;
-      }
-    }
   }
 
 
