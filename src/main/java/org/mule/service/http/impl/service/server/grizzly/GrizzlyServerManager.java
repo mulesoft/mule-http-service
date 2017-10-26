@@ -18,7 +18,7 @@ import static org.mule.runtime.core.api.config.MuleProperties.SYSTEM_PROPERTY_PR
 import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
-import static org.mule.service.http.impl.service.client.HttpMessageLogger.LoggerType.LISTENER;
+import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
@@ -32,7 +32,7 @@ import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
-import org.mule.service.http.impl.service.client.HttpMessageLogger;
+import org.mule.service.http.impl.service.HttpMessageLogger;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.HttpServerManager;
 import org.mule.service.http.impl.service.server.ServerIdentifier;

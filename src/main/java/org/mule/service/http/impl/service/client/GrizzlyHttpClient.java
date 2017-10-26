@@ -12,16 +12,13 @@ import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderCon
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
-import static java.lang.Long.parseLong;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
-import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
@@ -36,24 +33,17 @@ import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
 import org.mule.runtime.http.api.client.auth.HttpAuthenticationType;
 import org.mule.runtime.http.api.client.proxy.ProxyConfig;
-import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
-import org.mule.runtime.http.api.domain.entity.HttpEntity;
-import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
-import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
+import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
+import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
 
-import com.ning.http.client.AsyncCompletionHandler;
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.BodyDeferringAsyncHandler;
-import com.ning.http.client.HttpResponseBodyPart;
-import com.ning.http.client.HttpResponseHeaders;
-import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.ListenableFuture;
 import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Realm;
@@ -66,8 +56,6 @@ import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.InetAddress;
@@ -75,7 +63,6 @@ import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.ssl.SSLContext;
 
@@ -88,19 +75,19 @@ public class GrizzlyHttpClient implements HttpClient {
       getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
                  max(getRuntime().availableProcessors(), 2));
   private static final int MAX_CONNECTION_LIFETIME = 30 * 60 * 1000;
+  public static final String HOST_SEPARATOR = ",";
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
   private final TlsContextFactory tlsContextFactory;
-
   private final ProxyConfig proxyConfig;
   private final TcpClientSocketProperties clientSocketProperties;
   private final int maxConnections;
   private final boolean usePersistentConnections;
   private final int connectionIdleTimeout;
   private final boolean streamingEnabled;
-  private final int responseBufferSize;
 
+  private final int responseBufferSize;
   private final String name;
   private Scheduler selectorScheduler;
   private Scheduler workerScheduler;
@@ -108,9 +95,10 @@ public class GrizzlyHttpClient implements HttpClient {
   private final SchedulerConfig schedulersConfig;
   private AsyncHttpClient asyncHttpClient;
   private SSLContext sslContext;
-  private final TlsContextFactory defaultTlsContextFactory = TlsContextFactory.builder().buildDefault();
 
-  public static final String HOST_SEPARATOR = ",";
+  private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
+
+  private final TlsContextFactory defaultTlsContextFactory = TlsContextFactory.builder().buildDefault();
 
   public GrizzlyHttpClient(HttpClientConfiguration config, SchedulerService schedulerService, SchedulerConfig schedulersConfig) {
     this.tlsContextFactory = config.getTlsContextFactory();
@@ -283,7 +271,7 @@ public class GrizzlyHttpClient implements HttpClient {
     asyncHttpClient.executeRequest(grizzlyRequest, asyncHandler);
     try {
       Response response = asyncHandler.getResponse();
-      return createMuleResponse(response, inPipe);
+      return httpResponseCreator.create(response, inPipe);
     } catch (IOException e) {
       if (e.getCause() instanceof TimeoutException) {
         throw (TimeoutException) e.getCause();
@@ -317,7 +305,7 @@ public class GrizzlyHttpClient implements HttpClient {
         }
         response = future.get();
       }
-      return createMuleResponse(response, response.getResponseBodyAsStream());
+      return httpResponseCreator.create(response, response.getResponseBodyAsStream());
     } catch (InterruptedException e) {
       throw new IOException(e);
     } catch (ExecutionException e) {
@@ -338,7 +326,7 @@ public class GrizzlyHttpClient implements HttpClient {
     try {
       AsyncHandler<Response> asyncHandler;
       if (streamingEnabled) {
-        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, new PipedOutputStream());
+        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, new PipedOutputStream(), responseBufferSize);
       } else {
         asyncHandler = new ResponseAsyncHandler(future);
       }
@@ -349,46 +337,6 @@ public class GrizzlyHttpClient implements HttpClient {
       future.completeExceptionally(e);
     }
     return future;
-  }
-
-  private HttpResponse createMuleResponse(Response response, InputStream inputStream) throws IOException {
-    HttpResponseBuilder responseBuilder = HttpResponse.builder();
-    responseBuilder.statusCode(response.getStatusCode());
-    responseBuilder.reasonPhrase(response.getStatusText());
-    String contentType = response.getHeader(CONTENT_TYPE.toLowerCase());
-    String contentLength = response.getHeader(CONTENT_LENGTH.toLowerCase());
-    responseBuilder.entity(createEntity(inputStream, contentType, contentLength));
-
-    if (response.hasResponseHeaders()) {
-      for (String header : response.getHeaders().keySet()) {
-        for (String headerValue : response.getHeaders(header)) {
-          responseBuilder.addHeader(header, headerValue);
-        }
-      }
-    }
-    return responseBuilder.build();
-  }
-
-  private HttpEntity createEntity(InputStream stream, String contentType, String contentLength) {
-    Long contentLengthAsLong = -1L;
-    if (contentLength != null) {
-      contentLengthAsLong = parseLong(contentLength);
-    }
-    if (contentType != null && contentType.startsWith(MULTIPART_MIXED.getPrimaryType())) {
-      if (contentLengthAsLong >= 0) {
-        return new StreamedMultipartHttpEntity(stream, contentType, contentLengthAsLong);
-      } else {
-        return new StreamedMultipartHttpEntity(stream, contentType);
-      }
-    } else {
-      if (contentLengthAsLong > 0) {
-        return new InputStreamHttpEntity(stream, contentLengthAsLong);
-      } else if (contentLengthAsLong == 0) {
-        return new EmptyHttpEntity();
-      } else {
-        return new InputStreamHttpEntity(stream);
-      }
-    }
   }
 
   private Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
@@ -509,142 +457,5 @@ public class GrizzlyHttpClient implements HttpClient {
     selectorScheduler.stop();
   }
 
-  /**
-   * Non blocking handler which waits to load the whole response to memory before propagating it.
-   */
-  private class ResponseAsyncHandler extends AsyncCompletionHandler<Response> {
-
-    private final CompletableFuture<HttpResponse> future;
-
-    public ResponseAsyncHandler(CompletableFuture<HttpResponse> future) {
-      this.future = future;
-    }
-
-    @Override
-    public Response onCompleted(Response response) throws Exception {
-      future.complete(createMuleResponse(response, response.getResponseBodyAsStream()));
-      return null;
-    }
-
-    @Override
-    public void onThrowable(Throwable t) {
-      logger.debug("Error handling HTTP response.", t);
-      Exception exception;
-      if (t instanceof TimeoutException) {
-        exception = (TimeoutException) t;
-      } else if (t instanceof IOException) {
-        exception = (IOException) t;
-      } else {
-        exception = new IOException(t);
-      }
-      future.completeExceptionally(exception);
-    }
-  }
-
-
-  /**
-   * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives, propagating an
-   * {@link PipedInputStream} as soon as the response headers are parsed.
-   * <p/>
-   * Because of the internal buffer used to hold the arriving chunks, the response MUST be eventually read or the worker threads
-   * will block waiting to allocate them. Likewise, read/write speed differences could cause issues. The buffer size can be
-   * customized for these reason.
-   * <p/>
-   * To avoid deadlocks, a hand off to another thread MUST be performed before consuming the response.
-   */
-  private class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
-
-    private volatile Response response;
-    private final OutputStream output;
-    private final InputStream input;
-    private final CompletableFuture<HttpResponse> future;
-    private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
-    private final AtomicBoolean handled = new AtomicBoolean(false);
-    private AtomicBoolean warned = new AtomicBoolean(false);
-
-    public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, PipedOutputStream output)
-        throws IOException {
-      this.output = output;
-      this.future = future;
-      this.input = new PipedInputStream(output, responseBufferSize);
-    }
-
-    @Override
-    public void onThrowable(Throwable t) {
-      try {
-        closeOut();
-      } catch (IOException e) {
-        logger.debug("Error closing HTTP response stream", e);
-      }
-      if (!handled.getAndSet(true)) {
-        Exception exception;
-        if (t instanceof TimeoutException) {
-          exception = (TimeoutException) t;
-        } else if (t instanceof IOException) {
-          exception = (IOException) t;
-        } else {
-          exception = new IOException(t);
-        }
-        future.completeExceptionally(exception);
-      } else {
-        if (t.getMessage() != null && t.getMessage().contains("Pipe closed")) {
-          if (!warned.getAndSet(true)) {
-            logger.warn("HTTP response stream was closed before being read but response streams must always be consumed.");
-          }
-        } else {
-          logger.warn("Error handling HTTP response stream. Set log level to DEBUG for details.");
-        }
-        logger.debug("HTTP response stream error was ", t);
-      }
-    }
-
-    @Override
-    public STATE onStatusReceived(HttpResponseStatus responseStatus) throws Exception {
-      responseBuilder.reset();
-      responseBuilder.accumulate(responseStatus);
-      return STATE.CONTINUE;
-    }
-
-    @Override
-    public STATE onHeadersReceived(HttpResponseHeaders headers) throws Exception {
-      responseBuilder.accumulate(headers);
-      return STATE.CONTINUE;
-    }
-
-    @Override
-    public STATE onBodyPartReceived(HttpResponseBodyPart bodyPart) throws Exception {
-      // body arrived, can handle the partial response
-      handleIfNecessary();
-      bodyPart.writeTo(output);
-      return STATE.CONTINUE;
-    }
-
-    protected void closeOut() throws IOException {
-      try {
-        output.flush();
-      } finally {
-        output.close();
-      }
-    }
-
-    @Override
-    public Response onCompleted() throws IOException {
-      // there may have been no body, handle partial response
-      handleIfNecessary();
-      closeOut();
-      return null;
-    }
-
-    private void handleIfNecessary() {
-      if (!handled.getAndSet(true)) {
-        response = responseBuilder.build();
-        try {
-          future.complete(createMuleResponse(response, input));
-        } catch (IOException e) {
-          future.completeExceptionally(e);
-        }
-      }
-    }
-  }
 
 }

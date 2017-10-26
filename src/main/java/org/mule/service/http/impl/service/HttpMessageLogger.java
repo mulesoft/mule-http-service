@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.service.http.impl.service.client;
+package org.mule.service.http.impl.service;
 
 import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 

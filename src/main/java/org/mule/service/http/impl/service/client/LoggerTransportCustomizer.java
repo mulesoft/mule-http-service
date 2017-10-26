@@ -7,9 +7,10 @@
 package org.mule.service.http.impl.service.client;
 
 import static java.lang.Thread.currentThread;
-import static org.mule.service.http.impl.service.client.HttpMessageLogger.LoggerType.REQUESTER;
+import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.REQUESTER;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.service.http.impl.service.HttpMessageLogger;
 
 import com.ning.http.client.providers.grizzly.TransportCustomizer;
 
