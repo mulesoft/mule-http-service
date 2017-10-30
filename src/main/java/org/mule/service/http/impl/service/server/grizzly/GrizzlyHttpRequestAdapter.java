@@ -12,6 +12,8 @@ import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
+
+import com.ning.http.client.uri.Uri;
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
@@ -22,6 +24,7 @@ import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.util.Collection;
 
 import org.glassfish.grizzly.filterchain.FilterChainContext;
@@ -37,7 +40,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   private final long contentLength;
   private final boolean isTransferEncodingChunked;
   private HttpProtocol protocol;
-  private String uri;
+  private URI uri;
   private String path;
   private String method;
   private HttpEntity body;
@@ -71,8 +74,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   @Override
   public String getPath() {
     if (this.path == null) {
-      String uri = getUri();
-      this.path = HttpParser.extractPath(uri);
+      this.path = requestPacket.getRequestURI();
     }
     return this.path;
   }
@@ -152,10 +154,11 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   }
 
   @Override
-  public String getUri() {
+  public URI getUri() {
     if (this.uri == null) {
-      this.uri =
-          requestPacket.getRequestURI() + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString());
+      this.uri = URI.create(
+                            requestPacket.getRequestURI()
+                                + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
     }
     return this.uri;
   }
