@@ -35,6 +35,8 @@ import org.glassfish.grizzly.utils.BufferInputStream;
 
 public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRequest {
 
+  private static final String PROTOCOL = "http";
+
   private final HttpRequestPacket requestPacket;
   private final InputStream requestContent;
   private final long contentLength;
@@ -156,7 +158,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   @Override
   public URI getUri() {
     if (this.uri == null) {
-      this.uri = URI.create("http://" + requestPacket.getLocalName() + ":" + requestPacket.getLocalPort() +
+      this.uri = URI.create(PROTOCOL + "://" + requestPacket.getLocalName() + ":" + requestPacket.getLocalPort() +
           requestPacket.getRequestURI()
           + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
     }
