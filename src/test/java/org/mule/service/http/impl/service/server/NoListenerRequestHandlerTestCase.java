@@ -18,7 +18,7 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mule.service.http.impl.service.server.NoListenerRequestHandler.NO_LISTENER_ENTITY_FORMAT;
+import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
 
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
@@ -31,9 +31,6 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.net.URI;
-
-
 public class NoListenerRequestHandlerTestCase extends AbstractMuleTestCase {
 
   private final static String TEST_REQUEST_INVALID_URI = "http://localhost:8081/<script>alert('hello');</script>";
@@ -44,7 +41,7 @@ public class NoListenerRequestHandlerTestCase extends AbstractMuleTestCase {
   @Before
   public void setUp() throws Exception {
     noListenerRequestHandler = NoListenerRequestHandler.getInstance();
-    when(context.getRequest().getUri()).then(obj -> URI.create(TEST_REQUEST_INVALID_URI));
+    when(context.getRequest().getUri()).then(obj -> getUriFromString(TEST_REQUEST_INVALID_URI));
   }
 
   @Test
