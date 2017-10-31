@@ -9,6 +9,7 @@ package org.mule.service.http.impl.service.server;
 import static java.lang.String.format;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
@@ -37,7 +38,12 @@ public class ErrorRequestHandler implements RequestHandler {
 
   @Override
   public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
-    String resolvedEntity = getResolvedEntity(requestContext.getRequest().getUri().toString());
+    String resolvedEntity;
+    try {
+      resolvedEntity = getResolvedEntity(requestContext.getRequest().getUri().toString());
+    } catch (IllegalArgumentException e) {
+      resolvedEntity = getResolvedEntity(requestContext.getRequest().getPath());
+    }
     responseCallback.responseReady(HttpResponse.builder()
         .statusCode(statusCode).reasonPhrase(reasonPhrase)
         .entity(new InputStreamHttpEntity(new ByteArrayInputStream(resolvedEntity.getBytes())))
