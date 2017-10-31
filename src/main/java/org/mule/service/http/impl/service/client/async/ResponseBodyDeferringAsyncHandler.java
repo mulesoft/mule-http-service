@@ -8,8 +8,12 @@ package org.mule.service.http.impl.service.client.async;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
+
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
@@ -26,9 +30,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives, propagating an
  * {@link PipedInputStream} as soon as the response headers are parsed.
@@ -43,7 +44,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
 
-  private final Logger logger = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
 
   private volatile Response response;
   private final OutputStream output;
