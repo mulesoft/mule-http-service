@@ -73,12 +73,14 @@ public class HttpServerErrorRequestsTestCase extends AbstractHttpServiceTestCase
 
   @Test
   public void methodNotAllowed() throws Exception {
-    verifyErrorResponse(new HttpPost(), "test", METHOD_NOT_ALLOWED, format("Method not allowed for endpoint: http://localhost:%s/test", port.getValue()));
+    verifyErrorResponse(new HttpPost(), "test", METHOD_NOT_ALLOWED,
+                        format("Method not allowed for endpoint: http://localhost:%s/test", port.getValue()));
   }
 
   @Test
   public void notFound() throws Exception {
-    verifyErrorResponse(new HttpGet(), "wat", NOT_FOUND, format("No listener for endpoint: http://localhost:%s/wat", port.getValue()));
+    verifyErrorResponse(new HttpGet(), "wat", NOT_FOUND,
+                        format("No listener for endpoint: http://localhost:%s/wat", port.getValue()));
   }
 
   private void verifyErrorResponse(HttpRequestBase httpRequest, String path, HttpStatus expectedStatus, String expectedBody)
