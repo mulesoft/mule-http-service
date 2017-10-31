@@ -400,8 +400,7 @@ public class GrizzlyHttpClient implements HttpClient {
       builder.setRequestTimeout(responseTimeout);
     });
     URI uri = request.getUri();
-    reqBuilder.setUri(new Uri(uri.getScheme(), uri.getUserInfo(), uri.getHost(), uri.getPort(), uri.getPath(), uri.getQuery()));
-
+    reqBuilder.setUri(new Uri(uri.getScheme(), uri.getRawUserInfo(), uri.getHost(), uri.getPort(), uri.getRawPath(), uri.getRawQuery()));
     return reqBuilder.build();
   }
 
