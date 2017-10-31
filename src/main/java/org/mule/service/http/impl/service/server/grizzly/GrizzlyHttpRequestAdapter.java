@@ -156,9 +156,9 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   @Override
   public URI getUri() {
     if (this.uri == null) {
-      this.uri = URI.create(
-                            requestPacket.getRequestURI()
-                                + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
+      this.uri = URI.create("http://" + requestPacket.getLocalName() + ":" + requestPacket.getLocalPort() +
+          requestPacket.getRequestURI()
+          + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
     }
     return this.uri;
   }
