@@ -12,6 +12,7 @@ import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
+import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
 
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.domain.HttpProtocol;
@@ -158,10 +159,9 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   @Override
   public URI getUri() {
     if (this.uri == null) {
-      this.uri = UriCache.getInstance()
-          .createUriFromString(PROTOCOL + "://" + requestPacket.getLocalName() + ":" + requestPacket.getLocalPort()
-              + requestPacket.getRequestURI()
-              + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
+      this.uri = getUriFromString(PROTOCOL + "://" + requestPacket.getLocalName() + ":" + requestPacket.getLocalPort()
+          + requestPacket.getRequestURI()
+          + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
     }
     return this.uri;
   }

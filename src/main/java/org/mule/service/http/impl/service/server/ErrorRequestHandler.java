@@ -18,6 +18,7 @@ import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.ByteArrayInputStream;
+import java.net.URI;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,9 @@ public class ErrorRequestHandler implements RequestHandler {
   public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
     String resolvedEntity;
     try {
-      resolvedEntity = getResolvedEntity(requestContext.getRequest().getUri().toString());
+      URI uri = requestContext.getRequest().getUri();
+      String query = uri.getQuery() != null ? "?" + uri.getQuery() : "";
+      resolvedEntity = getResolvedEntity(uri.getPath() + query);
     } catch (IllegalArgumentException e) {
       resolvedEntity = getResolvedEntity(requestContext.getRequest().getPath());
     }
