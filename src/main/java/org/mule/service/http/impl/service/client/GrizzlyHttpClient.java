@@ -21,6 +21,8 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
+
+import com.ning.http.client.uri.Uri;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -59,6 +61,7 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.InetAddress;
+import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -396,9 +399,9 @@ public class GrizzlyHttpClient implements HttpClient {
       // if the maxConnections attribute is configured in the requester.
       builder.setRequestTimeout(responseTimeout);
     });
-
-    reqBuilder.setUrl(request.getUri());
-
+    URI uri = request.getUri();
+    reqBuilder.setUri(new Uri(uri.getScheme(), uri.getRawUserInfo(), uri.getHost(), uri.getPort(), uri.getRawPath(),
+                              uri.getRawQuery()));
     return reqBuilder.build();
   }
 

@@ -10,13 +10,15 @@ package org.mule.service.http.impl.service.server;
 import static java.lang.String.format;
 import static org.apache.commons.text.StringEscapeUtils.escapeHtml4;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.contains;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mule.service.http.impl.service.server.NoListenerRequestHandler.NO_LISTENER_ENTITY_FORMAT;
+import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
 
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
@@ -29,7 +31,6 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.junit.Before;
 import org.junit.Test;
 
-
 public class NoListenerRequestHandlerTestCase extends AbstractMuleTestCase {
 
   private final static String TEST_REQUEST_INVALID_URI = "http://localhost:8081/<script>alert('hello');</script>";
@@ -40,7 +41,7 @@ public class NoListenerRequestHandlerTestCase extends AbstractMuleTestCase {
   @Before
   public void setUp() throws Exception {
     noListenerRequestHandler = NoListenerRequestHandler.getInstance();
-    when(context.getRequest().getUri()).thenReturn(TEST_REQUEST_INVALID_URI);
+    when(context.getRequest().getUri()).then(obj -> getUriFromString(TEST_REQUEST_INVALID_URI));
   }
 
   @Test
@@ -54,6 +55,6 @@ public class NoListenerRequestHandlerTestCase extends AbstractMuleTestCase {
       return null;
     }).when(responseReadyCallback).responseReady(any(HttpResponse.class), any(ResponseStatusCallback.class));
     noListenerRequestHandler.handleRequest(context, responseReadyCallback);
-    assertThat(result[0], is(format(NO_LISTENER_ENTITY_FORMAT, escapeHtml4(TEST_REQUEST_INVALID_URI))));
+    assertThat(result[0], not(contains("<script>alert('hello');</script>")));
   }
 }
