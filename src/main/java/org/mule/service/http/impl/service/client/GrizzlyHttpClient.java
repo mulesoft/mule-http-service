@@ -420,7 +420,7 @@ public class GrizzlyHttpClient implements HttpClient {
   protected void populateHeaders(HttpRequest request, RequestBuilder builder) {
     boolean hasTransferEncoding = false;
     boolean hasContentLength = false;
-    boolean hasCconnection = false;
+    boolean hasConnection = false;
 
     for (String headerName : request.getHeaderNames()) {
       if (!hasTransferEncoding && headerName.equalsIgnoreCase(TRANSFER_ENCODING)) {
@@ -429,8 +429,8 @@ public class GrizzlyHttpClient implements HttpClient {
       if (!hasContentLength && headerName.equalsIgnoreCase(CONTENT_LENGTH)) {
         hasContentLength = true;
       }
-      if (!hasContentLength && headerName.equalsIgnoreCase(CONTENT_LENGTH)) {
-        hasContentLength = true;
+      if (!hasContentLength && headerName.equalsIgnoreCase(CONNECTION)) {
+        hasConnection = true;
       }
 
       for (String headerValue : request.getHeaderValues(headerName)) {
@@ -447,7 +447,7 @@ public class GrizzlyHttpClient implements HttpClient {
     // add "Connection: keep-alive" otherwise. (https://github.com/AsyncHttpClient/async-http-client/issues/885)
 
     if (!usePersistentConnections) {
-      if (hasCconnection && logger.isDebugEnabled() && !CLOSE.equals(request.getHeaderValueIgnoreCase(CONNECTION))) {
+      if (hasConnection && logger.isDebugEnabled() && !CLOSE.equals(request.getHeaderValueIgnoreCase(CONNECTION))) {
         logger.debug("Persistent connections are disabled in the HTTP requester configuration, but the request already "
             + "contains a Connection header with value {}. This header will be ignored, and a Connection: close header "
             + "will be sent instead.", request.getHeaderValueIgnoreCase(CONNECTION));
