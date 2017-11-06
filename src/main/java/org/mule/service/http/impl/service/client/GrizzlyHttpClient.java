@@ -22,7 +22,6 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 
-import com.ning.http.client.uri.Uri;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -42,6 +41,9 @@ import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
@@ -56,6 +58,7 @@ import com.ning.http.client.generators.InputStreamBodyGenerator;
 import com.ning.http.client.multipart.ByteArrayPart;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
+import com.ning.http.client.uri.Uri;
 
 import java.io.IOException;
 import java.io.PipedInputStream;
@@ -68,9 +71,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
@@ -418,16 +418,28 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   protected void populateHeaders(HttpRequest request, RequestBuilder builder) {
+    boolean hasTransferEncoding = false;
+    boolean hasContentLength = false;
+    boolean hasCconnection = false;
+
     for (String headerName : request.getHeaderNames()) {
+      if (!hasTransferEncoding && headerName.equalsIgnoreCase(TRANSFER_ENCODING)) {
+        hasTransferEncoding = true;
+      }
+      if (!hasContentLength && headerName.equalsIgnoreCase(CONTENT_LENGTH)) {
+        hasContentLength = true;
+      }
+      if (!hasContentLength && headerName.equalsIgnoreCase(CONTENT_LENGTH)) {
+        hasContentLength = true;
+      }
+
       for (String headerValue : request.getHeaderValues(headerName)) {
         builder.addHeader(headerName, headerValue);
       }
     }
 
     // If there's no transfer type specified, check the entity length to prioritize content length transfer
-    boolean hasNoTransferEncoding = request.getHeaderValueIgnoreCase(TRANSFER_ENCODING) == null;
-    boolean hasNoContentLength = request.getHeaderValueIgnoreCase(CONTENT_LENGTH) == null;
-    if (hasNoTransferEncoding && hasNoContentLength && request.getEntity().getLength().isPresent()) {
+    if (!hasTransferEncoding && !hasContentLength && request.getEntity().getLength().isPresent()) {
       builder.addHeader(CONTENT_LENGTH, valueOf(request.getEntity().getLength().get()));
     }
 
@@ -435,11 +447,10 @@ public class GrizzlyHttpClient implements HttpClient {
     // add "Connection: keep-alive" otherwise. (https://github.com/AsyncHttpClient/async-http-client/issues/885)
 
     if (!usePersistentConnections) {
-      String connectionHeaderValue = request.getHeaderValueIgnoreCase(CONNECTION);
-      if (connectionHeaderValue != null && !CLOSE.equals(connectionHeaderValue) && logger.isDebugEnabled()) {
+      if (hasCconnection && logger.isDebugEnabled() && !CLOSE.equals(request.getHeaderValueIgnoreCase(CONNECTION))) {
         logger.debug("Persistent connections are disabled in the HTTP requester configuration, but the request already "
             + "contains a Connection header with value {}. This header will be ignored, and a Connection: close header "
-            + "will be sent instead.", connectionHeaderValue);
+            + "will be sent instead.", request.getHeaderValueIgnoreCase(CONNECTION));
       }
       builder.setHeader(CONNECTION, CLOSE);
     }
