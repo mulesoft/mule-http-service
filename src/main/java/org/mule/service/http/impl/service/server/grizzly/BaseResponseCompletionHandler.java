@@ -15,14 +15,10 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.BOUNDARY;
-import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-
-import java.util.Collection;
-import java.util.Optional;
 
 import org.glassfish.grizzly.EmptyCompletionHandler;
 import org.glassfish.grizzly.WriteResult;
@@ -31,7 +27,11 @@ import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.http.Protocol;
 import org.slf4j.Logger;
 
+import java.util.Optional;
+
 public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandler<WriteResult> {
+
+  protected boolean hasContentLength = false;
 
   private static final Logger LOGGER = getLogger(BaseResponseCompletionHandler.class);
   private static final String MULTIPART_CONTENT_TYPE_FORMAT = "%s; %s=\"%s\"";
@@ -40,15 +40,29 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
     final HttpResponsePacket.Builder responsePacketBuilder = HttpResponsePacket.builder(sourceRequest)
         .status(httpResponse.getStatusCode()).reasonPhrase(httpResponse.getReasonPhrase());
 
-    final Collection<String> allHeaders = httpResponse.getHeaderNames();
-    for (String headerName : allHeaders) {
-      final Collection<String> values = httpResponse.getHeaderValues(headerName);
-      for (String value : values) {
+    String contentType = null;
+    boolean hasTransferEncoding = false;
+    boolean hasConnection = false;
+
+    for (String headerName : httpResponse.getHeaderNames()) {
+      if (contentType == null && headerName.equalsIgnoreCase(CONTENT_TYPE)) {
+        contentType = httpResponse.getHeaderValue(headerName);
+      }
+      if (!hasTransferEncoding && headerName.equalsIgnoreCase(TRANSFER_ENCODING)) {
+        hasTransferEncoding = true;
+      }
+      if (!hasConnection && headerName.equalsIgnoreCase(CONNECTION)) {
+        hasConnection = true;
+      }
+      if (!hasContentLength && headerName.equalsIgnoreCase(CONTENT_LENGTH)) {
+        hasContentLength = true;
+      }
+
+      for (String value : httpResponse.getHeaderValues(headerName)) {
         responsePacketBuilder.header(headerName, value);
       }
     }
     if (httpResponse.getEntity().isComposed()) {
-      String contentType = httpResponse.getHeaderValueIgnoreCase(CONTENT_TYPE);
       if (contentType == null) {
         responsePacketBuilder.header(CONTENT_TYPE,
                                      format(MULTIPART_CONTENT_TYPE_FORMAT, MULTIPART_FORM_DATA, BOUNDARY, getUUID()));
@@ -57,8 +71,6 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
         responsePacketBuilder.header(CONTENT_TYPE, format(MULTIPART_CONTENT_TYPE_FORMAT, contentType, BOUNDARY, getUUID()));
       }
     }
-    boolean hasTransferEncoding = httpResponse.getHeaderValueIgnoreCase(TRANSFER_ENCODING) != null;
-    boolean hasContentLength = httpResponse.getHeaderValueIgnoreCase(CONTENT_LENGTH) != null;
 
     // If there's no transfer type specified, check the entity length to prioritize content length transfer (unless it's 1.0)
     Optional<Long> length = httpResponse.getEntity().getLength();
@@ -73,7 +85,7 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
       httpResponsePacket.setChunked(true);
     }
 
-    if (CLOSE.equalsIgnoreCase(httpResponsePacket.getHeader(CONNECTION))) {
+    if (hasConnection) {
       httpResponsePacket.getProcessingState().setKeepAlive(false);
     }
     return httpResponsePacket;
@@ -87,7 +99,7 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
   @Override
   public void failed(Throwable throwable) {
     if (LOGGER.isWarnEnabled()) {
-      LOGGER.warn(String.format("HTTP response sending task failed with error: %s", throwable.getMessage()));
+      LOGGER.warn(format("HTTP response sending task failed with error: %s", throwable.getMessage()));
     }
   }
 

@@ -9,14 +9,12 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
-
-import java.io.IOException;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -27,6 +25,8 @@ import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.http.HttpServerFilter;
 import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.memory.Buffers;
+
+import java.io.IOException;
 
 /**
  * {@link org.glassfish.grizzly.CompletionHandler}, responsible for asynchronous response writing
@@ -71,8 +71,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
       }
       // Since we have the bytes, we'll try to default to Content-Length, unless it's HTTP 1.0 because we can only indicate
       // streaming by not having any headers set there
-      if (!protocol.equals(HTTP_1_0) && !httpResponsePacket.isChunked() &&
-          httpResponse.getHeaderValueIgnoreCase(CONTENT_LENGTH) == null) {
+      if (!protocol.equals(HTTP_1_0) && !httpResponsePacket.isChunked() && !hasContentLength) {
         httpResponsePacket.setContentLength(bytes.length);
       }
       grizzlyBuffer = Buffers.wrap(ctx.getMemoryManager(), bytes);
@@ -80,7 +79,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
 
     HttpContent.Builder contentBuilder = HttpContent.builder(httpResponsePacket);
     // For some reason, grizzly tries to send Transfer-Encoding: chunk even if the content-length is set.
-    if (httpResponse.getHeaderValueIgnoreCase(CONTENT_LENGTH) != null || httpResponsePacket.getContentLength() > 0) {
+    if (hasContentLength || httpResponsePacket.getContentLength() > 0) {
       contentBuilder.last(true);
     }
     return contentBuilder.content(grizzlyBuffer).build();
