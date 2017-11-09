@@ -7,7 +7,11 @@
 package org.mule.service.http.impl.service.client.async;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
+import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doReturn;
@@ -16,12 +20,17 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
+import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.tck.junit4.AbstractMuleTestCase;
+import org.mule.tck.probe.JUnitProbe;
+import org.mule.tck.probe.PollingProber;
 
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseBodyPart;
 
+import java.io.InputStream;
+import java.io.PipedInputStream;
 import java.util.concurrent.CompletableFuture;
 
 import io.qameta.allure.Feature;
@@ -34,55 +43,54 @@ import org.junit.Test;
 @Story(STREAMING)
 public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestCase {
 
-//  @Test
-//  public void doesNotStreamWhenPossible() throws Exception {
-//    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-//    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, 1024);
-//    handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
-//    GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
-//    when(bodyPart.isLast()).thenReturn(true);
-//    assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
-//
-//    Reference<InputStream> responseContent
-//
-//    future.whenComplete((response, exception) -> {
-//      InputStream content = response.getEntity().getContent();
-//      assertThat(content, instanceOf(BufferInputStream.class));
-//      try {
-//        content.close();
-//      } catch (IOException e) {
-//        // Do nothing
-//      }
-//      done.release();
-//    });
-//
-//    done.await(5000, MILLISECONDS);
-//  }
-//
-//  @Test
-//  public void streamsWhenRequired() throws Exception {
-//    Latch done = new Latch();
-//    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-//    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, 1024);
-//    handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
-//    GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
-//    when(bodyPart.isLast()).thenReturn(false);
-//
-//    assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
-//
-//    future.whenComplete((response, exception) -> {
-//      InputStream content = response.getEntity().getContent();
-//      assertThat(content, instanceOf(PipedInputStream.class));
-//      try {
-//        content.close();
-//      } catch (IOException e) {
-//        // Do nothing
-//      }
-//      done.release();
-//    });
-//
-//    done.await(5000, MILLISECONDS);
-//  }
+  private static final int PROBE_TIMEOUT = 5000;
+  private static final int POLL_DELAY = 300;
+
+  @Test
+  public void doesNotStreamWhenPossible() throws Exception {
+    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
+    Reference<InputStream> responseContent = new Reference<>();
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, 1024);
+    handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
+    GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
+    when(bodyPart.isLast()).thenReturn(true);
+    future.whenComplete((response, exception) -> responseContent.set(response.getEntity().getContent()));
+
+    assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
+
+    new PollingProber(PROBE_TIMEOUT, POLL_DELAY).check(new JUnitProbe() {
+
+      @Override
+      protected boolean test() throws Exception {
+        assertThat(responseContent.get(), not(nullValue()));
+        assertThat(responseContent.get(), not(instanceOf(PipedInputStream.class)));
+        return true;
+      }
+    });
+  }
+
+  @Test
+  public void streamsWhenRequired() throws Exception {
+    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
+    Reference<InputStream> responseContent = new Reference<>();
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, 1024);
+    handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
+    GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
+    when(bodyPart.isLast()).thenReturn(false);
+    future.whenComplete((response, exception) -> responseContent.set(response.getEntity().getContent()));
+
+    assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
+
+    new PollingProber(5000, 300).check(new JUnitProbe() {
+
+      @Override
+      protected boolean test() throws Exception {
+        assertThat(responseContent.get(), not(nullValue()));
+        assertThat(responseContent.get(), instanceOf(PipedInputStream.class));
+        return true;
+      }
+    });
+  }
 
   @Test
   public void abortsWhenPipeIsClosed() throws Exception {
