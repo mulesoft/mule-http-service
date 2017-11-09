@@ -78,9 +78,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
-  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int bufferSize) throws IOException {
+  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize) throws IOException {
     this.future = future;
-    this.bufferSize = bufferSize;
+    this.bufferSize = userDefinedBufferSize;
   }
 
   @Override
@@ -120,7 +120,10 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   @Override
   public STATE onHeadersReceived(HttpResponseHeaders headers) throws Exception {
     responseBuilder.accumulate(headers);
-    calculateBufferSize(headers);
+    if (bufferSize < 0) {
+      // If user hasn't configured a buffer size (default) then calculate it.
+      calculateBufferSize(headers);
+    }
     return CONTINUE;
   }
 
