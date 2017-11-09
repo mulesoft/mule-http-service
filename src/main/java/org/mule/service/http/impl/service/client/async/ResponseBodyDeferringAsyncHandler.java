@@ -36,6 +36,7 @@ import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.Response;
+import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,10 +69,10 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   static {
     try {
-      responseField = HttpResponseHeaders.class.getDeclaredField("response");
+      responseField = GrizzlyResponseHeaders.class.getDeclaredField("response");
       responseField.setAccessible(true);
     } catch (Throwable e) {
-      logger.warn("Unable to use reflection to access connection buffer size to optimize streaming.");
+      logger.warn("Unable to use reflection to access connection buffer size to optimize streaming.", e);
       // eat it
     }
   }
@@ -129,7 +130,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     String contentLength = headers.getHeaders().get(CONTENT_LENGTH).get(0);
     if (!isEmpty(contentLength) && headers.getHeaders().get(TRANSFER_ENCODING).isEmpty()) {
       int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
-      if (responseField != null) {
+      if (responseField != null && headers instanceof GrizzlyResponseHeaders) {
         maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
       }
       bufferSize = min(maxBufferSize, valueOf(contentLength));
@@ -138,6 +139,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       // for now)
       bufferSize = KB.toBytes(32) + 10;
     }
+    logger.debug("Buffer size calculated as {}.", bufferSize);
   }
 
   @Override
