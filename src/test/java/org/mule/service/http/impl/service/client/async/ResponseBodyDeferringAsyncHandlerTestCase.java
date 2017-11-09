@@ -45,12 +45,13 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
   private static final int PROBE_TIMEOUT = 5000;
   private static final int POLL_DELAY = 300;
+  private static final int BUFFER_SIZE = 1024;
 
   @Test
   public void doesNotStreamWhenPossible() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     Reference<InputStream> responseContent = new Reference<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, 1024);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(true);
@@ -73,7 +74,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   public void streamsWhenRequired() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     Reference<InputStream> responseContent = new Reference<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, 1024);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(false);
@@ -81,7 +82,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
     assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
 
-    new PollingProber(5000, 300).check(new JUnitProbe() {
+    new PollingProber(PROBE_TIMEOUT, POLL_DELAY).check(new JUnitProbe() {
 
       @Override
       protected boolean test() throws Exception {
@@ -95,7 +96,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   @Test
   public void abortsWhenPipeIsClosed() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, 1024);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = spy(new GrizzlyResponseBodyPart(mock(HttpContent.class), mock(Connection.class)));
     when(bodyPart.isLast()).thenReturn(false);

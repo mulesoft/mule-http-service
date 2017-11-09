@@ -8,6 +8,8 @@ package org.mule.service.http.impl.service.client.async;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
 
@@ -21,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,7 +50,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private volatile Response response;
   private final int bufferSize;
   private PipedOutputStream output;
-  private InputStream input;
+  private Optional<InputStream> input = empty();
   private final CompletableFuture<HttpResponse> future;
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
@@ -100,15 +103,18 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   @Override
   public STATE onBodyPartReceived(HttpResponseBodyPart bodyPart) throws Exception {
-    if (input == null && bodyPart.isLast()) {
-      responseBuilder.accumulate(bodyPart);
-      handleIfNecessary();
-      return CONTINUE;
-    } else if (input == null) {
-      output = new PipedOutputStream();
-      input = new PipedInputStream(output, bufferSize);
-    }
     // body arrived, can handle the partial response
+    if (!input.isPresent()) {
+      if (bodyPart.isLast()) {
+        // no need to stream response, we already have it all
+        responseBuilder.accumulate(bodyPart);
+        handleIfNecessary();
+        return CONTINUE;
+      } else {
+        output = new PipedOutputStream();
+        input = of(new PipedInputStream(output, bufferSize));
+      }
+    }
     handleIfNecessary();
     try {
       bodyPart.writeTo(output);
@@ -141,7 +147,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     if (!handled.getAndSet(true)) {
       response = responseBuilder.build();
       try {
-        future.complete(httpResponseCreator.create(response, input != null ? input : response.getResponseBodyAsStream()));
+        future.complete(httpResponseCreator.create(response, input.orElse(response.getResponseBodyAsStream())));
       } catch (IOException e) {
         future.completeExceptionally(e);
       }
