@@ -127,14 +127,14 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   private void calculateBufferSize(HttpResponseHeaders headers) throws IllegalAccessException {
-    String contentLength = headers.getHeaders().get(CONTENT_LENGTH).get(0);
-    if (!isEmpty(contentLength) && headers.getHeaders().get(TRANSFER_ENCODING).isEmpty()) {
+    String contentLength = headers.getHeaders().getFirstValue(CONTENT_LENGTH);
+    if (!isEmpty(contentLength) && isEmpty(headers.getHeaders().getFirstValue(TRANSFER_ENCODING))) {
       int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
       if (responseField != null && headers instanceof GrizzlyResponseHeaders) {
         maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
       }
       bufferSize = min(maxBufferSize, valueOf(contentLength));
-    } else if (!headers.getHeaders().get(TRANSFER_ENCODING).isEmpty()) {
+    } else if (isEmpty(headers.getHeaders().getFirstValue(TRANSFER_ENCODING))) {
       // Assume maximum 32Kb chunk size + 10 bytes for chunk size and new lines etc. (need to confirm is this is needed, but use
       // for now)
       bufferSize = KB.toBytes(32) + 10;
