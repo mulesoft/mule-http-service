@@ -8,12 +8,8 @@ package org.mule.service.http.impl.service.client.async;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
-
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
@@ -23,12 +19,14 @@ import com.ning.http.client.Response;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives, propagating an
@@ -47,18 +45,17 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private static final Logger logger = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
 
   private volatile Response response;
-  private final OutputStream output;
-  private final InputStream input;
+  private final int bufferSize;
+  private PipedOutputStream output;
+  private InputStream input;
   private final CompletableFuture<HttpResponse> future;
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
   private final AtomicBoolean handled = new AtomicBoolean(false);
 
-  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, PipedOutputStream output, int bufferSize)
-      throws IOException {
-    this.output = output;
+  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int bufferSize) throws IOException {
     this.future = future;
-    this.input = new PipedInputStream(output, bufferSize);
+    this.bufferSize = bufferSize;
   }
 
   @Override
@@ -103,6 +100,14 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   @Override
   public STATE onBodyPartReceived(HttpResponseBodyPart bodyPart) throws Exception {
+    if (input == null && bodyPart.isLast()) {
+      responseBuilder.accumulate(bodyPart);
+      handleIfNecessary();
+      return CONTINUE;
+    } else if (input == null) {
+      output = new PipedOutputStream();
+      input = new PipedInputStream(output, bufferSize);
+    }
     // body arrived, can handle the partial response
     handleIfNecessary();
     try {
@@ -115,10 +120,12 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   protected void closeOut() throws IOException {
-    try {
-      output.flush();
-    } finally {
-      output.close();
+    if (output != null) {
+      try {
+        output.flush();
+      } finally {
+        output.close();
+      }
     }
   }
 
@@ -134,7 +141,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     if (!handled.getAndSet(true)) {
       response = responseBuilder.build();
       try {
-        future.complete(httpResponseCreator.create(response, input));
+        future.complete(httpResponseCreator.create(response, input != null ? input : response.getResponseBodyAsStream()));
       } catch (IOException e) {
         future.completeExceptionally(e);
       }
