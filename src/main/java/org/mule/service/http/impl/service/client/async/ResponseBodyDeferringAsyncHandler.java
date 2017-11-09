@@ -12,6 +12,7 @@ import static java.lang.Integer.valueOf;
 import static java.lang.Math.min;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
@@ -35,6 +36,7 @@ import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.Response;
 import org.glassfish.grizzly.http.HttpResponsePacket;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +55,7 @@ import org.slf4j.LoggerFactory;
 public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
 
   private static final Logger logger = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
-  private static final int SIZE_17_KB = 17 * 1024;
+  private static final int SIZE_32_KB = 32 * 1024;
   private static final int SIZE_1_MB = 1024 * 1024;
   private static Field responseField;
 
@@ -70,7 +72,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     try {
       responseField = HttpResponseHeaders.class.getDeclaredField("response");
       responseField.setAccessible(true);
-    } catch (NoSuchFieldException e) {
+    } catch (Throwable e) {
+      logger.warn("Unable to use reflection to access connection buffer size to optimize streaming.");
       // eat it
     }
   }
@@ -124,12 +127,15 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private void calculateBufferSize(HttpResponseHeaders headers) throws IllegalAccessException {
     String contentLength = headers.getHeaders().get(CONTENT_LENGTH).get(0);
     if (!isEmpty(contentLength) && headers.getHeaders().get(TRANSFER_ENCODING).isEmpty()) {
-      int maxBufferSize = responseField != null
-          ? (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize())
-          : SIZE_1_MB;
-      bufferSize = contentLength != null ? min(maxBufferSize, valueOf(contentLength)) : maxBufferSize;
+      int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
+      if (responseField != null) {
+        maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
+      }
+      bufferSize = min(maxBufferSize, valueOf(contentLength));
     } else if (!headers.getHeaders().get(TRANSFER_ENCODING).isEmpty()) {
-      bufferSize = SIZE_17_KB;
+      // Assume maximum 32Kb chunk size + 10 bytes for chunk size and new lines etc. (need to confirm is this is needed, but use
+      // for now)
+      bufferSize = SIZE_32_KB + 10;
     }
   }
 
