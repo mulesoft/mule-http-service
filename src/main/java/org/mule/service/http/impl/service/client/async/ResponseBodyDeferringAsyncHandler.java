@@ -8,26 +8,33 @@ package org.mule.service.http.impl.service.client.async;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
+import static java.lang.Integer.valueOf;
+import static java.lang.Math.min;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
+import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
+
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.lang.reflect.Field;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.Response;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,15 +53,27 @@ import org.slf4j.LoggerFactory;
 public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
 
   private static final Logger logger = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
+  private static final int SIZE_17_KB = 17 * 1024;
+  private static final int SIZE_1_MB = 1024 * 1024;
+  private static Field responseField;
 
   private volatile Response response;
-  private final int bufferSize;
+  private int bufferSize;
   private PipedOutputStream output;
   private Optional<InputStream> input = empty();
   private final CompletableFuture<HttpResponse> future;
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
   private final AtomicBoolean handled = new AtomicBoolean(false);
+
+  static {
+    try {
+      responseField = HttpResponseHeaders.class.getDeclaredField("response");
+      responseField.setAccessible(true);
+    } catch (NoSuchFieldException e) {
+      // eat it
+    }
+  }
 
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int bufferSize) throws IOException {
     this.future = future;
@@ -98,7 +117,20 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   @Override
   public STATE onHeadersReceived(HttpResponseHeaders headers) throws Exception {
     responseBuilder.accumulate(headers);
+    calculateBufferSize(headers);
     return CONTINUE;
+  }
+
+  private void calculateBufferSize(HttpResponseHeaders headers) throws IllegalAccessException {
+    String contentLength = headers.getHeaders().get(CONTENT_LENGTH).get(0);
+    if (!isEmpty(contentLength) && headers.getHeaders().get(TRANSFER_ENCODING).isEmpty()) {
+      int maxBufferSize = responseField != null
+          ? (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize())
+          : SIZE_1_MB;
+      bufferSize = contentLength != null ? min(maxBufferSize, valueOf(contentLength)) : maxBufferSize;
+    } else if (!headers.getHeaders().get(TRANSFER_ENCODING).isEmpty()) {
+      bufferSize = SIZE_17_KB;
+    }
   }
 
   @Override
