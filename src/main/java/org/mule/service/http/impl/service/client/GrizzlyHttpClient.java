@@ -16,6 +16,7 @@ import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -78,6 +79,7 @@ public class GrizzlyHttpClient implements HttpClient {
                  max(getRuntime().availableProcessors(), 2));
   private static final int MAX_CONNECTION_LIFETIME = 30 * 60 * 1000;
   public static final String HOST_SEPARATOR = ",";
+  private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
@@ -268,7 +270,8 @@ public class GrizzlyHttpClient implements HttpClient {
       throws IOException, TimeoutException {
     Request grizzlyRequest = createGrizzlyRequest(request, responseTimeout, followRedirects, authentication);
     PipedOutputStream outPipe = new PipedOutputStream();
-    PipedInputStream inPipe = new PipedInputStream(outPipe, responseBufferSize);
+    PipedInputStream inPipe =
+        new PipedInputStream(outPipe, responseBufferSize > 0 ? responseBufferSize : DEFAULT_SEND_AND_DEFER_BUFFER_SIZE);
     BodyDeferringAsyncHandler asyncHandler = new BodyDeferringAsyncHandler(outPipe);
     asyncHttpClient.executeRequest(grizzlyRequest, asyncHandler);
     try {

@@ -13,6 +13,7 @@ import static java.lang.Math.min;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
+import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
@@ -36,7 +37,6 @@ import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.Response;
 import org.glassfish.grizzly.http.HttpResponsePacket;
-import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,8 +55,6 @@ import org.slf4j.LoggerFactory;
 public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
 
   private static final Logger logger = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
-  private static final int SIZE_32_KB = 32 * 1024;
-  private static final int SIZE_1_MB = 1024 * 1024;
   private static Field responseField;
 
   private volatile Response response;
@@ -138,7 +136,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     } else if (!headers.getHeaders().get(TRANSFER_ENCODING).isEmpty()) {
       // Assume maximum 32Kb chunk size + 10 bytes for chunk size and new lines etc. (need to confirm is this is needed, but use
       // for now)
-      bufferSize = SIZE_32_KB + 10;
+      bufferSize = KB.toBytes(32) + 10;
     }
   }
 
