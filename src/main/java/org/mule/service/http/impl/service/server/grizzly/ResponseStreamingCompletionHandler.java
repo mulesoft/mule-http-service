@@ -22,6 +22,7 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.function.Function;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -45,7 +46,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private final HttpResponsePacket httpResponsePacket;
   private final InputStream inputStream;
   private final ResponseStatusCallback responseStatusCallback;
-  private final int bufferSize;
+  private final Function<InputStream, Integer> bufferSizeFunction;
 
   private volatile boolean isDone;
 
@@ -56,31 +57,34 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
     inputStream = httpResponse.getEntity().getContent();
     memoryManager = ctx.getConnection().getTransport().getMemoryManager();
-    bufferSize = calculateBufferSize(ctx, httpResponse);
-    LOGGER.debug("Response streaming calculated buffer size = {} bytes.");
+    bufferSizeFunction = createBufferSizeFunction(ctx, httpResponse);
     this.responseStatusCallback = responseStatusCallback;
   }
 
-  private int calculateBufferSize(FilterChainContext ctx, HttpResponse httpResponse) {
-    String contentLengthHeader = httpResponse.getHeaderValue(CONTENT_LENGTH);
-    int contentLength;
-    if (!isEmpty(contentLengthHeader)) {
-      contentLength = Integer.valueOf(contentLengthHeader);
-    } else {
-      contentLength = -1;
-    }
-    if (contentLength > 0) {
-      try {
-        LOGGER.debug("Content length header present, calculating maximal buffer size.");
-        return min(MAX_SEND_BUFFER_SIZE, min(ctx.getConnection().getWriteBufferSize(), inputStream.available()));
-      } catch (IOException e) {
-        LOGGER.debug("Unable to determine number of bytes available from InputStream.");
-        return KB.toBytes(8);
+  private Function<InputStream, Integer> createBufferSizeFunction(FilterChainContext ctx, HttpResponse httpResponse) {
+    return inputStream -> {
+      int bufferSize = KB.toBytes(8);
+      String contentLengthHeader = httpResponse.getHeaderValue(CONTENT_LENGTH);
+      int contentLength;
+      if (!isEmpty(contentLengthHeader)) {
+        contentLength = Integer.valueOf(contentLengthHeader);
+      } else {
+        contentLength = -1;
       }
-    } else {
-      LOGGER.debug("Transfer encoding header present, using fixed buffer size.");
-      return KB.toBytes(8);
-    }
+      if (contentLength > 0) {
+        try {
+          LOGGER.debug("Content length header present, calculating maximal buffer size.");
+          bufferSize = Math.max(min(MAX_SEND_BUFFER_SIZE, min(ctx.getConnection().getWriteBufferSize(), inputStream.available())),
+                                KB.toBytes(8));
+        } catch (IOException e) {
+          LOGGER.debug("Unable to determine number of bytes available from InputStream.");
+        }
+      } else {
+        LOGGER.debug("Transfer encoding header present, using fixed buffer size.");
+      }
+      LOGGER.debug("Response streaming chunk calculated buffer size = {} bytes.");
+      return bufferSize;
+    };
   }
 
   public void start() throws IOException {
@@ -88,7 +92,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   public void sendInputStreamChunk() throws IOException {
-    final Buffer buffer = memoryManager.allocate(bufferSize);
+    final Buffer buffer = memoryManager.allocate(bufferSizeFunction.apply(inputStream));
 
     final byte[] bufferByteArray = buffer.array();
     final int offset = buffer.arrayOffset();
