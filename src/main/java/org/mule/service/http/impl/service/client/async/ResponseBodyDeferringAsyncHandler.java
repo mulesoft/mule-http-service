@@ -123,7 +123,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       logger.debug("onHeadersReceived. No configured buffer size, resolving buffer size dynamically.");
       calculateBufferSize(headers);
     } else {
-      logger.debug("onHeadersReceived. Using configured buffer size of '{} bytes'.");
+      logger.debug("onHeadersReceived. Using user configured buffer size of '{} bytes'.", bufferSize);
     }
     return CONTINUE;
   }
@@ -153,7 +153,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     if (!input.isPresent()) {
       if (bodyPart.isLast()) {
         // no need to stream response, we already have it all
-        logger.debug("Single part (size = {}bytes).", bodyPart.getBodyPartBytes().length);
+        if (logger.isDebugEnabled()) {
+          logger.debug("Single part (size = {}bytes).", bodyPart.getBodyByteBuffer().remaining());
+        }
         responseBuilder.accumulate(bodyPart);
         handleIfNecessary();
         return CONTINUE;
@@ -162,15 +164,18 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         input = of(new PipedInputStream(output, bufferSize));
       }
     }
-    logger.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).",
-                 bodyPart.getBodyPartBytes().length, bufferSize);
-    handleIfNecessary();
-    try {
-      if (bufferSize - input.get().available() < bodyPart.getBodyPartBytes().length) {
+    if (logger.isDebugEnabled()) {
+      int bodyLength = bodyPart.getBodyByteBuffer().remaining();
+      logger.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).",
+                   bodyLength, bufferSize);
+      if (bufferSize - input.get().available() < bodyLength) {
         logger
             .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
-                   bodyPart.getBodyPartBytes().length, input.get().available());
+                   logger, input.get().available());
       }
+    }
+    handleIfNecessary();
+    try {
       bodyPart.writeTo(output);
     } catch (IOException e) {
       this.onThrowable(e);

@@ -19,7 +19,6 @@ import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
-import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,7 +38,7 @@ import org.slf4j.Logger;
  */
 public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHandler {
 
-  private static final Logger LOGGER = getLogger(ResponseBodyDeferringAsyncHandler.class);
+  private static final Logger LOGGER = getLogger(ResponseStreamingCompletionHandler.class);
 
   private final MemoryManager memoryManager;
   private final FilterChainContext ctx;
@@ -79,7 +78,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
         return KB.toBytes(8);
       }
     } else {
-      LOGGER.debug("Transfer encoding header present, using fixed buffer size.", KB.toBytes(8));
+      LOGGER.debug("Transfer encoding header present, using fixed buffer size.");
       return KB.toBytes(8);
     }
   }
