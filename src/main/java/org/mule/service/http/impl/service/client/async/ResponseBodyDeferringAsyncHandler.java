@@ -12,14 +12,20 @@ import static java.lang.Integer.valueOf;
 import static java.lang.Math.min;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
-import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
-
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
+
+import com.ning.http.client.AsyncHandler;
+import com.ning.http.client.HttpResponseBodyPart;
+import com.ning.http.client.HttpResponseHeaders;
+import com.ning.http.client.HttpResponseStatus;
+import com.ning.http.client.Response;
+import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,12 +37,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.ning.http.client.AsyncHandler;
-import com.ning.http.client.HttpResponseBodyPart;
-import com.ning.http.client.HttpResponseHeaders;
-import com.ning.http.client.HttpResponseStatus;
-import com.ning.http.client.Response;
-import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +73,6 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       responseField.setAccessible(true);
     } catch (Throwable e) {
       logger.warn("Unable to use reflection to access connection buffer size to optimize streaming.", e);
-      // eat it
     }
   }
 
@@ -134,7 +133,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
       }
       bufferSize = min(maxBufferSize, valueOf(contentLength));
-    } else if (isEmpty(headers.getHeaders().getFirstValue(TRANSFER_ENCODING))) {
+    } else {
       // Assume maximum 32Kb chunk size + 10 bytes for chunk size and new lines etc. (need to confirm is this is needed, but use
       // for now)
       bufferSize = KB.toBytes(32) + 10;
