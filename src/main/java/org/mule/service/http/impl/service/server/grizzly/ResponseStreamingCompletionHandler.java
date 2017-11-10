@@ -7,11 +7,19 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.Math.min;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
+import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
+import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
+import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,6 +31,7 @@ import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
+import org.slf4j.Logger;
 
 /**
  * {@link org.glassfish.grizzly.CompletionHandler}, responsible for asynchronous http response transferring when the response body
@@ -30,11 +39,14 @@ import org.glassfish.grizzly.memory.MemoryManager;
  */
 public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHandler {
 
+  private static final Logger LOGGER = getLogger(ResponseBodyDeferringAsyncHandler.class);
+
   private final MemoryManager memoryManager;
   private final FilterChainContext ctx;
   private final HttpResponsePacket httpResponsePacket;
   private final InputStream inputStream;
   private final ResponseStatusCallback responseStatusCallback;
+  private final int bufferSize;
 
   private volatile boolean isDone;
 
@@ -45,7 +57,31 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
     inputStream = httpResponse.getEntity().getContent();
     memoryManager = ctx.getConnection().getTransport().getMemoryManager();
+    bufferSize = calculateBufferSize(ctx, httpResponse);
+    LOGGER.debug("Response streaming calculated buffer size = {} bytes.");
     this.responseStatusCallback = responseStatusCallback;
+  }
+
+  private int calculateBufferSize(FilterChainContext ctx, HttpResponse httpResponse) {
+    String contentLengthHeader = httpResponse.getHeaderValue(CONTENT_LENGTH);
+    int contentLength;
+    if (!isEmpty(contentLengthHeader)) {
+      contentLength = Integer.valueOf(contentLengthHeader);
+    } else {
+      contentLength = -1;
+    }
+    if (contentLength > 0) {
+      try {
+        LOGGER.debug("Content length header present, calculating maximal buffer size.");
+        return min(MAX_SEND_BUFFER_SIZE, min(ctx.getConnection().getWriteBufferSize(), inputStream.available()));
+      } catch (IOException e) {
+        LOGGER.debug("Unable to determine number of bytes available from InputStream.");
+        return KB.toBytes(8);
+      }
+    } else {
+      LOGGER.debug("Transfer encoding header present, using fixed buffer size.", KB.toBytes(8));
+      return KB.toBytes(8);
+    }
   }
 
   public void start() throws IOException {
@@ -53,7 +89,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   public void sendInputStreamChunk() throws IOException {
-    final Buffer buffer = memoryManager.allocate(8 * 1024);
+    final Buffer buffer = memoryManager.allocate(bufferSize);
 
     final byte[] bufferByteArray = buffer.array();
     final int offset = buffer.arrayOffset();

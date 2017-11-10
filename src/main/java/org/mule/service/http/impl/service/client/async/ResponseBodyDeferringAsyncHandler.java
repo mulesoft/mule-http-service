@@ -120,25 +120,31 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     responseBuilder.accumulate(headers);
     if (bufferSize < 0) {
       // If user hasn't configured a buffer size (default) then calculate it.
+      logger.debug("onHeadersReceived. No configured buffer size, resolving buffer size dynamically.");
       calculateBufferSize(headers);
+    } else {
+      logger.debug("onHeadersReceived. Using configured buffer size of '{} bytes'.");
     }
     return CONTINUE;
   }
 
   private void calculateBufferSize(HttpResponseHeaders headers) throws IllegalAccessException {
+    int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
     String contentLength = headers.getHeaders().getFirstValue(CONTENT_LENGTH);
     if (!isEmpty(contentLength) && isEmpty(headers.getHeaders().getFirstValue(TRANSFER_ENCODING))) {
-      int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
+      int contentLengthInt = valueOf(contentLength);
       if (responseField != null && headers instanceof GrizzlyResponseHeaders) {
         maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
       }
-      bufferSize = min(maxBufferSize, valueOf(contentLength));
+      bufferSize = min(maxBufferSize, contentLengthInt);
     } else {
       // Assume maximum 32Kb chunk size + 10 bytes for chunk size and new lines etc. (need to confirm is this is needed, but use
       // for now)
       bufferSize = KB.toBytes(32) + 10;
     }
-    logger.debug("Buffer size calculated as {}.", bufferSize);
+    logger
+        .debug("Max buffer size = {} bytes, Connection buffer size = {} bytes, Content-length = {} bytes, Calculated buffer size = {} bytes",
+               MAX_RECEIVE_BUFFER_SIZE, maxBufferSize, contentLength, bufferSize);
   }
 
   @Override
@@ -147,6 +153,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     if (!input.isPresent()) {
       if (bodyPart.isLast()) {
         // no need to stream response, we already have it all
+        logger.debug("Single part (size = {}bytes).", bodyPart.getBodyPartBytes().length);
         responseBuilder.accumulate(bodyPart);
         handleIfNecessary();
         return CONTINUE;
@@ -155,8 +162,15 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         input = of(new PipedInputStream(output, bufferSize));
       }
     }
+    logger.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).",
+                 bodyPart.getBodyPartBytes().length, bufferSize);
     handleIfNecessary();
     try {
+      if (bufferSize - input.get().available() < bodyPart.getBodyPartBytes().length) {
+        logger
+            .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
+                   bodyPart.getBodyPartBytes().length, input.get().available());
+      }
       bodyPart.writeTo(output);
     } catch (IOException e) {
       this.onThrowable(e);
