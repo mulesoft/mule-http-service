@@ -8,27 +8,38 @@ package org.mule.service.http.impl.service.client.async;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
-
+import static java.lang.Integer.valueOf;
+import static java.lang.Math.min;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
+import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
+import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.Response;
+import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.lang.reflect.Field;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.glassfish.grizzly.http.HttpResponsePacket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives, propagating an
@@ -45,20 +56,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
 
   private static final Logger logger = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
+  private static Field responseField;
 
   private volatile Response response;
-  private final OutputStream output;
-  private final InputStream input;
+  private int bufferSize;
+  private PipedOutputStream output;
+  private Optional<InputStream> input = empty();
   private final CompletableFuture<HttpResponse> future;
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
   private final AtomicBoolean handled = new AtomicBoolean(false);
 
-  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, PipedOutputStream output, int bufferSize)
-      throws IOException {
-    this.output = output;
+  static {
+    try {
+      responseField = GrizzlyResponseHeaders.class.getDeclaredField("response");
+      responseField.setAccessible(true);
+    } catch (Throwable e) {
+      logger.warn("Unable to use reflection to access connection buffer size to optimize streaming.", e);
+    }
+  }
+
+  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize) throws IOException {
     this.future = future;
-    this.input = new PipedInputStream(output, bufferSize);
+    this.bufferSize = userDefinedBufferSize;
   }
 
   @Override
@@ -98,12 +118,43 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   @Override
   public STATE onHeadersReceived(HttpResponseHeaders headers) throws Exception {
     responseBuilder.accumulate(headers);
+    if (bufferSize < 0) {
+      // If user hasn't configured a buffer size (default) then calculate it.
+      calculateBufferSize(headers);
+    }
     return CONTINUE;
+  }
+
+  private void calculateBufferSize(HttpResponseHeaders headers) throws IllegalAccessException {
+    String contentLength = headers.getHeaders().getFirstValue(CONTENT_LENGTH);
+    if (!isEmpty(contentLength) && isEmpty(headers.getHeaders().getFirstValue(TRANSFER_ENCODING))) {
+      int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
+      if (responseField != null && headers instanceof GrizzlyResponseHeaders) {
+        maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
+      }
+      bufferSize = min(maxBufferSize, valueOf(contentLength));
+    } else {
+      // Assume maximum 32Kb chunk size + 10 bytes for chunk size and new lines etc. (need to confirm is this is needed, but use
+      // for now)
+      bufferSize = KB.toBytes(32) + 10;
+    }
+    logger.debug("Buffer size calculated as {}.", bufferSize);
   }
 
   @Override
   public STATE onBodyPartReceived(HttpResponseBodyPart bodyPart) throws Exception {
     // body arrived, can handle the partial response
+    if (!input.isPresent()) {
+      if (bodyPart.isLast()) {
+        // no need to stream response, we already have it all
+        responseBuilder.accumulate(bodyPart);
+        handleIfNecessary();
+        return CONTINUE;
+      } else {
+        output = new PipedOutputStream();
+        input = of(new PipedInputStream(output, bufferSize));
+      }
+    }
     handleIfNecessary();
     try {
       bodyPart.writeTo(output);
@@ -115,10 +166,12 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   protected void closeOut() throws IOException {
-    try {
-      output.flush();
-    } finally {
-      output.close();
+    if (output != null) {
+      try {
+        output.flush();
+      } finally {
+        output.close();
+      }
     }
   }
 
@@ -134,7 +187,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     if (!handled.getAndSet(true)) {
       response = responseBuilder.build();
       try {
-        future.complete(httpResponseCreator.create(response, input));
+        future.complete(httpResponseCreator.create(response, input.orElse(response.getResponseBodyAsStream())));
       } catch (IOException e) {
         future.completeExceptionally(e);
       }
