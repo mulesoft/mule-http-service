@@ -16,12 +16,12 @@ import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
-
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -40,9 +40,6 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -72,6 +69,9 @@ import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class GrizzlyHttpClient implements HttpClient {
 
   private static final int DEFAULT_SELECTOR_THREAD_COUNT =
@@ -79,6 +79,7 @@ public class GrizzlyHttpClient implements HttpClient {
                  max(getRuntime().availableProcessors(), 2));
   private static final int MAX_CONNECTION_LIFETIME = 30 * 60 * 1000;
   public static final String HOST_SEPARATOR = ",";
+  private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
@@ -269,7 +270,8 @@ public class GrizzlyHttpClient implements HttpClient {
       throws IOException, TimeoutException {
     Request grizzlyRequest = createGrizzlyRequest(request, responseTimeout, followRedirects, authentication);
     PipedOutputStream outPipe = new PipedOutputStream();
-    PipedInputStream inPipe = new PipedInputStream(outPipe, responseBufferSize);
+    PipedInputStream inPipe =
+        new PipedInputStream(outPipe, responseBufferSize > 0 ? responseBufferSize : DEFAULT_SEND_AND_DEFER_BUFFER_SIZE);
     BodyDeferringAsyncHandler asyncHandler = new BodyDeferringAsyncHandler(outPipe);
     asyncHttpClient.executeRequest(grizzlyRequest, asyncHandler);
     try {
@@ -329,7 +331,7 @@ public class GrizzlyHttpClient implements HttpClient {
     try {
       AsyncHandler<Response> asyncHandler;
       if (streamingEnabled) {
-        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, new PipedOutputStream(), responseBufferSize);
+        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, responseBufferSize);
       } else {
         asyncHandler = new ResponseAsyncHandler(future);
       }

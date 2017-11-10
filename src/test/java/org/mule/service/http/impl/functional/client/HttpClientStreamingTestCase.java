@@ -10,6 +10,7 @@ import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
+import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import static org.mule.service.http.impl.functional.FillAndWaitStream.RESPONSE_SIZE;
@@ -59,7 +60,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   @Test
   @Description("Uses a streaming HTTP client to send a non blocking request which will finish before the stream is released.")
   public void nonBlockingStreaming() throws Exception {
-    HttpClient client = service.getClientFactory().create(clientBuilder.build());
+    HttpClient client = service.getClientFactory().create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).build());
     client.start();
     final Reference<HttpResponse> responseReference = new Reference<>();
     try {
