@@ -15,6 +15,7 @@ import static org.mule.runtime.http.api.HttpConstants.HttpStatus.METHOD_NOT_ALLO
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.NOT_FOUND;
 import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.HttpConstants.HttpStatus;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -23,8 +24,6 @@ import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
-
-import java.net.URI;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -36,6 +35,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.net.URI;
 
 public class HttpServerErrorRequestsTestCase extends AbstractHttpServiceTestCase {
 
@@ -68,6 +69,7 @@ public class HttpServerErrorRequestsTestCase extends AbstractHttpServiceTestCase
   public void tearDown() {
     if (server != null) {
       server.stop();
+      server.dispose();
     }
   }
 

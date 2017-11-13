@@ -9,6 +9,8 @@ package org.mule.service.http.impl.service.server;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.service.http.impl.service.server.grizzly.DefaultMethodRequestMatcher.getMethodsListRepresentation;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
+import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
@@ -17,10 +19,15 @@ import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
+import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.grizzly.AcceptsAllMethodsRequestMatcher;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Joiner;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,16 +37,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 
-import com.google.common.base.Joiner;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-
 public class HttpListenerRegistry implements RequestHandlerProvider {
 
   private static final String WILDCARD_CHARACTER = "*";
   private static final String SLASH = "/";
-  private Logger logger = LoggerFactory.getLogger(getClass());
+  private static final Logger LOGGER = getLogger(HttpListenerRegistry.class);
 
   private final ServerAddressMap<HttpServer> serverAddressToServerMap = new ServerAddressMap<>();
   private final Map<HttpServer, ServerAddressRequestHandlerRegistry> requestHandlerPerServerAddress = new HashMap<>();
@@ -61,20 +63,21 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
   }
 
   @Override
-  public RequestHandler getRequestHandler(String ip, int port, final HttpRequest request) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Looking RequestHandler for request: " + request.getPath());
-    }
-    final HttpServer server = serverAddressToServerMap.get(new DefaultServerAddress(ip, port));
+  public synchronized boolean hasHandlerFor(ServerAddress serverAddress) {
+    return serverAddressToServerMap.get(serverAddress) != null;
+  }
+
+  @Override
+  public RequestHandler getRequestHandler(ServerAddress serverAddress, final HttpRequest request) {
+    LOGGER.debug("Looking RequestHandler for request: {}", request.getPath());
+    final HttpServer server = serverAddressToServerMap.get(serverAddress);
     if (server != null && !server.isStopping() && !server.isStopped()) {
       final ServerAddressRequestHandlerRegistry serverAddressRequestHandlerRegistry = requestHandlerPerServerAddress.get(server);
       if (serverAddressRequestHandlerRegistry != null) {
         return serverAddressRequestHandlerRegistry.findRequestHandler(request);
       }
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug("No RequestHandler found for request: " + request.getPath());
-    }
+    LOGGER.debug("No RequestHandler found for request: {}", request.getPath());
     return NoListenerRequestHandler.getInstance();
   }
 
@@ -204,9 +207,9 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
         }
       }
       if (requestHandlerMatcherPair == null) {
-        if (logger.isInfoEnabled()) {
-          logger.info("No listener found for request: " + getMethodAndPath(request.getMethod(), request.getPath()));
-          logger.info("Available listeners are: [{}]", Joiner.on(", ").join(this.paths));
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info("No listener found for request: " + getMethodAndPath(request.getMethod(), request.getPath()));
+          LOGGER.info("Available listeners are: [{}]", Joiner.on(", ").join(this.paths));
         }
         if (methodNotAllowed) {
           return NoMethodRequestHandler.getInstance();

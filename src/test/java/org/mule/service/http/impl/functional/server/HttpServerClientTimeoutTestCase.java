@@ -8,8 +8,11 @@ package org.mule.service.http.impl.functional.server;
 
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.fail;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 
@@ -27,12 +30,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.net.SocketTimeoutException;
-import java.net.URI;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 
 public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase {
+
+  private static final int TIMEOUT = 5000;
 
   @Rule
   public DynamicPort port = new DynamicPort("port");
@@ -67,7 +71,8 @@ public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase
 
       System.out.println("Continue processing after client timeout");
 
-      responseCallback.responseReady(HttpResponse.builder().statusCode(500).entity(new ByteArrayHttpEntity("Success!".getBytes()))
+      responseCallback.responseReady(HttpResponse.builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode())
+          .entity(new ByteArrayHttpEntity("Success!".getBytes()))
           .addHeader(CONTENT_TYPE, TEXT.toRfcString())
           .build(), new ResponseStatusCallback() {
 
@@ -78,12 +83,9 @@ public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase
 
             @Override
             public void responseSendSuccessfully() {
-              System.out.println("Success?");
+              responseLatch.countDown();
             }
-
           });
-
-      responseLatch.countDown();
     });
   }
 
@@ -91,30 +93,29 @@ public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase
   public void tearDown() {
     if (server != null) {
       server.stop();
+      server.dispose();
     }
   }
 
   @Test
-  public void it() throws IOException, InterruptedException {
+  public void executingRequestsFinishesOnDispose() throws Exception {
     try {
       Request.Get(format("http://localhost:%s/%s", port.getValue(), "test"))
-          .connectTimeout(5000).socketTimeout(5000).execute();
+          .connectTimeout(TIMEOUT).socketTimeout(TIMEOUT).execute();
       fail();
     } catch (SocketTimeoutException ste) {
       // Expected
     }
     server.stop();
 
-    // Calling dispose causes the CCE
-    server.dispose();
-    server = null;
+    Future<?> disposeTask = newSingleThreadExecutor().submit(() -> {
+      server.dispose();
+      server = null;
+    });
+
     requestLatch.countDown();
-    responseLatch.await();
-
-  }
-
-  private URI getUri(String path) {
-    return URI.create(format("http://localhost:%s/%s", port.getValue(), path));
+    disposeTask.get(TIMEOUT, MILLISECONDS);
+    responseLatch.await(TIMEOUT, MILLISECONDS);
   }
 
 }

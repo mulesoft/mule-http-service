@@ -29,13 +29,14 @@ import org.mule.service.http.impl.service.server.grizzly.ListenerRequestMatcher;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import io.qameta.allure.Feature;
 
 @SmallTest
@@ -281,19 +282,22 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
     httpListenerRegistry.addRequestHandler(testServer, mock(RequestHandler.class),
                                            new ListenerRequestMatcher(AcceptsAllMethodsRequestMatcher.instance(), ROOT_PATH));
     RequestHandler requestHandler =
-        httpListenerRegistry.getRequestHandler(TEST_IP, TEST_PORT, createMockRequestWithPath(ANOTHER_PATH));
+        httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_IP, TEST_PORT),
+                                               createMockRequestWithPath(ANOTHER_PATH));
     assertThat(requestHandler, is(instanceOf(NoListenerRequestHandler.class)));
   }
 
   private void routePath(String requestPath, String listenerPath) {
-    assertThat(httpListenerRegistry.getRequestHandler(TEST_IP, TEST_PORT, createMockRequestWithPath(requestPath)),
+    assertThat(httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_IP, TEST_PORT),
+                                                      createMockRequestWithPath(requestPath)),
                is(requestHandlerPerPath.get(listenerPath)));
   }
 
   private void routePath(String requestPath, Method requestMethod, RequestHandler expectedRequestHandler) {
     final HttpRequest mockRequest = createMockRequestWithPath(requestPath);
     when(mockRequest.getMethod()).thenReturn(requestMethod.name());
-    assertThat(httpListenerRegistry.getRequestHandler(TEST_IP, TEST_PORT, mockRequest), is(expectedRequestHandler));
+    assertThat(httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_IP, TEST_PORT), mockRequest),
+               is(expectedRequestHandler));
   }
 
   private HttpRequest createMockRequestWithPath(String path) {
