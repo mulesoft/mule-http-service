@@ -9,6 +9,7 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.valueOf;
 import static java.lang.String.format;
+import static java.lang.System.currentTimeMillis;
 import static java.lang.System.getProperty;
 import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -19,6 +20,7 @@ import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
+import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
@@ -37,13 +39,6 @@ import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.HttpServerManager;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.function.Supplier;
-
 import org.glassfish.grizzly.filterchain.FilterChainBuilder;
 import org.glassfish.grizzly.filterchain.TransportFilter;
 import org.glassfish.grizzly.http.HttpServerFilter;
@@ -54,15 +49,26 @@ import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
 import org.glassfish.grizzly.ssl.SSLEngineConfigurator;
 import org.glassfish.grizzly.ssl.SSLFilter;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 public class GrizzlyServerManager implements HttpServerManager {
+
+  private static final Logger LOGGER = getLogger(GrizzlyServerManager.class);
 
   // Defines the maximum size in bytes accepted for the http request header section (request line + headers)
   public static final String MAXIMUM_HEADER_SECTION_SIZE_PROPERTY_KEY = SYSTEM_PROPERTY_PREFIX + "http.headerSectionSize";
   private static final int MAX_KEEP_ALIVE_REQUESTS = -1;
   private static final int MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR =
       getInteger(GrizzlyServerManager.class.getName() + ".MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR", 8);
+
+  private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
+
   private final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
   private final GrizzlyAddressDelegateFilter<HttpServerFilter> httpServerFilterDelegate;
   private final TCPNIOTransport transport;
@@ -70,7 +76,6 @@ public class GrizzlyServerManager implements HttpServerManager {
   private final HttpListenerRegistry httpListenerRegistry;
   private final WorkManagerSourceExecutorProvider executorProvider;
   private final ExecutorService idleTimeoutExecutorService;
-  private Logger logger = LoggerFactory.getLogger(GrizzlyServerManager.class);
   private Map<ServerAddress, GrizzlyHttpServer> servers = new ConcurrentHashMap<>();
   private Map<ServerIdentifier, GrizzlyHttpServer> serversByIdentifier = new ConcurrentHashMap<>();
   private Map<ServerAddress, IdleExecutor> idleExecutorPerServerAddressMap = new ConcurrentHashMap<>();
@@ -181,9 +186,7 @@ public class GrizzlyServerManager implements HttpServerManager {
                                        final ServerAddress serverAddress, boolean usePersistentConnections,
                                        int connectionIdleTimeout, ServerIdentifier identifier)
       throws ServerCreationException {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Creating https server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
-    }
+    LOGGER.debug("Creating https server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     if (servers.containsKey(serverAddress)) {
       throw new ServerAlreadyExistsException(serverAddress);
     }
@@ -206,9 +209,7 @@ public class GrizzlyServerManager implements HttpServerManager {
   public HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
                                     boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier)
       throws ServerCreationException {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Creating http server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
-    }
+    LOGGER.debug("Creating http server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     if (servers.containsKey(serverAddress)) {
       throw new ServerAlreadyExistsException(serverAddress);
     }
@@ -322,6 +323,23 @@ public class GrizzlyServerManager implements HttpServerManager {
       servers.remove(serverAddress);
       serversByIdentifier.remove(identifier);
       httpListenerRegistry.removeHandlersFor(this);
+
+      long startTime = currentTimeMillis();
+      while (requestHandlerFilter.activeRequestsFor(serverAddress) > 0) {
+        if (currentTimeMillis() > startTime + DISPOSE_TIMEOUT_MILLIS) {
+          LOGGER.warn("Dispose of http server for {} timed out.", serverAddress);
+          break;
+        }
+
+        try {
+          Thread.sleep(50);
+        } catch (InterruptedException e) {
+          // Reset interrupt flag and continue with the disposal
+          currentThread().interrupt();
+          break;
+        }
+      }
+
       httpServerFilterDelegate.removeFilterForAddress(serverAddress);
       idleExecutorPerServerAddressMap.get(serverAddress).dispose();
       idleExecutorPerServerAddressMap.remove(serverAddress);

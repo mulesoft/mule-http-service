@@ -10,9 +10,6 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.ServerAddressMap;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChain;
@@ -20,9 +17,12 @@ import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.filterchain.FilterChainEvent;
 import org.glassfish.grizzly.filterchain.NextAction;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+
 /**
  * Grizzly filter to delegate to the right {link @BaseFilter} based on the Connection.
- *
+ * <p>
  * Mule allows to define several listener config, each one associated with a ServerSocket that may have particular configurations.
  * In order to reuse the same grizzly transport we can only have one filter for every listener config. So this filter keeps record
  * of all the ServerSockets configured and their particular configurations. So once a request arrive it delegates to the right

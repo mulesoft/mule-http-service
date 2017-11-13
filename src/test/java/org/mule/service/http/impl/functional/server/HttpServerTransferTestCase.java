@@ -17,6 +17,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CHUNKED;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.TRANSFER_TYPE;
+
 import org.mule.runtime.api.util.Pair;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -32,10 +33,6 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-
-import io.qameta.allure.Story;
 import org.apache.http.Header;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -47,6 +44,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+
+import io.qameta.allure.Story;
 
 @Story(TRANSFER_TYPE)
 public abstract class HttpServerTransferTestCase extends AbstractHttpServiceTestCase {
@@ -119,6 +121,7 @@ public abstract class HttpServerTransferTestCase extends AbstractHttpServiceTest
   public void tearDown() {
     if (server != null) {
       server.stop();
+      server.dispose();
     }
   }
 
