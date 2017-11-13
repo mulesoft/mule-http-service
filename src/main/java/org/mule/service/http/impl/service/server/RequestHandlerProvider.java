@@ -27,9 +27,10 @@ public interface RequestHandlerProvider {
   RequestHandler getRequestHandler(ServerAddress serverAddress, HttpRequest request);
 
   /**
+   * Checks if a handler for a specific {@link ServerAddress} is present
    *
-   * @param serverAddress
-   * @return
+   * @param serverAddress the address to check for
+   * @return {@code true} if there is a handler present for the address, {@code false} otherwise
    */
   boolean hasHandlerFor(ServerAddress serverAddress);
 

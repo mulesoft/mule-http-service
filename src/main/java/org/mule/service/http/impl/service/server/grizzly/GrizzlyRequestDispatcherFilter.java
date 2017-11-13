@@ -54,7 +54,7 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
     DefaultServerAddress serverAddress =
         new DefaultServerAddress(localAddress.getAddress().getHostAddress(), localAddress.getPort());
 
-    AtomicInteger serverCounter = activeRequests.computeIfAbsent(serverAddress, sa -> new AtomicInteger());;
+    AtomicInteger serverCounter = activeRequests.computeIfAbsent(serverAddress, sa -> new AtomicInteger());
     serverCounter.incrementAndGet();
     try {
       if (ctx.getMessage() instanceof HttpContent) {

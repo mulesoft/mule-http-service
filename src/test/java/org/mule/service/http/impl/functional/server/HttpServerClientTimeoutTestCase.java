@@ -20,19 +20,18 @@ import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
-import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
+
+import java.net.SocketTimeoutException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 
 import org.apache.http.client.fluent.Request;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-
-import java.net.SocketTimeoutException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
 
 public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase {
 
@@ -69,17 +68,10 @@ public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase
         // Nothing to do
       }
 
-      System.out.println("Continue processing after client timeout");
-
       responseCallback.responseReady(HttpResponse.builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode())
           .entity(new ByteArrayHttpEntity("Success!".getBytes()))
           .addHeader(CONTENT_TYPE, TEXT.toRfcString())
-          .build(), new ResponseStatusCallback() {
-
-            @Override
-            public void responseSendFailure(Throwable throwable) {
-              throwable.printStackTrace();
-            }
+          .build(), new IgnoreResponseStatusCallback() {
 
             @Override
             public void responseSendSuccessfully() {
