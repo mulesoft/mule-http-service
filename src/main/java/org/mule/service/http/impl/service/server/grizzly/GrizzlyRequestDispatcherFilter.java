@@ -14,18 +14,11 @@ import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.runtime.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
-
+import org.mule.runtime.http.api.domain.request.ServerConnection;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.RequestHandlerProvider;
-
-import org.glassfish.grizzly.filterchain.BaseFilter;
-import org.glassfish.grizzly.filterchain.FilterChainContext;
-import org.glassfish.grizzly.filterchain.NextAction;
-import org.glassfish.grizzly.http.HttpContent;
-import org.glassfish.grizzly.http.HttpRequestPacket;
-import org.glassfish.grizzly.http.HttpResponsePacket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -34,6 +27,13 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLSession;
+
+import org.glassfish.grizzly.filterchain.BaseFilter;
+import org.glassfish.grizzly.filterchain.FilterChainContext;
+import org.glassfish.grizzly.filterchain.NextAction;
+import org.glassfish.grizzly.http.HttpContent;
+import org.glassfish.grizzly.http.HttpRequestPacket;
+import org.glassfish.grizzly.http.HttpResponsePacket;
 
 /**
  * Grizzly filter that dispatches the request to the right request handler
@@ -122,7 +122,8 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
     } else {
       clientConnection = new DefaultClientConnection((InetSocketAddress) ctx.getConnection().getPeerAddress());
     }
-    return new DefaultHttpRequestContext(httpRequest, clientConnection, scheme);
+    ServerConnection serverConnection = new DefaultServerConnection((InetSocketAddress) ctx.getConnection().getLocalAddress());
+    return new DefaultHttpRequestContext(scheme, httpRequest, clientConnection, serverConnection);
   }
 
   public int activeRequestsFor(ServerAddress serverAddress) {
