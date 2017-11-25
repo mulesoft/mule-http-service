@@ -7,21 +7,31 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
+import org.mule.runtime.http.api.domain.request.ClientConnection;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
+import org.mule.runtime.http.api.domain.request.ServerConnection;
 
 /**
  * Holds the input from an http request.
  */
 public class DefaultHttpRequestContext implements HttpRequestContext {
 
-  private final DefaultClientConnection clientConnection;
+  private final ClientConnection clientConnection;
+  private final ServerConnection serverConnection;
   private HttpRequest request;
   private String scheme;
 
-  public DefaultHttpRequestContext(HttpRequest httpRequest, DefaultClientConnection clientConnection, String scheme) {
+  public DefaultHttpRequestContext(String scheme, HttpRequest httpRequest, ClientConnection clientConnection,
+                                   ServerConnection serverConnection) {
     this.request = httpRequest;
     this.clientConnection = clientConnection;
     this.scheme = scheme;
+    this.serverConnection = serverConnection;
+  }
+
+  @Override
+  public ServerConnection getServerConnection() {
+    return serverConnection;
   }
 
   /**
@@ -34,7 +44,7 @@ public class DefaultHttpRequestContext implements HttpRequestContext {
   /**
    * @return client connection descriptor
    */
-  public DefaultClientConnection getClientConnection() {
+  public ClientConnection getClientConnection() {
     return clientConnection;
   }
 
