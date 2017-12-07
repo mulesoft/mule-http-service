@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
 
-  private static final Logger logger = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
   private static Field responseField;
 
   private volatile Response response;
@@ -72,7 +72,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       responseField = GrizzlyResponseHeaders.class.getDeclaredField("response");
       responseField.setAccessible(true);
     } catch (Throwable e) {
-      logger.warn("Unable to use reflection to access connection buffer size to optimize streaming.", e);
+      LOGGER.warn("Unable to use reflection to access connection buffer size to optimize streaming.", e);
     }
   }
 
@@ -86,7 +86,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     try {
       closeOut();
     } catch (IOException e) {
-      logger.debug("Error closing HTTP response stream", e);
+      LOGGER.debug("Error closing HTTP response stream", e);
     }
     if (!handled.getAndSet(true)) {
       Exception exception;
@@ -100,11 +100,11 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       future.completeExceptionally(exception);
     } else {
       if (t.getMessage() != null && t.getMessage().contains("Pipe closed")) {
-        logger.warn("HTTP response stream was closed before being read but response streams must always be consumed.");
+        LOGGER.warn("HTTP response stream was closed before being read but response streams must always be consumed.");
       } else {
-        logger.warn("Error handling HTTP response stream. Set log level to DEBUG for details.");
+        LOGGER.warn("Error handling HTTP response stream. Set log level to DEBUG for details.");
       }
-      logger.debug("HTTP response stream error was ", t);
+      LOGGER.debug("HTTP response stream error was ", t);
     }
   }
 
@@ -120,21 +120,32 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     responseBuilder.accumulate(headers);
     if (bufferSize < 0) {
       // If user hasn't configured a buffer size (default) then calculate it.
-      logger.debug("onHeadersReceived. No configured buffer size, resolving buffer size dynamically.");
+      LOGGER.debug("onHeadersReceived. No configured buffer size, resolving buffer size dynamically.");
       calculateBufferSize(headers);
     } else {
-      logger.debug("onHeadersReceived. Using user configured buffer size of '{} bytes'.", bufferSize);
+      LOGGER.debug("onHeadersReceived. Using user configured buffer size of '{} bytes'.", bufferSize);
     }
     return CONTINUE;
   }
 
-  private void calculateBufferSize(HttpResponseHeaders headers) throws IllegalAccessException {
+  /**
+   * Attempts to optimize the buffer size based on the presence of the content length header, the connection buffer size and the
+   * maximum buffer size possible. Defaults to an ~32KB buffer when transfer encoding is used.
+   *
+   * @param headers the current headers received
+   * @throws IllegalAccessException
+   */
+  private void calculateBufferSize(HttpResponseHeaders headers) {
     int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
     String contentLength = headers.getHeaders().getFirstValue(CONTENT_LENGTH);
     if (!isEmpty(contentLength) && isEmpty(headers.getHeaders().getFirstValue(TRANSFER_ENCODING))) {
       int contentLengthInt = valueOf(contentLength);
-      if (responseField != null && headers instanceof GrizzlyResponseHeaders) {
-        maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
+      try {
+        if (responseField != null && headers instanceof GrizzlyResponseHeaders) {
+          maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
+        }
+      } catch (IllegalAccessException e) {
+        LOGGER.debug("Unable to access connection buffer size.");
       }
       bufferSize = min(maxBufferSize, contentLengthInt);
     } else {
@@ -142,7 +153,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       // for now)
       bufferSize = KB.toBytes(32) + 10;
     }
-    logger
+    LOGGER
         .debug("Max buffer size = {} bytes, Connection buffer size = {} bytes, Content-length = {} bytes, Calculated buffer size = {} bytes",
                MAX_RECEIVE_BUFFER_SIZE, maxBufferSize, contentLength, bufferSize);
   }
@@ -153,8 +164,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     if (!input.isPresent()) {
       if (bodyPart.isLast()) {
         // no need to stream response, we already have it all
-        if (logger.isDebugEnabled()) {
-          logger.debug("Single part (size = {}bytes).", bodyPart.getBodyByteBuffer().remaining());
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Single part (size = {}bytes).", bodyPart.getBodyByteBuffer().remaining());
         }
         responseBuilder.accumulate(bodyPart);
         handleIfNecessary();
@@ -164,14 +175,14 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         input = of(new PipedInputStream(output, bufferSize));
       }
     }
-    if (logger.isDebugEnabled()) {
+    if (LOGGER.isDebugEnabled()) {
       int bodyLength = bodyPart.getBodyByteBuffer().remaining();
-      logger.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).",
-                   bodyLength, bufferSize);
+      LOGGER.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).", bodyLength, bufferSize);
       if (bufferSize - input.get().available() < bodyLength) {
-        logger
+        //TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
+        LOGGER
             .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
-                   logger, input.get().available());
+                   LOGGER, input.get().available());
       }
     }
     handleIfNecessary();
