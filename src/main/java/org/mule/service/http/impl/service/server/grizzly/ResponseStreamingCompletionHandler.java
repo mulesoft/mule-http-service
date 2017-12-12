@@ -8,6 +8,8 @@ package org.mule.service.http.impl.service.server.grizzly;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
+import static org.glassfish.grizzly.http.Method.HEAD;
+
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -87,6 +89,8 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
         // As there is no more data to be sent (in HTTP 1.1 a last chunk with '0' is sent) the #completed method is not called
         // So, we have to call it manually here
         if (isDone && !httpResponsePacket.isChunked()) {
+          doComplete();
+        } else if (isDone && httpResponsePacket.getRequest().getMethod().equals(HEAD)) {
           doComplete();
         }
       } else {
