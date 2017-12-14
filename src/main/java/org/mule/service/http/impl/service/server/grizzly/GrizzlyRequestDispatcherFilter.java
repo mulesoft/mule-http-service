@@ -9,11 +9,15 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static org.glassfish.grizzly.http.util.HttpStatus.CONINTUE_100;
 import static org.glassfish.grizzly.http.util.HttpStatus.EXPECTATION_FAILED_417;
 import static org.glassfish.grizzly.http.util.HttpStatus.SERVICE_UNAVAILABLE_503;
+import static org.mule.runtime.http.api.HttpConstants.Method.HEAD;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.runtime.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
+
+import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
+import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.domain.request.ServerConnection;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.ServerAddress;
@@ -95,6 +99,12 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
         final RequestHandler requestHandler = requestHandlerProvider.getRequestHandler(serverAddress, httpRequest);
         requestHandler.handleRequest(requestContext, (httpResponse, responseStatusCallback) -> {
           try {
+            if (httpRequest.getMethod().equals(HEAD.name())) {
+              if (httpResponse.getEntity().isStreaming()) {
+                httpResponse.getEntity().getContent().close();
+              }
+              httpResponse = new HttpResponseBuilder(httpResponse).entity(new EmptyHttpEntity()).build();
+            }
             if (httpResponse.getEntity().isStreaming()) {
               new ResponseStreamingCompletionHandler(ctx, request, httpResponse, responseStatusCallback).start();
             } else {

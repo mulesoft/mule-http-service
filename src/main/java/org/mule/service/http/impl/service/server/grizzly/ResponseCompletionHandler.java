@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static org.glassfish.grizzly.http.Method.HEAD;
 import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
@@ -102,7 +103,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   public void sendResponse() throws IOException {
     if (!contentSend) {
       contentSend = true;
-      isDone = !httpResponsePacket.isChunked();
+      isDone = httpResponsePacket.getRequest().getMethod().equals(HEAD) || !httpResponsePacket.isChunked();
       ctx.write(httpResponseContent, this);
       return;
     }
@@ -121,13 +122,17 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
       if (!isDone) {
         sendResponse();
       } else {
-        ctx.notifyDownstream(HttpServerFilter.RESPONSE_COMPLETE_EVENT);
-        responseStatusCallback.responseSendSuccessfully();
-        resume();
+        doComplete();
       }
     } catch (IOException e) {
       failed(e);
     }
+  }
+
+  private void doComplete() {
+    ctx.notifyDownstream(HttpServerFilter.RESPONSE_COMPLETE_EVENT);
+    responseStatusCallback.responseSendSuccessfully();
+    resume();
   }
 
   /**
