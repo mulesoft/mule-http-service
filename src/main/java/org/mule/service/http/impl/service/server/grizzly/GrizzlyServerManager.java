@@ -65,7 +65,7 @@ public class GrizzlyServerManager implements HttpServerManager {
   public static final String MAXIMUM_HEADER_SECTION_SIZE_PROPERTY_KEY = SYSTEM_PROPERTY_PREFIX + "http.headerSectionSize";
   private static final int MAX_KEEP_ALIVE_REQUESTS = -1;
   private static final int MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR =
-      getInteger(GrizzlyServerManager.class.getName() + ".MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR", 8);
+      getInteger(GrizzlyServerManager.class.getName() + ".MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR", 4);
 
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
 
