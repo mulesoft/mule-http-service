@@ -64,6 +64,9 @@ public class GrizzlyServerManager implements HttpServerManager {
   // Defines the maximum size in bytes accepted for the http request header section (request line + headers)
   public static final String MAXIMUM_HEADER_SECTION_SIZE_PROPERTY_KEY = SYSTEM_PROPERTY_PREFIX + "http.headerSectionSize";
   private static final int MAX_KEEP_ALIVE_REQUESTS = -1;
+  // Only use a dedicated selector when more than 4 selectors are in use. A dedicated selector makes HTTP listener more responsive
+  // to new connections but can impact throughput if the acceptor:selector ratio is too high. This ensures the minimum ratio is
+  // 1:5.
   private static final int MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR =
       getInteger(GrizzlyServerManager.class.getName() + ".MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR", 4);
 
