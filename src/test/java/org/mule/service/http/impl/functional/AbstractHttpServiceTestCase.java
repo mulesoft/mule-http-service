@@ -15,8 +15,6 @@ import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.SimpleUnitTestSupportSchedulerService;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
-import com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext;
-
 import java.util.Collections;
 
 import io.qameta.allure.Feature;
@@ -42,11 +40,7 @@ public class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
 
   @Parameters(name = "{0}")
   public static Iterable<Object[]> params() {
-    if (ParameterContext.isParameterSet()) {
-      return Collections.singletonList(ParameterContext.getParameter(Object[].class));
-    } else {
-      return Collections.singletonList(new String[] {HttpServiceImplementation.class.getName()});
-    }
+    return Collections.singletonList(new String[] {HttpServiceImplementation.class.getName()});
   }
 
   public AbstractHttpServiceTestCase(String serviceToLoad) {
