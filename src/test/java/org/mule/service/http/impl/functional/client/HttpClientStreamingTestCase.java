@@ -60,7 +60,8 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   @Test
   @Description("Uses a streaming HTTP client to send a non blocking request which will finish before the stream is released.")
   public void nonBlockingStreaming() throws Exception {
-    HttpClient client = service.getClientFactory().create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).build());
+    HttpClient client =
+        service.getClientFactory().create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(true).build());
     client.start();
     final Reference<HttpResponse> responseReference = new Reference<>();
     try {
@@ -93,7 +94,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   @Test
   @Description("Uses a streaming HTTP client to send a blocking request which will finish before the stream is released.")
   public void blockingStreaming() throws Exception {
-    HttpClient client = service.getClientFactory().create(clientBuilder.build());
+    HttpClient client = service.getClientFactory().create(clientBuilder.setStreaming(true).build());
     client.start();
     try {
       HttpResponse response = client.send(getRequest(), RESPONSE_TIMEOUT, true, null);
