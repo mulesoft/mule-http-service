@@ -22,6 +22,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -40,6 +41,9 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -68,9 +72,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
@@ -121,23 +122,21 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public void start() {
-    selectorScheduler = schedulerService
-        .customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT).withName(name), MAX_VALUE);
+    selectorScheduler = schedulerService.customScheduler(schedulersConfig
+        .withDirectRunCpuLightWhenTargetBusy(true)
+        .withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
+        .withName(name), MAX_VALUE);
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
     builder.setAllowPoolingConnections(true);
 
     configureTransport(builder);
-
     configureTlsContext(builder);
-
     configureProxy(builder);
-
     configureConnections(builder);
 
     AsyncHttpClientConfig config = builder.build();
-
     asyncHttpClient = new AsyncHttpClient(new GrizzlyAsyncHttpProvider(config), config);
   }
 
