@@ -24,6 +24,7 @@ import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
 import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Collection;
 
@@ -38,6 +39,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   private static final String PROTOCOL = "http";
 
   private final HttpRequestPacket requestPacket;
+  private final String baseUri;
   private final InputStream requestContent;
   private final long contentLength;
   private final boolean isTransferEncodingChunked;
@@ -49,8 +51,10 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   private MultiMap<String, String> headers;
   private MultiMap<String, String> queryParams;
 
-  public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent) {
+  public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
+                                   InetSocketAddress localAddress) {
     this.requestPacket = (HttpRequestPacket) httpContent.getHttpHeader();
+    this.baseUri = PROTOCOL + "://" + localAddress.getHostName() + localAddress.getPort();
     isTransferEncodingChunked = requestPacket.isChunked();
     long contentLengthAsLong = -1L;
     String contentLengthAsString = requestPacket.getHeader(CONTENT_LENGTH);
@@ -158,8 +162,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   @Override
   public URI getUri() {
     if (this.uri == null) {
-      this.uri = getUriFromString(PROTOCOL + "://" + requestPacket.getLocalName() + ":" + requestPacket.getLocalPort()
-          + requestPacket.getRequestURI()
+      this.uri = getUriFromString(baseUri + requestPacket.getRequestURI()
           + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
     }
     return this.uri;
