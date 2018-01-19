@@ -92,7 +92,7 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
           }
         }
 
-        final GrizzlyHttpRequestAdapter httpRequest = new GrizzlyHttpRequestAdapter(ctx, httpContent);
+        final GrizzlyHttpRequestAdapter httpRequest = new GrizzlyHttpRequestAdapter(ctx, httpContent, localAddress);
         DefaultHttpRequestContext requestContext =
             createRequestContext(ctx, (ctx.getAttributes().getAttribute(HTTPS.getScheme()) == null) ? HTTP.getScheme()
                 : HTTPS.getScheme(), httpRequest);
