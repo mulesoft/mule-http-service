@@ -10,6 +10,7 @@ import static java.lang.Long.parseLong;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
@@ -21,6 +22,8 @@ import com.ning.http.client.Response;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
+import java.util.Map.Entry;
 
 /**
  * Converts {@link Response Responses} to {@link HttpResponse HttpResponses}.
@@ -29,19 +32,20 @@ import java.io.InputStream;
  */
 public class HttpResponseCreator {
 
+  private static final String HEADER_CONTENT_TYPE = CONTENT_TYPE.toLowerCase();
+  private static final String HEADER_CONTENT_LENGTH = CONTENT_LENGTH.toLowerCase();
+
   public HttpResponse create(Response response, InputStream inputStream) throws IOException {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
     responseBuilder.statusCode(response.getStatusCode());
     responseBuilder.reasonPhrase(response.getStatusText());
-    String contentType = response.getHeader(CONTENT_TYPE.toLowerCase());
-    String contentLength = response.getHeader(CONTENT_LENGTH.toLowerCase());
+    String contentType = response.getHeader(HEADER_CONTENT_TYPE);
+    String contentLength = response.getHeader(HEADER_CONTENT_LENGTH);
     responseBuilder.entity(createEntity(inputStream, contentType, contentLength));
 
     if (response.hasResponseHeaders()) {
-      for (String header : response.getHeaders().keySet()) {
-        for (String headerValue : response.getHeaders(header)) {
-          responseBuilder.addHeader(header, headerValue);
-        }
+      for (Entry<String, List<String>> headerEntry : response.getHeaders().entrySet()) {
+        responseBuilder.addHeaders(headerEntry.getKey(), headerEntry.getValue());
       }
     }
     return responseBuilder.build();
