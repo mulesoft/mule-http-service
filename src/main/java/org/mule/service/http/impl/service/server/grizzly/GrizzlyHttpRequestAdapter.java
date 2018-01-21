@@ -117,6 +117,14 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
     return this.headers.getAll(headerName);
   }
 
+  @Override
+  public MultiMap<String, String> getHeaders() {
+    if (this.headers == null) {
+      initializeHeaders();
+    }
+    return this.headers;
+  }
+
   private void initializeHeaders() {
     this.headers = new MultiMap<>();
     for (String grizzlyHeaderName : requestPacket.getHeaders().names()) {
