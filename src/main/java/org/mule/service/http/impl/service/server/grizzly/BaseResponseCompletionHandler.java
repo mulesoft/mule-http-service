@@ -31,10 +31,10 @@ import java.util.Optional;
 
 public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandler<WriteResult> {
 
-  protected boolean hasContentLength = false;
-
   private static final Logger LOGGER = getLogger(BaseResponseCompletionHandler.class);
   private static final String MULTIPART_CONTENT_TYPE_FORMAT = "%s; %s=\"%s\"";
+
+  protected boolean hasContentLength = false;
 
   protected HttpResponsePacket buildHttpResponsePacket(HttpRequestPacket sourceRequest, HttpResponse httpResponse) {
     final HttpResponsePacket.Builder responsePacketBuilder = HttpResponsePacket.builder(sourceRequest)
@@ -45,21 +45,34 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
     boolean hasConnection = false;
 
     for (String headerName : httpResponse.getHeaderNames()) {
+      // This is a workaround for https://github.com/javaee/grizzly/issues/1994
+      boolean specialHeader = false;
+
       if (contentType == null && headerName.equalsIgnoreCase(CONTENT_TYPE)) {
         contentType = httpResponse.getHeaderValue(headerName);
+        specialHeader = true;
+        responsePacketBuilder.header(CONTENT_TYPE, httpResponse.getHeaderValue(headerName));
       }
       if (!hasTransferEncoding && headerName.equalsIgnoreCase(TRANSFER_ENCODING)) {
         hasTransferEncoding = true;
+        specialHeader = true;
+        responsePacketBuilder.header(TRANSFER_ENCODING, httpResponse.getHeaderValue(headerName));
       }
       if (!hasConnection && headerName.equalsIgnoreCase(CONNECTION)) {
         hasConnection = true;
+        specialHeader = true;
+        responsePacketBuilder.header(CONNECTION, httpResponse.getHeaderValue(headerName));
       }
       if (!hasContentLength && headerName.equalsIgnoreCase(CONTENT_LENGTH)) {
         hasContentLength = true;
+        specialHeader = true;
+        responsePacketBuilder.header(CONTENT_LENGTH, httpResponse.getHeaderValue(headerName));
       }
 
-      for (String value : httpResponse.getHeaderValues(headerName)) {
-        responsePacketBuilder.header(headerName, value);
+      if (!specialHeader) {
+        for (String value : httpResponse.getHeaderValues(headerName)) {
+          responsePacketBuilder.header(headerName, value);
+        }
       }
     }
     if (httpResponse.getEntity().isComposed()) {
