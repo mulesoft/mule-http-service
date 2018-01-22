@@ -84,6 +84,10 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
+  private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
+  private static final String HEADER_CONTENT_LENGTH = CONTENT_LENGTH.toLowerCase();
+  private static final String HEADER_TRANSFER_ENCODING = TRANSFER_ENCODING.toLowerCase();
+
   private final TlsContextFactory tlsContextFactory;
   private final ProxyConfig proxyConfig;
   private final TcpClientSocketProperties clientSocketProperties;
@@ -424,18 +428,29 @@ public class GrizzlyHttpClient implements HttpClient {
     boolean hasConnection = false;
 
     for (String headerName : request.getHeaderNames()) {
-      if (!hasTransferEncoding && headerName.equalsIgnoreCase(TRANSFER_ENCODING)) {
+      // This is a workaround for https://github.com/javaee/grizzly/issues/1994
+      boolean specialHeader = false;
+
+      if (!hasTransferEncoding && headerName.equalsIgnoreCase(HEADER_TRANSFER_ENCODING)) {
         hasTransferEncoding = true;
+        specialHeader = true;
+        builder.addHeader(TRANSFER_ENCODING, request.getHeaderValue(headerName));
       }
-      if (!hasContentLength && headerName.equalsIgnoreCase(CONTENT_LENGTH)) {
+      if (!hasContentLength && headerName.equalsIgnoreCase(HEADER_CONTENT_LENGTH)) {
         hasContentLength = true;
+        specialHeader = true;
+        builder.addHeader(CONTENT_LENGTH, request.getHeaderValue(headerName));
       }
-      if (!hasContentLength && headerName.equalsIgnoreCase(CONNECTION)) {
+      if (!hasContentLength && headerName.equalsIgnoreCase(HEADER_CONNECTION)) {
         hasConnection = true;
+        specialHeader = true;
+        builder.addHeader(CONNECTION, request.getHeaderValue(headerName));
       }
 
-      for (String headerValue : request.getHeaderValues(headerName)) {
-        builder.addHeader(headerName, headerValue);
+      if (!specialHeader) {
+        for (String headerValue : request.getHeaderValues(headerName)) {
+          builder.addHeader(headerName, headerValue);
+        }
       }
     }
 
@@ -448,10 +463,10 @@ public class GrizzlyHttpClient implements HttpClient {
     // add "Connection: keep-alive" otherwise. (https://github.com/AsyncHttpClient/async-http-client/issues/885)
 
     if (!usePersistentConnections) {
-      if (hasConnection && logger.isDebugEnabled() && !CLOSE.equals(request.getHeaderValueIgnoreCase(CONNECTION))) {
+      if (hasConnection && logger.isDebugEnabled() && !CLOSE.equals(request.getHeaderValue(HEADER_CONNECTION))) {
         logger.debug("Persistent connections are disabled in the HTTP requester configuration, but the request already "
             + "contains a Connection header with value {}. This header will be ignored, and a Connection: close header "
-            + "will be sent instead.", request.getHeaderValueIgnoreCase(CONNECTION));
+            + "will be sent instead.", request.getHeaderValue(HEADER_CONNECTION));
       }
       builder.setHeader(CONNECTION, CLOSE);
     }
