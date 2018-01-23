@@ -15,6 +15,7 @@ import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQuer
 import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
 
 import org.mule.runtime.api.util.MultiMap;
+import org.mule.runtime.http.api.domain.CaseInsensitiveMultiMap;
 import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
@@ -23,16 +24,16 @@ import org.mule.runtime.http.api.domain.message.BaseHttpMessage;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
-import java.io.InputStream;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.util.Collection;
-
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.utils.BufferInputStream;
+
+import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.util.Collection;
 
 public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRequest {
 
@@ -126,7 +127,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   }
 
   private void initializeHeaders() {
-    this.headers = new MultiMap<>();
+    this.headers = new CaseInsensitiveMultiMap();
     for (String grizzlyHeaderName : requestPacket.getHeaders().names()) {
       final Iterable<String> headerValues = requestPacket.getHeaders().values(grizzlyHeaderName);
       for (String headerValue : headerValues) {
