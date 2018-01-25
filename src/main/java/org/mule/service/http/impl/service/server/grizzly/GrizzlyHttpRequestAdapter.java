@@ -11,6 +11,7 @@ import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
 import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
 
@@ -127,7 +128,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   }
 
   private void initializeHeaders() {
-    this.headers = new CaseInsensitiveMultiMap();
+    this.headers = new CaseInsensitiveMultiMap(!PRESERVE_HEADER_CASE);
     for (String grizzlyHeaderName : requestPacket.getHeaders().names()) {
       final Iterable<String> headerValues = requestPacket.getHeaders().values(grizzlyHeaderName);
       for (String headerValue : headerValues) {
