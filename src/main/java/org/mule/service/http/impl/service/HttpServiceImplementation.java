@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service;
 
+import static com.ning.http.util.AsyncHttpProviderUtils.REMOTELY_CLOSED_EXCEPTION;
 import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
 import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_MULE_CONTEXT;
@@ -30,6 +31,8 @@ import org.mule.service.http.impl.service.client.GrizzlyHttpClient;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
 
+import java.io.IOException;
+
 import javax.inject.Inject;
 import javax.inject.Named;
 
@@ -47,6 +50,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
     // may cause a leak of the plugin/app classloaders from the IOException generated.
     final CloseReason locallyClosedReason = LOCALLY_CLOSED_REASON;
     final CloseReason remotelyClosedReason = REMOTELY_CLOSED_REASON;
+    final IOException remotelyClosedException = REMOTELY_CLOSED_EXCEPTION;
   }
 
   private static final Logger logger = getLogger(HttpServiceImplementation.class);
