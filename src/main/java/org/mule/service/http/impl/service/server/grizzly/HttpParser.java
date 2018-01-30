@@ -6,16 +6,22 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.util.regex.Pattern.compile;
 import static org.mule.runtime.core.api.util.StringUtils.WHITE_SPACE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_DISPOSITION;
 
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
+
+import org.apache.commons.io.IOUtils;
+
+import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.mail.BodyPart;
 import javax.mail.Header;
@@ -23,14 +29,9 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.util.ByteArrayDataSource;
 
-import org.apache.commons.io.IOUtils;
-
-import com.google.common.collect.Lists;
-
 public class HttpParser {
 
-  private static final String SPACE_ENTITY = "%20";
-  private static final String PLUS_SIGN = "\\+";
+  private static final Pattern SPACE_ENTITY_OR_PLUS_SIGN_REGEX = compile("%20|\\+");
   private static final String CONTENT_DISPOSITION_PART_HEADER = CONTENT_DISPOSITION;
   private static final String NAME_ATTRIBUTE = "name";
 
@@ -94,6 +95,6 @@ public class HttpParser {
    * @return path with only spaces.
    */
   public static String normalizePathWithSpacesOrEncodedSpaces(String path) {
-    return path.replaceAll(SPACE_ENTITY, WHITE_SPACE).replaceAll(PLUS_SIGN, WHITE_SPACE);
+    return SPACE_ENTITY_OR_PLUS_SIGN_REGEX.matcher(path).replaceAll(WHITE_SPACE);
   }
 }
