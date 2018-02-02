@@ -7,8 +7,10 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.util.regex.Pattern.compile;
+import static org.mule.runtime.api.metadata.MediaType.MULTIPART_RELATED;
 import static org.mule.runtime.core.api.util.StringUtils.WHITE_SPACE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_DISPOSITION;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_ID;
 
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 
@@ -32,7 +34,6 @@ import javax.mail.util.ByteArrayDataSource;
 public class HttpParser {
 
   private static final Pattern SPACE_ENTITY_OR_PLUS_SIGN_REGEX = compile("%20|\\+");
-  private static final String CONTENT_DISPOSITION_PART_HEADER = CONTENT_DISPOSITION;
   private static final String NAME_ATTRIBUTE = "name";
 
   public static String extractPath(String uri) {
@@ -62,7 +63,7 @@ public class HttpParser {
 
         String filename = part.getFileName();
         String partName = filename;
-        String[] contentDispositions = part.getHeader(CONTENT_DISPOSITION_PART_HEADER);
+        String[] contentDispositions = part.getHeader(CONTENT_DISPOSITION);
         if (contentDispositions != null) {
           String contentDisposition = contentDispositions[0];
           if (contentDisposition.contains(NAME_ATTRIBUTE)) {
@@ -70,6 +71,14 @@ public class HttpParser {
             partName = partName.substring(0, partName.indexOf("\""));
           }
         }
+
+        if (partName == null && mimeMultipart.getContentType().contains(MULTIPART_RELATED.toString())) {
+          String[] contentIdHeader = part.getHeader(CONTENT_ID);
+          if (contentIdHeader != null && contentIdHeader.length > 0) {
+            partName = contentIdHeader[0];
+          }
+        }
+
         HttpPart httpPart =
             new HttpPart(partName, filename, IOUtils.toByteArray(part.getInputStream()), part.getContentType(), part.getSize());
 
