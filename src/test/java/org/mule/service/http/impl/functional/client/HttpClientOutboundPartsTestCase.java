@@ -81,8 +81,7 @@ public class HttpClientOutboundPartsTestCase extends AbstractHttpClientTestCase 
     HttpResponse response = client.send(HttpRequest.builder()
         .uri(getUri())
         .entity(new MultipartHttpEntity(singletonList(part)))
-        .build(),
-                                        TIMEOUT, true, null);
+        .build(), getDefaultOptions(TIMEOUT));
 
     assertThat(response.getStatusCode(), is(OK.getStatusCode()));
   }

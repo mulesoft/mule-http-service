@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.functional.client;
 
+import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -69,6 +70,10 @@ public abstract class AbstractHttpClientTestCase extends AbstractHttpServiceTest
       server.stop();
       server.dispose();
     }
+  }
+
+  protected HttpRequestOptions getDefaultOptions(int responseTimeout) {
+    return HttpRequestOptions.builder().responseTimeout(responseTimeout).build();
   }
 
 }

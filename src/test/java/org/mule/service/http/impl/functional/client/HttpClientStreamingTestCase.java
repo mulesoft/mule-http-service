@@ -65,9 +65,9 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     client.start();
     final Reference<HttpResponse> responseReference = new Reference<>();
     try {
-      client.sendAsync(getRequest(), RESPONSE_TIMEOUT, true, null).whenComplete(
-                                                                                (response, exception) -> responseReference
-                                                                                    .set(response));
+      client.sendAsync(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT)).whenComplete(
+                                                                                       (response, exception) -> responseReference
+                                                                                           .set(response));
       pollingProber.check(new ResponseReceivedProbe(responseReference));
       verifyStreamed(responseReference.get());
     } finally {
@@ -82,9 +82,9 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     client.start();
     final Reference<HttpResponse> responseReference = new Reference<>();
     try {
-      client.sendAsync(getRequest(), RESPONSE_TIMEOUT, true, null).whenComplete(
-                                                                                (response, exception) -> responseReference
-                                                                                    .set(response));
+      client.sendAsync(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT)).whenComplete(
+                                                                                       (response, exception) -> responseReference
+                                                                                           .set(response));
       verifyNotStreamed(responseReference);
     } finally {
       client.stop();
@@ -97,7 +97,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     HttpClient client = service.getClientFactory().create(clientBuilder.setStreaming(true).build());
     client.start();
     try {
-      HttpResponse response = client.send(getRequest(), RESPONSE_TIMEOUT, true, null);
+      HttpResponse response = client.send(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT));
       verifyStreamed(response);
     } finally {
       client.stop();
@@ -114,7 +114,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     try {
       executorService.execute(() -> {
         try {
-          responseReference.set(client.send(getRequest(), RESPONSE_TIMEOUT, true, null));
+          responseReference.set(client.send(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT)));
         } catch (Exception e) {
           // Do nothing, probe will fail.
         }

@@ -168,7 +168,7 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
   }
 
   private HttpResponse send(HttpRequest request) throws Exception {
-    HttpResponse response = client.send(request, TIMEOUT, false, null);
+    HttpResponse response = client.send(request, getDefaultOptions(TIMEOUT));
 
     assertThat(response.getStatusCode(), is(OK.getStatusCode()));
     return response;

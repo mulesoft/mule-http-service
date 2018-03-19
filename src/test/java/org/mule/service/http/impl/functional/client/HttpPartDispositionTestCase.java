@@ -90,7 +90,7 @@ public class HttpPartDispositionTestCase extends AbstractHttpClientTestCase {
     MultiMap<String, String> queryParams = new MultiMap<>();
     queryParams.put(CONTENT_DISPOSITION_PARAM, addHeader.toString());
     HttpResponse response =
-        client.send(HttpRequest.builder().uri(getUri()).queryParams(queryParams).build(), TIMEOUT, true, null);
+        client.send(HttpRequest.builder().uri(getUri()).queryParams(queryParams).build(), getDefaultOptions(TIMEOUT));
     assertThat(response.getEntity().isComposed(), is(true));
     Collection<HttpPart> parts = response.getEntity().getParts();
     assertThat(parts, hasSize(1));
