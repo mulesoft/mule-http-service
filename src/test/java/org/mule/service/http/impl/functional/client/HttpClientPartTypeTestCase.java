@@ -83,7 +83,7 @@ public class HttpClientPartTypeTestCase extends AbstractHttpClientTestCase {
         .method(POST)
         .uri(getUri())
         .entity(multipart)
-        .build(), TIMEOUT, true, null);
+        .build(), getDefaultOptions(TIMEOUT));
     assertThat(IOUtils.toString(response.getEntity().getContent()), is(equalTo("OK")));
   }
 

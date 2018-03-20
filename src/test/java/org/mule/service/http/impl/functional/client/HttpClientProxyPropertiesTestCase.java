@@ -55,7 +55,7 @@ public class HttpClientProxyPropertiesTestCase extends AbstractHttpClientTestCas
 
   @Test
   public void usesProxyWithoutExplicitConfig() throws Exception {
-    HttpResponse response = client.send(HttpRequest.builder().uri(getUri()).build(), TIMEOUT, true, null);
+    HttpResponse response = client.send(HttpRequest.builder().uri(getUri()).build(), getDefaultOptions(TIMEOUT));
     assertThat(proxyServer.hasConnections(), is(true));
     assertThat(response.getStatusCode(), is(OK.getStatusCode()));
   }

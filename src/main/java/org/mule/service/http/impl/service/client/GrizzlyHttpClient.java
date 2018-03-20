@@ -22,7 +22,6 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
-
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -32,6 +31,7 @@ import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
+import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
 import org.mule.runtime.http.api.client.auth.HttpAuthenticationType;
 import org.mule.runtime.http.api.client.proxy.ProxyConfig;
@@ -41,9 +41,6 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -72,6 +69,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
@@ -250,13 +250,11 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   @Override
-  public HttpResponse send(HttpRequest request, int responseTimeout, boolean followRedirects,
-                           HttpAuthentication authentication)
-      throws IOException, TimeoutException {
+  public HttpResponse send(HttpRequest request, HttpRequestOptions options) throws IOException, TimeoutException {
     if (streamingEnabled) {
-      return sendAndDefer(request, responseTimeout, followRedirects, authentication);
+      return sendAndDefer(request, options);
     } else {
-      return sendAndWait(request, responseTimeout, followRedirects, authentication);
+      return sendAndWait(request, options);
     }
   }
 
@@ -268,10 +266,9 @@ public class GrizzlyHttpClient implements HttpClient {
    * will block waiting to allocate them. Likewise, read/write speed differences could cause issues. The buffer size can be
    * customized for these reason.
    */
-  public HttpResponse sendAndDefer(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                   HttpAuthentication authentication)
+  private HttpResponse sendAndDefer(HttpRequest request, HttpRequestOptions options)
       throws IOException, TimeoutException {
-    Request grizzlyRequest = createGrizzlyRequest(request, responseTimeout, followRedirects, authentication);
+    Request grizzlyRequest = createGrizzlyRequest(request, options);
     PipedOutputStream outPipe = new PipedOutputStream();
     PipedInputStream inPipe =
         new PipedInputStream(outPipe, responseBufferSize > 0 ? responseBufferSize : DEFAULT_SEND_AND_DEFER_BUFFER_SIZE);
@@ -296,10 +293,9 @@ public class GrizzlyHttpClient implements HttpClient {
   /**
    * Blocking send which waits to load the whole response to memory before propagating it.
    */
-  public HttpResponse sendAndWait(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                  HttpAuthentication authentication)
+  private HttpResponse sendAndWait(HttpRequest request, HttpRequestOptions options)
       throws IOException, TimeoutException {
-    Request grizzlyRequest = createGrizzlyRequest(request, responseTimeout, followRedirects, authentication);
+    Request grizzlyRequest = createGrizzlyRequest(request, options);
     ListenableFuture<Response> future = asyncHttpClient.executeRequest(grizzlyRequest);
     try {
       // No timeout is used to get the value of the future object, as the responseTimeout configured in the request that
@@ -328,8 +324,7 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   @Override
-  public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                                   HttpAuthentication authentication) {
+  public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options) {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
@@ -339,25 +334,24 @@ public class GrizzlyHttpClient implements HttpClient {
         asyncHandler = new ResponseAsyncHandler(future);
       }
 
-      asyncHttpClient.executeRequest(createGrizzlyRequest(request, responseTimeout, followRedirects, authentication),
-                                     asyncHandler);
+      asyncHttpClient.executeRequest(createGrizzlyRequest(request, options), asyncHandler);
     } catch (Exception e) {
       future.completeExceptionally(e);
     }
     return future;
   }
 
-  private Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                       HttpAuthentication authentication)
+  private Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, builder -> {
       builder.setMethod(request.getMethod());
-      builder.setFollowRedirects(followRedirects);
+      builder.setFollowRedirects(options.isFollowsRedirect());
 
       populateHeaders(request, builder);
 
       request.getQueryParams().entryList().forEach(entry -> builder.addQueryParam(entry.getKey(), entry.getValue()));
 
+      HttpAuthentication authentication = options.getAuthentication();
       if (authentication != null) {
         Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder()
             .setPrincipal(authentication.getUsername())
@@ -379,7 +373,6 @@ public class GrizzlyHttpClient implements HttpClient {
         }
 
         builder.setRealm(realmBuilder.build());
-
       }
 
       if (request.getEntity() != null) {
@@ -402,7 +395,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
       // Set the response timeout in the request, this value is read by {@code CustomTimeoutThrottleRequestFilter}
       // if the maxConnections attribute is configured in the requester.
-      builder.setRequestTimeout(responseTimeout);
+      builder.setRequestTimeout(options.getResponseTimeout());
     });
     URI uri = request.getUri();
     reqBuilder.setUri(new Uri(uri.getScheme(), uri.getRawUserInfo(), uri.getHost(), uri.getPort(), uri.getRawPath(),

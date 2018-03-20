@@ -14,7 +14,9 @@ import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNee
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpService;
+import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
+import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -31,17 +33,17 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 /**
- * Defines a {@link org.mule.runtime.http.api.client.HttpClient} using a default implementation of {@link HttpService}
+ * Defines a {@link HttpClient} using a default implementation of {@link HttpService}
  *
  * <p/>
- * This rule is intended to simplify the usage of the {@link org.mule.runtime.http.api.client.HttpClient} as it will be
+ * This rule is intended to simplify the usage of the {@link HttpClient} as it will be
  * started/stopped as part of the test lifecycle.
  */
-public class TestHttpClient extends ExternalResource implements org.mule.runtime.http.api.client.HttpClient {
+public class TestHttpClient extends ExternalResource implements HttpClient {
 
   private final HttpService httpService;
   private TlsContextFactory tlsContextFactory;
-  private org.mule.runtime.http.api.client.HttpClient httpClient;
+  private HttpClient httpClient;
 
   private TestHttpClient() {
     this(new HttpServiceImplementation(new SimpleUnitTestSupportSchedulerService()));
@@ -81,16 +83,16 @@ public class TestHttpClient extends ExternalResource implements org.mule.runtime
   }
 
   @Override
-  public HttpResponse send(HttpRequest request, int responseTimeout, boolean followRedirects,
-                           HttpAuthentication authentication)
+  public HttpResponse send(HttpRequest request, HttpRequestOptions options)
       throws IOException, TimeoutException {
-    return httpClient.send(request, isDebugging() ? MAX_VALUE : responseTimeout, followRedirects, authentication);
+    return httpClient.send(request,
+                           isDebugging() ? HttpRequestOptions.builder(options).responseTimeout(MAX_VALUE).build() : options);
   }
 
   @Override
-  public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                                   HttpAuthentication authentication) {
-    return httpClient.sendAsync(request, isDebugging() ? MAX_VALUE : responseTimeout, followRedirects, authentication);
+  public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options) {
+    return httpClient.sendAsync(request,
+                                isDebugging() ? HttpRequestOptions.builder(options).responseTimeout(MAX_VALUE).build() : options);
   }
 
   public static class Builder {
