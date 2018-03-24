@@ -7,9 +7,9 @@
 package org.mule.service.http.impl.service.server;
 
 import static java.lang.String.format;
+import static org.apache.commons.text.StringEscapeUtils.escapeHtml4;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
@@ -59,8 +59,8 @@ public class ErrorRequestHandler implements RequestHandler {
                                    });
   }
 
-  protected String getResolvedEntity(String uri) {
-    return format(entityFormat, uri);
+  private String getResolvedEntity(String path) {
+    return format(entityFormat, escapeHtml4(path));
   }
 
 }

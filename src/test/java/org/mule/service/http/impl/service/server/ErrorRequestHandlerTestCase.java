@@ -7,19 +7,15 @@
 
 package org.mule.service.http.impl.service.server;
 
-import static java.lang.String.format;
-import static org.apache.commons.text.StringEscapeUtils.escapeHtml4;
-import static org.hamcrest.CoreMatchers.is;
+import static java.util.Arrays.asList;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.contains;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
-
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -28,20 +24,37 @@ import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
+import java.util.Collection;
+
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-public class NoListenerRequestHandlerTestCase extends AbstractMuleTestCase {
+@RunWith(Parameterized.class)
+public class ErrorRequestHandlerTestCase extends AbstractMuleTestCase {
 
-  private final static String TEST_REQUEST_INVALID_URI = "http://localhost:8081/<script>alert('hello');</script>";
+  private static final String SCRIPT = "/<script>alert('hello');</script>";
   private final HttpRequestContext context = mock(HttpRequestContext.class, RETURNS_DEEP_STUBS);
   private final HttpResponseReadyCallback responseReadyCallback = mock(HttpResponseReadyCallback.class);
-  private NoListenerRequestHandler noListenerRequestHandler;
+
+  @Parameter
+  public ErrorRequestHandler errorRequestHandler;
+
+  @Parameters(name = "{0}")
+  public static Collection<Object[]> parameters() {
+    return asList(new Object[][] {
+        {NoListenerRequestHandler.getInstance()},
+        {NoMethodRequestHandler.getInstance()},
+        {ServiceTemporarilyUnavailableListenerRequestHandler.getInstance()}
+    });
+  }
 
   @Before
   public void setUp() throws Exception {
-    noListenerRequestHandler = NoListenerRequestHandler.getInstance();
-    when(context.getRequest().getUri()).then(obj -> getUriFromString(TEST_REQUEST_INVALID_URI));
+    when(context.getRequest().getPath()).thenReturn(SCRIPT);
   }
 
   @Test
@@ -54,7 +67,7 @@ public class NoListenerRequestHandlerTestCase extends AbstractMuleTestCase {
       inputStreamHttpEntity.getContent().close();
       return null;
     }).when(responseReadyCallback).responseReady(any(HttpResponse.class), any(ResponseStatusCallback.class));
-    noListenerRequestHandler.handleRequest(context, responseReadyCallback);
-    assertThat(result[0], not(contains("<script>alert('hello');</script>")));
+    errorRequestHandler.handleRequest(context, responseReadyCallback);
+    assertThat(result[0], not(containsString(SCRIPT)));
   }
 }
