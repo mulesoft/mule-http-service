@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  * waiting for the response to arrive before executing the next request.
  *
  * This is based on {@code com.ning.http.client.extra.ThrottleRequestFilter} from Async Http Client, but uses the request timeout
- * from each request.
+ * from each request and throttles based on the configured maximum connections allowed.
  */
 public class CustomTimeoutThrottleRequestFilter implements RequestFilter {
 
@@ -41,16 +41,17 @@ public class CustomTimeoutThrottleRequestFilter implements RequestFilter {
   @Override
   public FilterContext filter(FilterContext ctx) throws FilterException {
     try {
+      int timeout = ctx.getRequest().getRequestTimeout();
       if (logger.isDebugEnabled()) {
-        logger.debug("Current Throttling Status {}", available.availablePermits());
+        logger.debug("Current available connections: {}, Maximum wait time: {}", available.availablePermits(), timeout);
       }
-      if (!available.tryAcquire(ctx.getRequest().getRequestTimeout(), MILLISECONDS)) {
-        throw new FilterException(String.format("No slot available for processing Request %s with AsyncHandler %s",
-                                                ctx.getRequest(), ctx.getAsyncHandler()));
+      if (!available.tryAcquire(timeout, MILLISECONDS)) {
+        logger.debug("Rejecting request {} in AsyncHandler {}", ctx.getRequest(), ctx.getAsyncHandler());
+        throw new FilterException("Connection limit exceeded, cannot process request");
       }
     } catch (InterruptedException e) {
-      throw new FilterException(String.format("Interrupted Request %s with AsyncHandler %s", ctx.getRequest(),
-                                              ctx.getAsyncHandler()));
+      logger.debug("Interrupted request {} in AsyncHandler {}", ctx.getRequest(), ctx.getAsyncHandler());
+      throw new FilterException("Interrupted request");
     }
 
     return new FilterContext.FilterContextBuilder(ctx).asyncHandler(new AsyncHandlerWrapper(ctx.getAsyncHandler())).build();
@@ -70,7 +71,7 @@ public class CustomTimeoutThrottleRequestFilter implements RequestFilter {
         available.release();
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("Current Throttling Status after onThrowable {}", available.availablePermits());
+        logger.debug("Current available connections after processing: {}", available.availablePermits());
       }
     }
 

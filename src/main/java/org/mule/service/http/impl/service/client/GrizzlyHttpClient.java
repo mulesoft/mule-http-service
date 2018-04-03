@@ -52,6 +52,7 @@ import com.ning.http.client.Realm;
 import com.ning.http.client.Request;
 import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.Response;
+import com.ning.http.client.filter.FilterException;
 import com.ning.http.client.generators.InputStreamBodyGenerator;
 import com.ning.http.client.multipart.ByteArrayPart;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
@@ -311,14 +312,16 @@ public class GrizzlyHttpClient implements HttpClient {
       }
       return httpResponseCreator.create(response, response.getResponseBodyAsStream());
     } catch (InterruptedException e) {
-      throw new IOException(e);
+      throw new IOException(e.getMessage(), e);
     } catch (ExecutionException e) {
       if (e.getCause() instanceof TimeoutException) {
         throw (TimeoutException) e.getCause();
       } else if (e.getCause() instanceof IOException) {
         throw (IOException) e.getCause();
+      } else if (e.getCause() instanceof FilterException) {
+        throw new IOException(e.getCause().getMessage(), e.getCause());
       } else {
-        throw new IOException(e);
+        throw new IOException(e.getMessage(), e);
       }
     }
   }

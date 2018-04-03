@@ -95,7 +95,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       } else if (t instanceof IOException) {
         exception = (IOException) t;
       } else {
-        exception = new IOException(t);
+        exception = new IOException(t.getMessage(), t);
       }
       future.completeExceptionally(exception);
     } else {
