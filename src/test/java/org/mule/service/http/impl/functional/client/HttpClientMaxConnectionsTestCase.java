@@ -61,7 +61,7 @@ public class HttpClientMaxConnectionsTestCase extends AbstractHttpClientTestCase
     try {
       complete.await();
     } catch (InterruptedException e) {
-      // Do nothing
+      Thread.currentThread().interrupt();
     }
     return HttpResponse.builder().build();
   }
