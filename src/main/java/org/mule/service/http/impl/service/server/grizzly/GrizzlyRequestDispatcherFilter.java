@@ -52,7 +52,7 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
   private final RequestHandlerProvider requestHandlerProvider;
 
   private final byte[] SERVER_NOT_AVAILABLE_CONTENT = ("Server not available to handle this request, either not initialized yet "
-      + "or it has been disposed.").getBytes();
+      + "or it has been disposed.").getBytes(defaultCharset());
 
   private ConcurrentMap<ServerAddress, AtomicInteger> activeRequests = new ConcurrentHashMap<>();
 
