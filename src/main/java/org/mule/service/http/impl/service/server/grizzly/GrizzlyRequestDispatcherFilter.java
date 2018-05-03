@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.String.valueOf;
+import static java.nio.charset.Charset.defaultCharset;
 import static org.glassfish.grizzly.http.util.HttpStatus.CONINTUE_100;
 import static org.glassfish.grizzly.http.util.HttpStatus.EXPECTATION_FAILED_417;
 import static org.glassfish.grizzly.http.util.HttpStatus.SERVICE_UNAVAILABLE_503;
@@ -50,6 +51,9 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
 
   private final RequestHandlerProvider requestHandlerProvider;
 
+  private final byte[] SERVER_NOT_AVAILABLE_CONTENT = ("Server not available to handle this request, either not initialized yet "
+      + "or it has been disposed.").getBytes();
+
   private ConcurrentMap<ServerAddress, AtomicInteger> activeRequests = new ConcurrentHashMap<>();
 
   GrizzlyRequestDispatcherFilter(final RequestHandlerProvider requestHandlerProvider) {
@@ -75,13 +79,11 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
           responsePacketBuilder.status(SERVICE_UNAVAILABLE_503.getStatusCode());
           responsePacketBuilder.reasonPhrase(SERVICE_UNAVAILABLE_503.getReasonPhrase());
 
-          String content = "Server not available to handle this request, either not initialized yet or it has been disposed.";
-          responsePacketBuilder.header(CONTENT_TYPE, TEXT.toRfcString());
-          responsePacketBuilder.header(CONTENT_LENGTH, valueOf(content.length()));
+          responsePacketBuilder.header(CONTENT_TYPE, TEXT.withCharset(defaultCharset()).toRfcString());
+          responsePacketBuilder.header(CONTENT_LENGTH, valueOf(SERVER_NOT_AVAILABLE_CONTENT.length));
 
           ctx.write(HttpContent.builder(responsePacketBuilder.build())
-              .content(wrap(ctx.getMemoryManager(), content
-                  .getBytes()))
+              .content(wrap(ctx.getMemoryManager(), SERVER_NOT_AVAILABLE_CONTENT))
               .build());
           return ctx.getStopAction();
         }
