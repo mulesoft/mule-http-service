@@ -6,17 +6,20 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.String.valueOf;
 import static org.glassfish.grizzly.http.util.HttpStatus.CONINTUE_100;
 import static org.glassfish.grizzly.http.util.HttpStatus.EXPECTATION_FAILED_417;
 import static org.glassfish.grizzly.http.util.HttpStatus.SERVICE_UNAVAILABLE_503;
+import static org.glassfish.grizzly.memory.Buffers.wrap;
+import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpConstants.Method.HEAD;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
-
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.domain.request.ServerConnection;
@@ -71,8 +74,15 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
           final HttpResponsePacket.Builder responsePacketBuilder = HttpResponsePacket.builder(request);
           responsePacketBuilder.status(SERVICE_UNAVAILABLE_503.getStatusCode());
           responsePacketBuilder.reasonPhrase(SERVICE_UNAVAILABLE_503.getReasonPhrase());
-          responsePacketBuilder.header(CONTENT_LENGTH, "0");
-          ctx.write(responsePacketBuilder.build());
+
+          String content = "Server not available to handle this request, either not initialized yet or it has been disposed.";
+          responsePacketBuilder.header(CONTENT_TYPE, TEXT.toRfcString());
+          responsePacketBuilder.header(CONTENT_LENGTH, valueOf(content.length()));
+
+          ctx.write(HttpContent.builder(responsePacketBuilder.build())
+              .content(wrap(ctx.getMemoryManager(), content
+                  .getBytes()))
+              .build());
           return ctx.getStopAction();
         }
 
@@ -89,6 +99,7 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
           } else {
             responsePacketBuilder.status(EXPECTATION_FAILED_417.getStatusCode());
             responsePacketBuilder.reasonPhrase(EXPECTATION_FAILED_417.getReasonPhrase());
+            responsePacketBuilder.header(CONTENT_LENGTH, "0");
             ctx.write(responsePacketBuilder.build());
             return ctx.getStopAction();
           }
