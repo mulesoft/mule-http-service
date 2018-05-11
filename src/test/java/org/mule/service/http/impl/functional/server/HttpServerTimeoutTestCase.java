@@ -1,0 +1,145 @@
+/*
+ * Copyright (c) MuleSoft, Inc.  All rights reserved.  http://www.mulesoft.com
+ * The software in this package is published under the terms of the CPAL v1.0
+ * license, a copy of which has been included with this distribution in the
+ * LICENSE.txt file.
+ */
+package org.mule.service.http.impl.functional.server;
+
+import static java.lang.String.valueOf;
+import static java.lang.Thread.sleep;
+import static java.util.Collections.singletonList;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mule.runtime.api.metadata.MediaType.TEXT;
+import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
+import static org.mule.runtime.http.api.HttpConstants.Method.GET;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
+import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.runtime.http.api.server.HttpServer;
+import org.mule.runtime.http.api.server.HttpServerConfiguration;
+import org.mule.runtime.http.api.server.ServerCreationException;
+import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
+import org.mule.tck.junit4.rule.DynamicPort;
+import org.mule.tck.junit4.rule.SystemProperty;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.Socket;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+
+public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
+
+  private static int SERVER_TIMEOUT_MILLIS = 500;
+  private static int CONNECTION_TIMEOUT_MILLIS = 2000;
+
+  @Rule
+  public DynamicPort port1 = new DynamicPort("port1");
+  @Rule
+  public DynamicPort port2 = new DynamicPort("port2");
+  @Rule
+  public SystemProperty serverTimeout = new SystemProperty("mule.http.server.timeout", valueOf(SERVER_TIMEOUT_MILLIS));
+
+  private HttpServer server1;
+  private HttpServer server2;
+
+  public HttpServerTimeoutTestCase(String serviceToLoad) {
+    super(serviceToLoad);
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    server1 = buildServer(getServerBuilder(port1, "server-timeout-test").setUsePersistentConnections(false));
+    server2 = buildServer(getServerBuilder(port2, "server-connection-timeout-test")
+        .setConnectionIdleTimeout(CONNECTION_TIMEOUT_MILLIS));
+  }
+
+  @After
+  public void tearDown() {
+    close(server1);
+    close(server2);
+  }
+
+  private HttpServer buildServer(HttpServerConfiguration.Builder serverBuilder) throws ServerCreationException, IOException {
+    HttpServer httpServer = service.getServerFactory().create(serverBuilder.build());
+    httpServer.start();
+    httpServer.addRequestHandler(singletonList(GET.name()), "/test", (requestContext, responseCallback) -> {
+      responseCallback.responseReady(HttpResponse.builder().entity(new ByteArrayHttpEntity("Success!".getBytes()))
+          .addHeader(CONTENT_TYPE, TEXT.toRfcString())
+          .build(), new IgnoreResponseStatusCallback());
+
+    });
+    return httpServer;
+  }
+
+  private HttpServerConfiguration.Builder getServerBuilder(DynamicPort port, String name) {
+    return new HttpServerConfiguration.Builder()
+        .setHost("localhost")
+        .setPort(port.getNumber())
+        .setName(name);
+  }
+
+  private void close(HttpServer server) {
+    if (server != null) {
+      server.stop();
+      server.dispose();
+    }
+  }
+
+  @Test
+  public void serverTimeoutsTcpConnection() throws Exception {
+    Socket socket = new Socket("localhost", port1.getNumber());
+    sleep(SERVER_TIMEOUT_MILLIS * 2);
+    sendRequest(socket);
+    assertThat(getResponse(socket), is(nullValue()));
+  }
+
+  @Test
+  public void keepAlivePreventsServerTimeout() throws Exception {
+    Socket socket = new Socket("localhost", port2.getNumber());
+    sendRequest(socket);
+    assertThat(getResponse(socket), is(notNullValue()));
+    sleep(SERVER_TIMEOUT_MILLIS * 2);
+    sendRequest(socket);
+    assertThat(getResponse(socket), is(notNullValue()));
+    sleep(CONNECTION_TIMEOUT_MILLIS + SERVER_TIMEOUT_MILLIS * 2);
+    sendRequest(socket);
+    assertThat(getResponse(socket), is(nullValue()));
+  }
+
+  private void sendRequest(Socket socket) throws IOException {
+    PrintWriter writer = new PrintWriter(socket.getOutputStream());
+    writer.println("GET /test HTTP/1.1");
+    writer.println("Host: www.example.com");
+    writer.println("");
+    writer.flush();
+  }
+
+  private String getResponse(Socket socket) {
+    try {
+      StringWriter writer = new StringWriter();
+      BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      if (reader != null) {
+        String line;
+        while (!isEmpty(line = reader.readLine())) {
+          writer.append(line).append("\r\n");
+        }
+      }
+      String response = writer.toString();
+      return response.length() == 0 ? null : response;
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+}
