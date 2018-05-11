@@ -69,7 +69,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
       return;
     }
 
-    // TODO - MULE-11116: Analyze how to allow users to configure this
+    // TODO - MULE-14960: Create TCP server socket properties conf file
     TcpServerSocketProperties tcpServerSocketProperties = new DefaultTcpServerSocketProperties();
 
     selectorScheduler = schedulerService.customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
