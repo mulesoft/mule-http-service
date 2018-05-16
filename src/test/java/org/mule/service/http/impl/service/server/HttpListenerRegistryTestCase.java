@@ -37,6 +37,7 @@ import org.junit.rules.ExpectedException;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 
 @SmallTest
@@ -361,5 +362,33 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
     httpListenerRegistry.addRequestHandler(testServer, mockRequestHandler,
                                            new ListenerRequestMatcher(AcceptsAllMethodsRequestMatcher.instance(), secondPath));
   }
+
+  @Test
+  @Description("Verify that a path using wildcards and a path involving a longer subpath are correctly resolved.")
+  public void validateWildcardPathWithLongPath() {
+    httpListenerRegistry = new HttpListenerRegistry();
+
+    // /first-level-path/*
+    requestHandlerPerPath.put(SECOND_LEVEL_CATCH_ALL, mock(RequestHandler.class));
+    httpListenerRegistry.addRequestHandler(testServer, requestHandlerPerPath.get(SECOND_LEVEL_CATCH_ALL),
+                                           new ListenerRequestMatcher(AcceptsAllMethodsRequestMatcher.instance(),
+                                                                      SECOND_LEVEL_CATCH_ALL));
+
+    // /first-level-path/another-path
+    requestHandlerPerPath.put(SECOND_LEVEL_PATH + ANOTHER_PATH, mock(RequestHandler.class));
+    httpListenerRegistry.addRequestHandler(testServer, requestHandlerPerPath.get(SECOND_LEVEL_PATH + ANOTHER_PATH),
+                                           new ListenerRequestMatcher(AcceptsAllMethodsRequestMatcher.instance(),
+                                                                      SECOND_LEVEL_PATH + ANOTHER_PATH));
+
+    // /first-level-path/second-level/some-path --> /first-level-path/*
+    routePath(SECOND_LEVEL_PATH + PATH_SEPARATOR + SOME_PATH, SECOND_LEVEL_CATCH_ALL);
+
+    // /first-level-path/second-level/some-path/some-other-path --> /first-level-path/*
+    routePath(SECOND_LEVEL_PATH + PATH_SEPARATOR + SOME_PATH + PATH_SEPARATOR + SOME_OTHER_PATH, SECOND_LEVEL_CATCH_ALL);
+
+    // /first-level-path/another-path --> /first-level-path/another-path
+    routePath(SECOND_LEVEL_PATH + ANOTHER_PATH, SECOND_LEVEL_PATH + ANOTHER_PATH);
+  }
+
 
 }
