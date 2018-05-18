@@ -26,7 +26,7 @@ import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
 
-public final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandler {
+final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandler {
 
   private final MemoryManager memoryManager;
   protected final FilterChainContext ctx;
