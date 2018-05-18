@@ -99,7 +99,7 @@ public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
   @Test
   public void serverTimeoutsTcpConnection() throws Exception {
     Socket socket = new Socket("localhost", port1.getNumber());
-    sleep(SERVER_TIMEOUT_MILLIS * 2);
+    sleep(SERVER_TIMEOUT_MILLIS * 3);
     sendRequest(socket);
     assertThat(getResponse(socket), is(nullValue()));
   }
@@ -109,10 +109,10 @@ public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
     Socket socket = new Socket("localhost", port2.getNumber());
     sendRequest(socket);
     assertThat(getResponse(socket), is(notNullValue()));
-    sleep(SERVER_TIMEOUT_MILLIS * 2);
+    sleep(SERVER_TIMEOUT_MILLIS * 3);
     sendRequest(socket);
     assertThat(getResponse(socket), is(notNullValue()));
-    sleep(CONNECTION_TIMEOUT_MILLIS + SERVER_TIMEOUT_MILLIS * 2);
+    sleep(CONNECTION_TIMEOUT_MILLIS + SERVER_TIMEOUT_MILLIS * 3);
     sendRequest(socket);
     assertThat(getResponse(socket), is(nullValue()));
   }

@@ -15,32 +15,20 @@ import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.server.HttpServer;
-import org.mule.runtime.http.api.server.HttpServerConfiguration;
-import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
-import org.mule.tck.junit4.rule.DynamicPort;
 
 import java.net.SocketTimeoutException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 
 import org.apache.http.client.fluent.Request;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
-public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase {
+public class HttpServerClientTimeoutTestCase extends AbstractHttpServerTestCase {
 
   private static final int TIMEOUT = 5000;
-
-  @Rule
-  public DynamicPort port = new DynamicPort("port");
-
-  private HttpServer server;
 
   private CountDownLatch requestLatch;
   private CountDownLatch responseLatch;
@@ -54,12 +42,7 @@ public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase
     requestLatch = new CountDownLatch(1);
     responseLatch = new CountDownLatch(1);
 
-    server = service.getServerFactory().create(new HttpServerConfiguration.Builder()
-        .setHost("localhost")
-        .setPort(port.getNumber())
-        .setName("client-timeout-test")
-        .build());
-    server.start();
+    setUpServer();
     server.addRequestHandler(singletonList(GET.name()), "/test", (requestContext, responseCallback) -> {
 
       try {
@@ -81,12 +64,9 @@ public class HttpServerClientTimeoutTestCase extends AbstractHttpServiceTestCase
     });
   }
 
-  @After
-  public void tearDown() {
-    if (server != null) {
-      server.stop();
-      server.dispose();
-    }
+  @Override
+  protected String getServerName() {
+    return "client-timeout-test";
   }
 
   @Test

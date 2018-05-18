@@ -22,15 +22,20 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
+import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.domain.request.ServerConnection;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
+import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.RequestHandlerProvider;
 
 import java.io.IOException;
+import java.io.Writer;
 import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -112,21 +117,33 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
             createRequestContext(ctx, (ctx.getAttributes().getAttribute(HTTPS.getScheme()) == null) ? HTTP.getScheme()
                 : HTTPS.getScheme(), httpRequest);
         final RequestHandler requestHandler = requestHandlerProvider.getRequestHandler(serverAddress, httpRequest);
-        requestHandler.handleRequest(requestContext, (httpResponse, responseStatusCallback) -> {
-          try {
-            if (httpRequest.getMethod().equals(HEAD.name())) {
-              if (httpResponse.getEntity().isStreaming()) {
-                httpResponse.getEntity().getContent().close();
+        requestHandler.handleRequest(requestContext, new HttpResponseReadyCallback() {
+
+          @Override
+          public void responseReady(HttpResponse response, ResponseStatusCallback responseStatusCallback) {
+            try {
+              if (httpRequest.getMethod().equals(HEAD.name())) {
+                if (response.getEntity().isStreaming()) {
+                  response.getEntity().getContent().close();
+                }
+                response = new HttpResponseBuilder(response).entity(new EmptyHttpEntity()).build();
               }
-              httpResponse = new HttpResponseBuilder(httpResponse).entity(new EmptyHttpEntity()).build();
+              if (response.getEntity().isStreaming()) {
+                new ResponseStreamingCompletionHandler(ctx, request, response, responseStatusCallback).start();
+              } else {
+                new ResponseCompletionHandler(ctx, request, response, responseStatusCallback).start();
+              }
+            } catch (Exception e) {
+              responseStatusCallback.responseSendFailure(e);
             }
-            if (httpResponse.getEntity().isStreaming()) {
-              new ResponseStreamingCompletionHandler(ctx, request, httpResponse, responseStatusCallback).start();
-            } else {
-              new ResponseCompletionHandler(ctx, request, httpResponse, responseStatusCallback).start();
-            }
-          } catch (Exception e) {
-            responseStatusCallback.responseSendFailure(e);
+          }
+
+          @Override
+          public Writer startResponse(HttpResponse response, ResponseStatusCallback responseStatusCallback, Charset encoding) {
+            ResponseDelayedCompletionHandler responseCompletionHandler =
+                new ResponseDelayedCompletionHandler(ctx, request, response, responseStatusCallback);
+            responseCompletionHandler.start();
+            return responseCompletionHandler.buildWriter(encoding);
           }
         });
         return ctx.getSuspendAction();

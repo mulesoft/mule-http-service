@@ -15,15 +15,12 @@ import static org.mule.runtime.http.api.HttpConstants.HttpStatus.METHOD_NOT_ALLO
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.NOT_FOUND;
 import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.HttpConstants.HttpStatus;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.server.HttpServer;
-import org.mule.runtime.http.api.server.HttpServerConfiguration;
-import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
-import org.mule.tck.junit4.rule.DynamicPort;
+
+import java.net.URI;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -31,19 +28,10 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
-import java.net.URI;
-
-public class HttpServerErrorRequestsTestCase extends AbstractHttpServiceTestCase {
-
-  @Rule
-  public DynamicPort port = new DynamicPort("port");
-
-  private HttpServer server;
+public class HttpServerErrorRequestsTestCase extends AbstractHttpServerTestCase {
 
   public HttpServerErrorRequestsTestCase(String serviceToLoad) {
     super(serviceToLoad);
@@ -51,12 +39,7 @@ public class HttpServerErrorRequestsTestCase extends AbstractHttpServiceTestCase
 
   @Before
   public void setUp() throws Exception {
-    server = service.getServerFactory().create(new HttpServerConfiguration.Builder()
-        .setHost("localhost")
-        .setPort(port.getNumber())
-        .setName("errors-test")
-        .build());
-    server.start();
+    setUpServer();
     server.addRequestHandler(singletonList(GET.name()), "/test", (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().entity(new ByteArrayHttpEntity("Success!".getBytes()))
           .addHeader(CONTENT_TYPE, TEXT.toRfcString())
@@ -65,12 +48,9 @@ public class HttpServerErrorRequestsTestCase extends AbstractHttpServiceTestCase
     });
   }
 
-  @After
-  public void tearDown() {
-    if (server != null) {
-      server.stop();
-      server.dispose();
-    }
+  @Override
+  protected String getServerName() {
+    return "errors-test";
   }
 
   @Test

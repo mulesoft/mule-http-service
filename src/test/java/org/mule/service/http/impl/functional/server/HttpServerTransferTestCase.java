@@ -17,7 +17,6 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CHUNKED;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.TRANSFER_TYPE;
-
 import org.mule.runtime.api.util.Pair;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -27,12 +26,12 @@ import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
-import org.mule.runtime.http.api.server.HttpServer;
-import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
-import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
-import org.mule.tck.junit4.rule.DynamicPort;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+
+import io.qameta.allure.Story;
 import org.apache.http.Header;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -40,18 +39,11 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.hamcrest.Matcher;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-
-import io.qameta.allure.Story;
-
 @Story(TRANSFER_TYPE)
-public abstract class HttpServerTransferTestCase extends AbstractHttpServiceTestCase {
+public abstract class HttpServerTransferTestCase extends AbstractHttpServerTestCase {
 
   protected static final String DATA = "My awesome data";
   protected static final String MULTIPART_DATA = "--bounds\r\n"
@@ -68,10 +60,6 @@ public abstract class HttpServerTransferTestCase extends AbstractHttpServiceTest
   protected static final String BYTES = "/bytes";
   protected static final String MULTIPART = "/multipart";
 
-  @Rule
-  public DynamicPort port = new DynamicPort("port");
-
-  private HttpServer server;
   protected Pair<String, String> headerToSend;
 
   public HttpServerTransferTestCase(String serviceToLoad) {
@@ -80,12 +68,7 @@ public abstract class HttpServerTransferTestCase extends AbstractHttpServiceTest
 
   @Before
   public void setUp() throws Exception {
-    server = service.getServerFactory().create(new HttpServerConfiguration.Builder()
-        .setHost("localhost")
-        .setPort(port.getNumber())
-        .setName("transfer-test")
-        .build());
-    server.start();
+    setUpServer();
     ResponseStatusCallback statusCallback = new IgnoreResponseStatusCallback();
 
     server.addRequestHandler("/", (requestContext, responseCallback) -> {
@@ -109,20 +92,17 @@ public abstract class HttpServerTransferTestCase extends AbstractHttpServiceTest
     });
   }
 
+  @Override
+  protected String getServerName() {
+    return "transfer-test";
+  }
+
   private HttpResponseBuilder getResponse() {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
     if (headerToSend != null) {
       responseBuilder.addHeader(headerToSend.getFirst(), headerToSend.getSecond());
     }
     return responseBuilder;
-  }
-
-  @After
-  public void tearDown() {
-    if (server != null) {
-      server.stop();
-      server.dispose();
-    }
   }
 
   public abstract HttpVersion getVersion();
