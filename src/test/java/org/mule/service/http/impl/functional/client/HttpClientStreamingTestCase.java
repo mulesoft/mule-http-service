@@ -23,8 +23,8 @@ import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.functional.FillAndWaitStream;
+import org.mule.service.http.impl.functional.ResponseReceivedProbe;
 import org.mule.tck.probe.PollingProber;
-import org.mule.tck.probe.Probe;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -155,26 +155,6 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
         .reasonPhrase(OK.getReasonPhrase())
         .entity(new InputStreamHttpEntity(new FillAndWaitStream(latch)))
         .build();
-  }
-
-
-  private class ResponseReceivedProbe implements Probe {
-
-    private Reference<HttpResponse> responseReference;
-
-    public ResponseReceivedProbe(Reference<HttpResponse> responseReference) {
-      this.responseReference = responseReference;
-    }
-
-    @Override
-    public boolean isSatisfied() {
-      return responseReference.get() != null;
-    }
-
-    @Override
-    public String describeFailure() {
-      return "Response was not received.";
-    }
   }
 
 }

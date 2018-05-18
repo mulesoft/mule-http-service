@@ -17,34 +17,26 @@ import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
-
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.server.HttpServer;
-import org.mule.runtime.http.api.server.HttpServerConfiguration;
-import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
-import org.mule.tck.junit4.rule.DynamicPort;
 
+import java.io.IOException;
+import java.util.Collection;
+
+import io.qameta.allure.Story;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.util.Collection;
-
-import io.qameta.allure.Story;
-
 @Story(MULTIPART)
-public class HttpServerPartsTestCase extends AbstractHttpServiceTestCase {
+public class HttpServerPartsTestCase extends AbstractHttpServerTestCase {
 
   private static final String TEXT_BODY_FIELD_NAME = "field1";
   private static final String TEXT_BODY_FIELD_VALUE = "yes";
@@ -54,23 +46,13 @@ public class HttpServerPartsTestCase extends AbstractHttpServiceTestCase {
   private static final String FULL_HEADER = "/full-header";
   private static final String BOUNDARY_PART = "; boundary=\"the-boundary\"";
 
-  @Rule
-  public DynamicPort port = new DynamicPort("port");
-
-  private HttpServer server;
-
   public HttpServerPartsTestCase(String serviceToLoad) {
     super(serviceToLoad);
   }
 
   @Before
   public void setUp() throws Exception {
-    server = service.getServerFactory().create(new HttpServerConfiguration.Builder()
-        .setHost("localhost")
-        .setPort(port.getNumber())
-        .setName("parts-test")
-        .build());
-    server.start();
+    setUpServer();
     server.addRequestHandler(BASE_PATH, (requestContext, responseCallback) -> {
       IgnoreResponseStatusCallback statusCallback = new IgnoreResponseStatusCallback();
       try {
@@ -95,12 +77,9 @@ public class HttpServerPartsTestCase extends AbstractHttpServiceTestCase {
     });
   }
 
-  @After
-  public void tearDown() {
-    if (server != null) {
-      server.stop();
-      server.dispose();
-    }
+  @Override
+  protected String getServerName() {
+    return "parts-test";
   }
 
   @Test
