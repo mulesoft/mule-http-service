@@ -208,9 +208,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     }
     startTransportIfNotStarted();
     DelayedExecutor delayedExecutor = createAndGetDelayedExecutor(serverAddress);
-    timeoutFilterDelegate.addFilterForAddress(serverAddress,
-                                              createTimeoutFilter(usePersistentConnections, connectionIdleTimeout,
-                                                                  delayedExecutor));
+    addTimeoutFilter(serverAddress, usePersistentConnections, connectionIdleTimeout, delayedExecutor);
     sslFilterDelegate.addFilterForAddress(serverAddress, createSslFilter(tlsContextFactory));
     httpServerFilterDelegate
         .addFilterForAddress(serverAddress,
@@ -235,9 +233,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     }
     startTransportIfNotStarted();
     DelayedExecutor delayedExecutor = createAndGetDelayedExecutor(serverAddress);
-    timeoutFilterDelegate.addFilterForAddress(serverAddress,
-                                              createTimeoutFilter(usePersistentConnections, connectionIdleTimeout,
-                                                                  delayedExecutor));
+    addTimeoutFilter(serverAddress, usePersistentConnections, connectionIdleTimeout, delayedExecutor);
     httpServerFilterDelegate
         .addFilterForAddress(serverAddress,
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor));
@@ -270,14 +266,16 @@ public class GrizzlyServerManager implements HttpServerManager {
     }
   }
 
-  private IdleTimeoutFilter createTimeoutFilter(boolean usePersistentConnections, int connectionIdleTimeout,
-                                                DelayedExecutor delayedExecutor) {
-    int timeout = serverTimeout;
-    if (usePersistentConnections && serverTimeout < connectionIdleTimeout) {
-      // Avoid interfering with the keep alive timeout but secure plain TCP connections
-      timeout = connectionIdleTimeout + SERVER_TIMEOUT_DELAY_MILLIS;
+  private void addTimeoutFilter(ServerAddress serverAddress, boolean usePersistentConnections, int connectionIdleTimeout,
+                                DelayedExecutor delayedExecutor) {
+    if (serverTimeout >= 0 && (!usePersistentConnections || connectionIdleTimeout >= 0)) {
+      int timeout = serverTimeout;
+      if (usePersistentConnections && serverTimeout < connectionIdleTimeout) {
+        // Avoid interfering with the keep alive timeout but secure plain TCP connections
+        timeout = connectionIdleTimeout + SERVER_TIMEOUT_DELAY_MILLIS;
+      }
+      timeoutFilterDelegate.addFilterForAddress(serverAddress, new IdleTimeoutFilter(delayedExecutor, timeout, MILLISECONDS));
     }
-    return new IdleTimeoutFilter(delayedExecutor, timeout, MILLISECONDS);
   }
 
   private SSLFilter createSslFilter(final TlsContextFactory tlsContextFactory) {
@@ -306,13 +304,21 @@ public class GrizzlyServerManager implements HttpServerManager {
     if (usePersistentConnections) {
       ka = new KeepAlive();
       ka.setMaxRequestsCount(MAX_KEEP_ALIVE_REQUESTS);
-      ka.setIdleTimeoutInSeconds((int) MILLISECONDS.toSeconds(connectionIdleTimeout));
+      ka.setIdleTimeoutInSeconds(convertToSeconds(connectionIdleTimeout));
     }
     HttpServerFilter httpServerFilter =
         new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), ka, delayedExecutor);
     httpServerFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(LISTENER, currentThread().getContextClassLoader()));
     httpServerFilter.setAllowPayloadForUndefinedHttpMethods(true);
     return httpServerFilter;
+  }
+
+  private int convertToSeconds(int connectionIdleTimeout) {
+    if (connectionIdleTimeout < 0) {
+      return -1;
+    } else {
+      return (int) MILLISECONDS.toSeconds(connectionIdleTimeout);
+    }
   }
 
   private DelayedExecutor createAndGetDelayedExecutor(ServerAddress serverAddress) {
