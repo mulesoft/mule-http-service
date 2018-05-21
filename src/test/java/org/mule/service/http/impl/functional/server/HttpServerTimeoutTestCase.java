@@ -48,10 +48,13 @@ public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
   @Rule
   public DynamicPort port2 = new DynamicPort("port2");
   @Rule
+  public DynamicPort port3 = new DynamicPort("port3");
+  @Rule
   public SystemProperty serverTimeout = new SystemProperty("mule.http.server.timeout", valueOf(SERVER_TIMEOUT_MILLIS));
 
   private HttpServer server1;
   private HttpServer server2;
+  private HttpServer server3;
 
   public HttpServerTimeoutTestCase(String serviceToLoad) {
     super(serviceToLoad);
@@ -62,12 +65,14 @@ public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
     server1 = buildServer(getServerBuilder(port1, "server-timeout-test").setUsePersistentConnections(false));
     server2 = buildServer(getServerBuilder(port2, "server-connection-timeout-test")
         .setConnectionIdleTimeout(CONNECTION_TIMEOUT_MILLIS));
+    server3 = buildServer(getServerBuilder(port3, "server-no-timeout-test").setConnectionIdleTimeout(-1));
   }
 
   @After
   public void tearDown() {
     close(server1);
     close(server2);
+    close(server3);
   }
 
   private HttpServer buildServer(HttpServerConfiguration.Builder serverBuilder) throws ServerCreationException, IOException {
@@ -115,6 +120,16 @@ public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
     sleep(CONNECTION_TIMEOUT_MILLIS + SERVER_TIMEOUT_MILLIS * 3);
     sendRequest(socket);
     assertThat(getResponse(socket), is(nullValue()));
+  }
+
+  @Test
+  public void infiniteKeepAlivePreventsServerTimeout() throws Exception {
+    Socket socket = new Socket("localhost", port3.getNumber());
+    sendRequest(socket);
+    assertThat(getResponse(socket), is(notNullValue()));
+    sleep(SERVER_TIMEOUT_MILLIS * 3);
+    sendRequest(socket);
+    assertThat(getResponse(socket), is(notNullValue()));
   }
 
   private void sendRequest(Socket socket) throws IOException {
