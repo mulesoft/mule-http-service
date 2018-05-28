@@ -252,7 +252,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public HttpResponse send(HttpRequest request, HttpRequestOptions options) throws IOException, TimeoutException {
-    if (streamingEnabled) {
+    if (shouldStreamResponse(options)) {
       return sendAndDefer(request, options);
     } else {
       return sendAndWait(request, options);
@@ -272,7 +272,7 @@ public class GrizzlyHttpClient implements HttpClient {
     Request grizzlyRequest = createGrizzlyRequest(request, options);
     PipedOutputStream outPipe = new PipedOutputStream();
     PipedInputStream inPipe =
-        new PipedInputStream(outPipe, responseBufferSize > 0 ? responseBufferSize : DEFAULT_SEND_AND_DEFER_BUFFER_SIZE);
+        new PipedInputStream(outPipe, getPipeSize(options));
     BodyDeferringAsyncHandler asyncHandler = new BodyDeferringAsyncHandler(outPipe);
     asyncHttpClient.executeRequest(grizzlyRequest, asyncHandler);
     try {
@@ -289,6 +289,11 @@ public class GrizzlyHttpClient implements HttpClient {
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
+  }
+
+  private int getPipeSize(HttpRequestOptions options) {
+    int responseBufferSize = options.getResponseBufferSize().orElse(this.responseBufferSize);
+    return responseBufferSize > 0 ? responseBufferSize : DEFAULT_SEND_AND_DEFER_BUFFER_SIZE;
   }
 
   /**
@@ -331,8 +336,8 @@ public class GrizzlyHttpClient implements HttpClient {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
-      if (streamingEnabled) {
-        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, responseBufferSize);
+      if (shouldStreamResponse(options)) {
+        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, options.getResponseBufferSize().orElse(responseBufferSize));
       } else {
         asyncHandler = new ResponseAsyncHandler(future);
       }
@@ -344,9 +349,19 @@ public class GrizzlyHttpClient implements HttpClient {
     return future;
   }
 
+  /**
+   * Checks whether the client global streaming config has been overridden at the request level.
+   *
+   * @param options the request options
+   * @return whether the response should be streamed
+   */
+  private boolean shouldStreamResponse(HttpRequestOptions options) {
+    return options.isStreamResponse().orElse(streamingEnabled);
+  }
+
   private Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
       throws IOException {
-    RequestBuilder reqBuilder = createRequestBuilder(request, builder -> {
+    RequestBuilder reqBuilder = createRequestBuilder(request, options, builder -> {
       builder.setMethod(request.getMethod());
       builder.setFollowRedirects(options.isFollowsRedirect());
 
@@ -354,8 +369,8 @@ public class GrizzlyHttpClient implements HttpClient {
 
       request.getQueryParams().entryList().forEach(entry -> builder.addQueryParam(entry.getKey(), entry.getValue()));
 
-      HttpAuthentication authentication = options.getAuthentication();
-      if (authentication != null) {
+      if (options.getAuthentication().isPresent()) {
+        HttpAuthentication authentication = options.getAuthentication().get();
         Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder()
             .setPrincipal(authentication.getUsername())
             .setPassword(authentication.getPassword())
@@ -377,6 +392,8 @@ public class GrizzlyHttpClient implements HttpClient {
 
         builder.setRealm(realmBuilder.build());
       }
+
+      options.getProxyConfig().ifPresent(proxyConfig -> builder.setProxyServer(buildProxy(proxyConfig)));
 
       if (request.getEntity() != null) {
         if (request.getEntity().isStreaming()) {
@@ -406,7 +423,9 @@ public class GrizzlyHttpClient implements HttpClient {
     return reqBuilder.build();
   }
 
-  protected RequestBuilder createRequestBuilder(HttpRequest request, RequestConfigurer requestConfigurer) throws IOException {
+  protected RequestBuilder createRequestBuilder(HttpRequest request, HttpRequestOptions options,
+                                                RequestConfigurer requestConfigurer)
+      throws IOException {
     final RequestBuilder requestBuilder = new RequestBuilder();
     requestConfigurer.configure(requestBuilder);
     return requestBuilder;
@@ -482,6 +501,5 @@ public class GrizzlyHttpClient implements HttpClient {
     workerScheduler.stop();
     selectorScheduler.stop();
   }
-
 
 }

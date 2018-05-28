@@ -10,6 +10,7 @@ import static com.ning.http.client.AsyncHttpClientConfigDefaults.ASYNC_CLIENT;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.PROXIES;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
@@ -18,11 +19,13 @@ import org.mule.tck.http.TestProxyServer;
 import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.tck.junit4.rule.SystemProperty;
 
+import io.qameta.allure.Story;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+@Story(PROXIES)
 public class HttpClientProxyPropertiesTestCase extends AbstractHttpClientTestCase {
 
   @Rule

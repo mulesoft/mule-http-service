@@ -21,6 +21,7 @@ public interface AllureConstants {
       String MULTIPART = "Multipart";
       String LISTENERS = "Listeners";
       String TRANSFER_TYPE = "Transfer Type";
+      String PROXIES = "Proxies";
 
     }
 
