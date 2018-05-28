@@ -19,6 +19,7 @@ import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.api.util.concurrent.Latch;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
+import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -76,6 +77,24 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   }
 
   @Test
+  @Description("Uses a streaming HTTP client to send a non blocking, non streaming request which will not finish until the stream is released.")
+  public void nonBlockingStreamingOverride() throws Exception {
+    HttpClient client =
+        service.getClientFactory().create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(true).build());
+    client.start();
+    final Reference<HttpResponse> responseReference = new Reference<>();
+    try {
+      client.sendAsync(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT, false)).whenComplete(
+                                                                                              (response,
+                                                                                               exception) -> responseReference
+                                                                                                   .set(response));
+      verifyNotStreamed(responseReference);
+    } finally {
+      client.stop();
+    }
+  }
+
+  @Test
   @Description("Uses a non streaming HTTP client to send a non blocking request which will not finish until the stream is released.")
   public void nonBlockingMemory() throws Exception {
     HttpClient client = service.getClientFactory().create(clientBuilder.setStreaming(false).build());
@@ -92,6 +111,24 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   }
 
   @Test
+  @Description("Uses a non streaming HTTP client to send a non blocking streaming request which will finish before the stream is released.")
+  public void nonBlockingMemoryOverride() throws Exception {
+    HttpClient client = service.getClientFactory().create(clientBuilder.setStreaming(false).build());
+    client.start();
+    final Reference<HttpResponse> responseReference = new Reference<>();
+    try {
+      client.sendAsync(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT, true)).whenComplete(
+                                                                                             (response,
+                                                                                              exception) -> responseReference
+                                                                                                  .set(response));
+      pollingProber.check(new ResponseReceivedProbe(responseReference));
+      verifyStreamed(responseReference.get());
+    } finally {
+      client.stop();
+    }
+  }
+
+  @Test
   @Description("Uses a streaming HTTP client to send a blocking request which will finish before the stream is released.")
   public void blockingStreaming() throws Exception {
     HttpClient client = service.getClientFactory().create(clientBuilder.setStreaming(true).build());
@@ -100,6 +137,28 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
       HttpResponse response = client.send(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT));
       verifyStreamed(response);
     } finally {
+      client.stop();
+    }
+  }
+
+  @Test
+  @Description("Uses a streaming HTTP client to send a non streaming request which will not finish until the stream is released.")
+  public void blockingStreamingOverride() throws Exception {
+    HttpClient client = service.getClientFactory().create(clientBuilder.setStreaming(true).build());
+    client.start();
+    Reference<HttpResponse> responseReference = new Reference<>();
+    ExecutorService executorService = newSingleThreadExecutor();
+    try {
+      executorService.execute(() -> {
+        try {
+          responseReference.set(client.send(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT, false)));
+        } catch (Exception e) {
+          // Do nothing, probe will fail.
+        }
+      });
+      verifyNotStreamed(responseReference);
+    } finally {
+      executorService.shutdown();
       client.stop();
     }
   }
@@ -126,6 +185,19 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     }
   }
 
+  @Test
+  @Description("Uses a non streaming HTTP client to send a blocking streaming request which will finish before the stream is released.")
+  public void blockingMemoryOverride() throws Exception {
+    HttpClient client = service.getClientFactory().create(clientBuilder.setStreaming(false).build());
+    client.start();
+    try {
+      HttpResponse response = client.send(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT, true));
+      verifyStreamed(response);
+    } finally {
+      client.stop();
+    }
+  }
+
   private HttpRequest getRequest() {
     return HttpRequest.builder().uri(getUri()).build();
   }
@@ -136,7 +208,9 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     verifyBody(response);
   }
 
-  private void verifyNotStreamed(Reference<HttpResponse> responseReference) throws IOException {
+  private void verifyNotStreamed(Reference<HttpResponse> responseReference) throws Exception {
+    // Allow the request/response process to start
+    Thread.sleep(1000);
     assertThat(responseReference.get(), is(nullValue()));
     latch.release();
     pollingProber.check(new ResponseReceivedProbe(responseReference));
@@ -155,6 +229,10 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
         .reasonPhrase(OK.getReasonPhrase())
         .entity(new InputStreamHttpEntity(new FillAndWaitStream(latch)))
         .build();
+  }
+
+  protected HttpRequestOptions getDefaultOptions(int responseTimeout, boolean streaming) {
+    return HttpRequestOptions.builder().responseTimeout(responseTimeout).streamResponse(streaming).build();
   }
 
 }
