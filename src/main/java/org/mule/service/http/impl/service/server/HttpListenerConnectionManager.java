@@ -12,15 +12,17 @@ import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
+import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.loadTcpServerSocketProperties;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
-
+import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.api.scheduler.Scheduler;
-import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
+import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.core.api.util.NetworkUtils;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
@@ -29,7 +31,6 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
-import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
 import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 
 import java.net.UnknownHostException;
@@ -69,17 +70,17 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
       return;
     }
 
-    // TODO - MULE-14960: Create TCP server socket properties conf file
-    TcpServerSocketProperties tcpServerSocketProperties = new DefaultTcpServerSocketProperties();
-
     selectorScheduler = schedulerService.customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
         .withName(LISTENER_THREAD_NAME_PREFIX), MAX_VALUE);
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
     idleTimeoutScheduler =
         schedulerService.ioScheduler(schedulersConfig.withName(LISTENER_THREAD_NAME_PREFIX + IDLE_TIMEOUT_THREADS_PREFIX_NAME));
-    httpServerManager = new GrizzlyServerManager(selectorScheduler, workerScheduler, idleTimeoutScheduler, httpListenerRegistry,
-                                                 tcpServerSocketProperties, DEFAULT_SELECTOR_THREAD_COUNT);
-
+    try {
+      httpServerManager = new GrizzlyServerManager(selectorScheduler, workerScheduler, idleTimeoutScheduler, httpListenerRegistry,
+                                                   loadTcpServerSocketProperties(), DEFAULT_SELECTOR_THREAD_COUNT);
+    } catch (MuleException e) {
+      throw new InitialisationException(createStaticMessage("Could not load server socket properties."), e, this);
+    }
   }
 
   @Override
@@ -152,54 +153,6 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
    */
   private ServerAddress createServerAddress(String host, int port) throws UnknownHostException {
     return new DefaultServerAddress(NetworkUtils.getLocalHostIp(host), port);
-  }
-
-  private class DefaultTcpServerSocketProperties implements TcpServerSocketProperties {
-
-    @Override
-    public Integer getSendBufferSize() {
-      return null;
-    }
-
-    @Override
-    public Integer getReceiveBufferSize() {
-      return null;
-    }
-
-    @Override
-    public Integer getClientTimeout() {
-      return null;
-    }
-
-    @Override
-    public Boolean getSendTcpNoDelay() {
-      return true;
-    }
-
-    @Override
-    public Integer getLinger() {
-      return null;
-    }
-
-    @Override
-    public Boolean getKeepAlive() {
-      return false;
-    }
-
-    @Override
-    public Boolean getReuseAddress() {
-      return true;
-    }
-
-    @Override
-    public Integer getReceiveBacklog() {
-      return 50;
-    }
-
-    @Override
-    public Integer getServerTimeout() {
-      return null;
-    }
   }
 
 }

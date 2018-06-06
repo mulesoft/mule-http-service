@@ -17,6 +17,8 @@ import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.PROPERTY_PREFIX;
+import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.SERVER_SOCKETS_FILE;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -27,6 +29,7 @@ import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.tck.junit4.rule.SystemProperty;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -34,14 +37,21 @@ import java.io.StringWriter;
 import java.net.Socket;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
 
   private static int SERVER_TIMEOUT_MILLIS = 500;
   private static int CONNECTION_TIMEOUT_MILLIS = 2000;
+
+  @ClassRule
+  public static TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Rule
   public DynamicPort port1 = new DynamicPort("port1");
@@ -50,7 +60,7 @@ public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
   @Rule
   public DynamicPort port3 = new DynamicPort("port3");
   @Rule
-  public SystemProperty serverTimeout = new SystemProperty("mule.http.server.timeout", valueOf(SERVER_TIMEOUT_MILLIS));
+  public SystemProperty serverTimeout = new SystemProperty(SERVER_SOCKETS_FILE, getHttpPropertiesFile().getAbsolutePath());
 
   private HttpServer server1;
   private HttpServer server2;
@@ -58,6 +68,23 @@ public class HttpServerTimeoutTestCase extends AbstractHttpServiceTestCase {
 
   public HttpServerTimeoutTestCase(String serviceToLoad) {
     super(serviceToLoad);
+  }
+
+  @BeforeClass
+  public static void createHttpPropertiesFile() throws Exception {
+    PrintWriter writer = new PrintWriter(getHttpPropertiesFile(), "UTF-8");
+    writer.println(PROPERTY_PREFIX + "serverTimeout=" + valueOf(SERVER_TIMEOUT_MILLIS));
+    writer.close();
+  }
+
+  @AfterClass
+  public static void removeHttpPropertiesFile() {
+    getHttpPropertiesFile().delete();
+  }
+
+  private static File getHttpPropertiesFile() {
+    String path = temporaryFolder.getRoot().getAbsolutePath();
+    return new File(path, "custom-http-server-sockets.conf");
   }
 
   @Before

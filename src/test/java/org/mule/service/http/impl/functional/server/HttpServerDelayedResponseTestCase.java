@@ -12,7 +12,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
+import static org.mule.runtime.core.api.config.MuleProperties.MULE_HOME_DIRECTORY_PROPERTY;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.PROPERTY_PREFIX;
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
@@ -25,14 +27,20 @@ import org.mule.tck.junit4.rule.SystemProperty;
 import org.mule.tck.probe.PollingProber;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.Writer;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * This test validates that a server response can be delayed as long as needed by deferring its body writing. As it is tested, it
@@ -46,8 +54,11 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
   private static final int PROBE_TIMEOUT_MILLIS1 = 2000;
   private static final int POLL_DELAY_MILLIS = 200;
 
+  @ClassRule
+  public static TemporaryFolder confDir = new TemporaryFolder();
+
   @Rule
-  public SystemProperty serverTimeout = new SystemProperty("mule.http.server.timeout", valueOf(CONNECTION_TIMEOUT_MILLIS));
+  public SystemProperty muleHome = new SystemProperty(MULE_HOME_DIRECTORY_PROPERTY, getMuleHome());
 
   private PollingProber pollingProber = new PollingProber(PROBE_TIMEOUT_MILLIS1, POLL_DELAY_MILLIS);
   private Writer writer;
@@ -55,6 +66,29 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
 
   public HttpServerDelayedResponseTestCase(String serviceToLoad) {
     super(serviceToLoad);
+  }
+
+  @BeforeClass
+  public static void createHttpPropertiesFile() throws Exception {
+    PrintWriter writer = new PrintWriter(getHttpPropertiesFile(), "UTF-8");
+    writer.println(PROPERTY_PREFIX + "serverTimeout=" + valueOf(CONNECTION_TIMEOUT_MILLIS));
+    writer.close();
+  }
+
+  @AfterClass
+  public static void removeHttpPropertiesFile() {
+    getHttpPropertiesFile().delete();
+  }
+
+  private static File getHttpPropertiesFile() {
+    String path = getMuleHome();
+    File conf = new File(path, "conf");
+    conf.mkdir();
+    return new File(conf.getPath(), "http-server-sockets.conf");
+  }
+
+  private static String getMuleHome() {
+    return confDir.getRoot().getAbsolutePath();
   }
 
   @Before
