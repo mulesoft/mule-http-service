@@ -17,8 +17,8 @@
     <version>1.2.0-SNAPSHOT</version>
 
     <properties>
-        <asyncHttpClientVersion>1.14-MULE-001</asyncHttpClientVersion>
-        <grizzlyVersion>2.3.36-MULE-001</grizzlyVersion>
+        <asyncHttpClientVersion>1.14-MULE-002</asyncHttpClientVersion>
+        <grizzlyVersion>2.3.36-MULE-002</grizzlyVersion>
 
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
