@@ -39,8 +39,12 @@ import javax.net.ssl.SSLSession;
 
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
+import org.glassfish.grizzly.filterchain.FilterChainEvent;
 import org.glassfish.grizzly.filterchain.NextAction;
 import org.glassfish.grizzly.http.HttpContent;
+import org.glassfish.grizzly.http.HttpEvents.IncomingHttpUpgradeEvent;
+import org.glassfish.grizzly.http.HttpEvents.OutgoingHttpUpgradeEvent;
+import org.glassfish.grizzly.http.HttpHeader;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 
@@ -154,6 +158,31 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
   public int activeRequestsFor(ServerAddress serverAddress) {
     AtomicInteger addressActiveRequests = activeRequests.get(serverAddress);
     return addressActiveRequests == null ? 0 : addressActiveRequests.get();
+  }
+
+  @Override
+  public NextAction handleEvent(FilterChainContext ctx, FilterChainEvent event) throws IOException {
+    if (event.type() == IncomingHttpUpgradeEvent.TYPE) {
+      final HttpHeader header = ((IncomingHttpUpgradeEvent) event).getHttpHeader();
+      if (header.isRequest()) {
+        // This replicates the HTTP2 handling in Grizzly
+        header.setIgnoreContentModifiers(false);
+
+        return ctx.getStopAction();
+      }
+    }
+
+    if (event.type() == OutgoingHttpUpgradeEvent.TYPE) {
+      final OutgoingHttpUpgradeEvent outUpgradeEvent =
+          (OutgoingHttpUpgradeEvent) event;
+      // If it's HTTP2 outgoing upgrade message - we have to re-enable content modifiers control
+      // as the HTTP2 filters are not enabled.
+      outUpgradeEvent.getHttpHeader().setIgnoreContentModifiers(false);
+
+      return ctx.getStopAction();
+    }
+
+    return super.handleEvent(ctx, event);
   }
 
 }
