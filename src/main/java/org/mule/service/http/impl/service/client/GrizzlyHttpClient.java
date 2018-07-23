@@ -365,7 +365,7 @@ public class GrizzlyHttpClient implements HttpClient {
           .forEach(entry -> builder.addQueryParam(entry.getKey() != null ? encodeQueryElement(entry.getKey()) : null,
                                                   entry.getValue() != null ? encodeQueryElement(entry.getValue()) : null));
 
-      options.getAuthentication().ifPresent((CheckedConsumer<HttpAuthentication>) (authentication -> {
+      if (authentication != null) {
         Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder()
             .setPrincipal(authentication.getUsername())
             .setPassword(authentication.getPassword())
@@ -386,7 +386,6 @@ public class GrizzlyHttpClient implements HttpClient {
         }
 
         builder.setRealm(realmBuilder.build());
-      }));
 
       }
 
