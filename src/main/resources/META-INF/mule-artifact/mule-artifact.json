@@ -3,6 +3,7 @@
   "minMuleVersion": "4.2.0-SNAPSHOT",
   "requiredProduct": "MULE",
   "serviceProviderClassName": "org.mule.service.http.impl.provider.HttpServiceProvider",
+  "satisfiedServiceClassName": ["org.mule.runtime.http.api.HttpService"],
   "classLoaderModelLoaderDescriptor": {
     "id": "mule",
     "attributes": {}
