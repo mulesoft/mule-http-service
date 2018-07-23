@@ -9,6 +9,7 @@ package org.mule.service.http.impl.service.client;
 import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
+import static com.ning.http.util.UTF8UrlEncoder.encodeQueryElement;
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
@@ -22,6 +23,8 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
+import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -29,6 +32,7 @@ import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
 import org.mule.runtime.core.api.util.IOUtils;
+import org.mule.runtime.core.api.util.func.CheckedConsumer;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
@@ -41,6 +45,9 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -70,9 +77,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
@@ -362,15 +366,15 @@ public class GrizzlyHttpClient implements HttpClient {
   private Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, options, builder -> {
-      builder.setMethod(request.getMethod());
       builder.setFollowRedirects(options.isFollowsRedirect());
 
       populateHeaders(request, builder);
 
-      request.getQueryParams().entryList().forEach(entry -> builder.addQueryParam(entry.getKey(), entry.getValue()));
+      request.getQueryParams().entryList()
+          .forEach(entry -> builder.addQueryParam(entry.getKey() != null ? encodeQueryElement(entry.getKey()) : null,
+                                                  entry.getValue() != null ? encodeQueryElement(entry.getValue()) : null));
 
-      if (options.getAuthentication().isPresent()) {
-        HttpAuthentication authentication = options.getAuthentication().get();
+      options.getAuthentication().ifPresent((CheckedConsumer<HttpAuthentication>) (authentication -> {
         Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder()
             .setPrincipal(authentication.getUsername())
             .setPassword(authentication.getPassword())
@@ -391,7 +395,7 @@ public class GrizzlyHttpClient implements HttpClient {
         }
 
         builder.setRealm(realmBuilder.build());
-      }
+      }));
 
       options.getProxyConfig().ifPresent(proxyConfig -> builder.setProxyServer(buildProxy(proxyConfig)));
 
@@ -419,14 +423,16 @@ public class GrizzlyHttpClient implements HttpClient {
     });
     URI uri = request.getUri();
     reqBuilder.setUri(new Uri(uri.getScheme(), uri.getRawUserInfo(), uri.getHost(), uri.getPort(), uri.getRawPath(),
-                              uri.getRawQuery()));
+                              uri.getRawQuery() != null ? uri.getRawQuery() + (request.getQueryParams().isEmpty() ? "" : "&")
+                                  : null));
     return reqBuilder.build();
   }
 
   protected RequestBuilder createRequestBuilder(HttpRequest request, HttpRequestOptions options,
                                                 RequestConfigurer requestConfigurer)
       throws IOException {
-    final RequestBuilder requestBuilder = new RequestBuilder();
+    // url strings must already be properly encoded
+    final RequestBuilder requestBuilder = new RequestBuilder(request.getMethod(), true);
     requestConfigurer.configure(requestBuilder);
     return requestBuilder;
   }
@@ -449,29 +455,31 @@ public class GrizzlyHttpClient implements HttpClient {
       if (!hasTransferEncoding && headerName.equalsIgnoreCase(HEADER_TRANSFER_ENCODING)) {
         hasTransferEncoding = true;
         specialHeader = true;
-        builder.addHeader(TRANSFER_ENCODING, request.getHeaderValue(headerName));
+        builder.addHeader(PRESERVE_HEADER_CASE ? TRANSFER_ENCODING : HEADER_TRANSFER_ENCODING,
+                          request.getHeaderValue(headerName));
       }
       if (!hasContentLength && headerName.equalsIgnoreCase(HEADER_CONTENT_LENGTH)) {
         hasContentLength = true;
         specialHeader = true;
-        builder.addHeader(CONTENT_LENGTH, request.getHeaderValue(headerName));
+        builder.addHeader(PRESERVE_HEADER_CASE ? CONTENT_LENGTH : HEADER_CONTENT_LENGTH, request.getHeaderValue(headerName));
       }
       if (!hasContentLength && headerName.equalsIgnoreCase(HEADER_CONNECTION)) {
         hasConnection = true;
         specialHeader = true;
-        builder.addHeader(CONNECTION, request.getHeaderValue(headerName));
+        builder.addHeader(PRESERVE_HEADER_CASE ? CONNECTION : HEADER_CONNECTION, request.getHeaderValue(headerName));
       }
 
       if (!specialHeader) {
-        for (String headerValue : request.getHeaderValues(headerName)) {
+        request.getHeaderValues(headerName).forEach(headerValue -> {
           builder.addHeader(headerName, headerValue);
-        }
+        });
       }
     }
 
     // If there's no transfer type specified, check the entity length to prioritize content length transfer
     if (!hasTransferEncoding && !hasContentLength && request.getEntity().getLength().isPresent()) {
-      builder.addHeader(CONTENT_LENGTH, valueOf(request.getEntity().getLength().get()));
+      builder.addHeader(PRESERVE_HEADER_CASE ? CONTENT_LENGTH : HEADER_CONTENT_LENGTH,
+                        valueOf(request.getEntity().getLength().get()));
     }
 
     // If persistent connections are disabled, the "Connection: close" header must be explicitly added. AHC will
@@ -483,7 +491,7 @@ public class GrizzlyHttpClient implements HttpClient {
             + "contains a Connection header with value {}. This header will be ignored, and a Connection: close header "
             + "will be sent instead.", request.getHeaderValue(HEADER_CONNECTION));
       }
-      builder.setHeader(CONNECTION, CLOSE);
+      builder.setHeader(PRESERVE_HEADER_CASE ? CONNECTION : HEADER_CONNECTION, CLOSE);
     }
   }
 
