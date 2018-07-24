@@ -1,9 +1,13 @@
 {
   "name": "HTTP service",
-  "minMuleVersion": "4.2.0-SNAPSHOT",
+  "minMuleVersion": "4.2.0",
   "requiredProduct": "MULE",
-  "serviceProviderClassName": "org.mule.service.http.impl.provider.HttpServiceProvider",
-  "satisfiedServiceClassName": ["org.mule.runtime.http.api.HttpService"],
+  "contracts": [
+    {
+      "serviceProviderClassName": "org.mule.service.http.impl.provider.HttpServiceProvider",
+      "satisfiedServiceClassName": "org.mule.runtime.http.api.HttpService"
+    }
+  ],
   "classLoaderModelLoaderDescriptor": {
     "id": "mule",
     "attributes": {}
