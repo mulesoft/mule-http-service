@@ -209,7 +209,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     startTransportIfNotStarted();
     DelayedExecutor delayedExecutor = createAndGetDelayedExecutor(serverAddress);
     addTimeoutFilter(serverAddress, usePersistentConnections, connectionIdleTimeout, delayedExecutor);
-    sslFilterDelegate.addFilterForAddress(serverAddress, createSslFilter(tlsContextFactory));
+    sslFilterDelegate.addFilterForAddress(serverAddress, MuleSslFilter.createSslFilter(tlsContextFactory));
     httpServerFilterDelegate
         .addFilterForAddress(serverAddress,
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor));
@@ -275,26 +275,6 @@ public class GrizzlyServerManager implements HttpServerManager {
         timeout = connectionIdleTimeout + SERVER_TIMEOUT_DELAY_MILLIS;
       }
       timeoutFilterDelegate.addFilterForAddress(serverAddress, new IdleTimeoutFilter(delayedExecutor, timeout, MILLISECONDS));
-    }
-  }
-
-  private SSLFilter createSslFilter(final TlsContextFactory tlsContextFactory) {
-    try {
-      boolean clientAuth = tlsContextFactory.isTrustStoreConfigured();
-      final SSLEngineConfigurator serverConfig =
-          new SSLEngineConfigurator(tlsContextFactory.createSslContext(), false, clientAuth, false);
-      final String[] enabledProtocols = tlsContextFactory.getEnabledProtocols();
-      if (enabledProtocols != null) {
-        serverConfig.setEnabledProtocols(enabledProtocols);
-      }
-      final String[] enabledCipherSuites = tlsContextFactory.getEnabledCipherSuites();
-      if (enabledCipherSuites != null) {
-        serverConfig.setEnabledCipherSuites(enabledCipherSuites);
-      }
-      final SSLEngineConfigurator clientConfig = serverConfig.copy().setClientMode(true);
-      return new MuleSslFilter(serverConfig, clientConfig);
-    } catch (Exception e) {
-      throw new MuleRuntimeException(e);
     }
   }
 

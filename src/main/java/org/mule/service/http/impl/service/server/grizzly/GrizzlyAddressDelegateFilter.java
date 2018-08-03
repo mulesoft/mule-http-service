@@ -28,7 +28,7 @@ import java.net.InetSocketAddress;
  * of all the ServerSockets configured and their particular configurations. So once a request arrive it delegates to the right
  * filter based on the connection being processed.
  */
-public class GrizzlyAddressDelegateFilter<F extends BaseFilter> extends BaseFilter {
+public class GrizzlyAddressDelegateFilter<F extends BaseFilter> extends BaseFilter implements GrizzlyAddressFilter<F> {
 
   private ServerAddressMap<F> filters = new ServerAddressMap<>();
 
@@ -133,10 +133,12 @@ public class GrizzlyAddressDelegateFilter<F extends BaseFilter> extends BaseFilt
    * @param serverAddress the server address to which this filter must be applied
    * @param filter the filter to apply
    */
+  @Override
   public synchronized void addFilterForAddress(ServerAddress serverAddress, F filter) {
     filters.put(serverAddress, filter);
   }
 
+  @Override
   public synchronized void removeFilterForAddress(ServerAddress serverAddress) {
     if (filters.containsKey(serverAddress)) {
       filters.remove(serverAddress);
