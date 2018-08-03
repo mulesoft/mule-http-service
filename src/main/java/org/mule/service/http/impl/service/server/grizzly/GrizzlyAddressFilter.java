@@ -19,4 +19,11 @@ public interface GrizzlyAddressFilter<F extends BaseFilter> extends Filter {
      * @param serverAddress the server address to which this filter must be removed
      */
     void removeFilterForAddress(ServerAddress serverAddress);
+
+    /**
+     * Check if ther eis a filter for the specified server address
+     *
+     * @return true if contains filter for address, false otherwise
+     */
+    boolean hasFilterForAddress(ServerAddress serverAddress);
 }

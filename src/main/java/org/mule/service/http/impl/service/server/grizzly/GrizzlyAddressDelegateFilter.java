@@ -144,4 +144,9 @@ public class GrizzlyAddressDelegateFilter<F extends BaseFilter> extends BaseFilt
       filters.remove(serverAddress);
     }
   }
+
+  @Override
+  public synchronized boolean hasFilterForAddress(ServerAddress serverAddress) {
+    return filters.containsKey(serverAddress);
+  }
 }

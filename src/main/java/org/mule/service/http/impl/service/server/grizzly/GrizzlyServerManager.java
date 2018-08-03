@@ -21,6 +21,8 @@ import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
 import static org.slf4j.LoggerFactory.getLogger;
+
+import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
@@ -216,7 +218,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
                                                                          schedulerSupplier,
                                                                          () -> executorProvider.removeExecutor(serverAddress),
-                                                                         identifier, HTTPS);
+                                                                         identifier, sslFilterDelegate);
     executorProvider.addExecutor(serverAddress, grizzlyServer);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
@@ -240,7 +242,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
                                                                          schedulerSupplier,
                                                                          () -> executorProvider.removeExecutor(serverAddress),
-                                                                         identifier, HTTP);
+                                                                         identifier, sslFilterDelegate);
     executorProvider.addExecutor(serverAddress, grizzlyServer);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
@@ -329,8 +331,8 @@ public class GrizzlyServerManager implements HttpServerManager {
 
     public ManagedGrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport,
                                     HttpListenerRegistry listenerRegistry, Supplier<Scheduler> schedulerSupplier,
-                                    Runnable schedulerDisposer, ServerIdentifier identifier, Protocol protocol) {
-      super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, protocol);
+                                    Runnable schedulerDisposer, ServerIdentifier identifier, GrizzlyAddressFilter<SSLFilter> sslFilter) {
+      super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, sslFilter);
       this.identifier = identifier;
     }
 

@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import org.glassfish.grizzly.ssl.SSLFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.http.api.HttpConstants.Protocol;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -29,9 +30,9 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   private final TCPNIOTransport transport;
   private final ServerAddress serverAddress;
-  private final Protocol protocol;
   private final HttpListenerRegistry listenerRegistry;
   private TCPNIOServerConnection serverConnection;
+  private GrizzlyAddressFilter<SSLFilter> sslFilter;
   private Supplier<Scheduler> schedulerSource;
   private Runnable schedulerDisposer;
   private Scheduler scheduler;
@@ -39,13 +40,13 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private boolean stopping;
 
   public GrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport, HttpListenerRegistry listenerRegistry,
-                           Supplier<Scheduler> schedulerSource, Runnable schedulerDisposer, Protocol protocol) {
+                           Supplier<Scheduler> schedulerSource, Runnable schedulerDisposer, GrizzlyAddressFilter<SSLFilter> sslFilter) {
     this.serverAddress = serverAddress;
-    this.protocol = protocol;
     this.transport = transport;
     this.listenerRegistry = listenerRegistry;
     this.schedulerSource = schedulerSource;
     this.schedulerDisposer = schedulerDisposer;
+    this.sslFilter = sslFilter;
   }
 
   @Override
@@ -88,7 +89,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public Protocol getProtocol() {
-    return protocol;
+    return sslFilter.hasFilterForAddress(getServerAddress()) ? Protocol.HTTPS : Protocol.HTTP;
   }
 
   @Override
