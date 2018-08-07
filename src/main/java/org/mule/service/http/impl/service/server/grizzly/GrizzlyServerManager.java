@@ -331,7 +331,8 @@ public class GrizzlyServerManager implements HttpServerManager {
 
     public ManagedGrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport,
                                     HttpListenerRegistry listenerRegistry, Supplier<Scheduler> schedulerSupplier,
-                                    Runnable schedulerDisposer, ServerIdentifier identifier, GrizzlyAddressFilter<SSLFilter> sslFilter) {
+                                    Runnable schedulerDisposer, ServerIdentifier identifier,
+                                    GrizzlyAddressFilter<SSLFilter> sslFilter) {
       super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, sslFilter);
       this.identifier = identifier;
     }

@@ -61,7 +61,7 @@ public class MuleSslFilter extends SSLFilter {
     try {
       boolean clientAuth = tlsContextFactory.isTrustStoreConfigured();
       final SSLEngineConfigurator serverConfig =
-              new SSLEngineConfigurator(tlsContextFactory.createSslContext(), false, clientAuth, false);
+          new SSLEngineConfigurator(tlsContextFactory.createSslContext(), false, clientAuth, false);
       final String[] enabledProtocols = tlsContextFactory.getEnabledProtocols();
       if (enabledProtocols != null) {
         serverConfig.setEnabledProtocols(enabledProtocols);

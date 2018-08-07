@@ -52,7 +52,7 @@ public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerMana
   @Test
   public void disableTls() throws Exception {
     final HttpServer createdServer = getServer(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
-            new ServerIdentifier("context", "name"));
+                                               new ServerIdentifier("context", "name"));
     try {
       assertThat(createdServer.getProtocol(), is(HTTPS));
       createdServer.disableTls();
