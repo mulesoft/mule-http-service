@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.server.grizzly;
 
 import org.glassfish.grizzly.ssl.SSLFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
+import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpConstants.Protocol;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.RequestHandler;
@@ -119,5 +120,15 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   @Override
   public ExecutorService get() {
     return scheduler;
+  }
+
+  @Override
+  public void enableTls(TlsContextFactory tlsContextFactory) {
+    sslFilter.addFilterForAddress(getServerAddress(), MuleSslFilter.createSslFilter(tlsContextFactory));
+  }
+
+  @Override
+  public void disableTls() {
+    sslFilter.removeFilterForAddress(getServerAddress());
   }
 }

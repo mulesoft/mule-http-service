@@ -10,8 +10,11 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
+import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
+
+import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerCreationException;
@@ -25,6 +28,8 @@ import io.qameta.allure.Story;
 @Feature(HTTP_SERVICE)
 @Story(SERVER_MANAGEMENT)
 public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManagerTestCase {
+
+  private final TlsContextFactory tlsContextFactory = TlsContextFactory.builder().buildDefault();
 
   @Override
   protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
@@ -43,4 +48,16 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
     }
   }
 
+  @Test
+  public void enableTls() throws Exception {
+    final HttpServer createdServer = getServer(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
+            new ServerIdentifier("context", "name"));
+    try {
+      assertThat(createdServer.getProtocol(), is(HTTP));
+      createdServer.enableTls(tlsContextFactory);
+      assertThat(createdServer.getProtocol(), is(HTTPS));
+    } finally {
+      createdServer.dispose();
+    }
+  }
 }

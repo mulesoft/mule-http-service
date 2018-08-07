@@ -431,6 +431,16 @@ public class GrizzlyServerManager implements HttpServerManager {
     public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
       return delegate.addRequestHandler(path, requestHandler);
     }
+
+    @Override
+    public void enableTls(TlsContextFactory tlsContextFactory) {
+      delegate.enableTls(tlsContextFactory);
+    }
+
+    @Override
+    public void disableTls() {
+      delegate.disableTls();
+    }
   }
 
 }
