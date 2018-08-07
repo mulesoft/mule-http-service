@@ -6,6 +6,10 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
+
+import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.ssl.SSLFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
@@ -20,9 +24,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
-
-import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
-import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 
 /**
  * Grizzly based implementation of an {@link HttpServer}.
@@ -125,7 +126,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public void enableTls(TlsContextFactory tlsContextFactory) {
-    sslFilter.addFilterForAddress(getServerAddress(), MuleSslFilter.createSslFilter(tlsContextFactory));
+    sslFilter.addFilterForAddress(getServerAddress(), createSslFilter(tlsContextFactory));
   }
 
   @Override

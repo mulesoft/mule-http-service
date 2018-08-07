@@ -17,35 +17,9 @@ import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.core.api.config.MuleProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
-import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
-import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
+import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import static org.slf4j.LoggerFactory.getLogger;
-
-import org.glassfish.grizzly.filterchain.BaseFilter;
-import org.mule.runtime.api.exception.MuleRuntimeException;
-import org.mule.runtime.api.scheduler.Scheduler;
-import org.mule.runtime.api.tls.TlsContextFactory;
-import org.mule.runtime.http.api.HttpConstants.Protocol;
-import org.mule.runtime.http.api.server.HttpServer;
-import org.mule.runtime.http.api.server.RequestHandler;
-import org.mule.runtime.http.api.server.RequestHandlerManager;
-import org.mule.runtime.http.api.server.ServerAddress;
-import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
-import org.mule.runtime.http.api.server.ServerCreationException;
-import org.mule.runtime.http.api.server.ServerNotFoundException;
-import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
-import org.mule.service.http.impl.service.HttpMessageLogger;
-import org.mule.service.http.impl.service.server.HttpListenerRegistry;
-import org.mule.service.http.impl.service.server.HttpServerManager;
-import org.mule.service.http.impl.service.server.ServerIdentifier;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.function.Supplier;
 
 import org.glassfish.grizzly.filterchain.FilterChainBuilder;
 import org.glassfish.grizzly.filterchain.TransportFilter;
@@ -54,11 +28,27 @@ import org.glassfish.grizzly.http.KeepAlive;
 import org.glassfish.grizzly.nio.RoundRobinConnectionDistributor;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
-import org.glassfish.grizzly.ssl.SSLEngineConfigurator;
 import org.glassfish.grizzly.ssl.SSLFilter;
 import org.glassfish.grizzly.utils.DelayedExecutor;
 import org.glassfish.grizzly.utils.IdleTimeoutFilter;
+import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.runtime.api.scheduler.Scheduler;
+import org.mule.runtime.api.tls.TlsContextFactory;
+import org.mule.runtime.http.api.HttpConstants.Protocol;
+import org.mule.runtime.http.api.server.*;
+import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
+import org.mule.service.http.impl.service.HttpMessageLogger;
+import org.mule.service.http.impl.service.server.HttpListenerRegistry;
+import org.mule.service.http.impl.service.server.HttpServerManager;
+import org.mule.service.http.impl.service.server.ServerIdentifier;
 import org.slf4j.Logger;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 public class GrizzlyServerManager implements HttpServerManager {
 
@@ -211,7 +201,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     startTransportIfNotStarted();
     DelayedExecutor delayedExecutor = createAndGetDelayedExecutor(serverAddress);
     addTimeoutFilter(serverAddress, usePersistentConnections, connectionIdleTimeout, delayedExecutor);
-    sslFilterDelegate.addFilterForAddress(serverAddress, MuleSslFilter.createSslFilter(tlsContextFactory));
+    sslFilterDelegate.addFilterForAddress(serverAddress, createSslFilter(tlsContextFactory));
     httpServerFilterDelegate
         .addFilterForAddress(serverAddress,
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor));
