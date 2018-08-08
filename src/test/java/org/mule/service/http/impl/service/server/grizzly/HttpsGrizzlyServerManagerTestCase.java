@@ -10,6 +10,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
+import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
 import org.mule.runtime.api.tls.TlsContextFactory;
@@ -43,6 +44,19 @@ public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerMana
                                                new ServerIdentifier("context", "name"));
     try {
       assertThat(createdServer.getProtocol(), is(HTTPS));
+    } finally {
+      createdServer.dispose();
+    }
+  }
+
+  @Test
+  public void disableTls() throws Exception {
+    final HttpServer createdServer = getServer(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
+                                               new ServerIdentifier("context", "name"));
+    try {
+      assertThat(createdServer.getProtocol(), is(HTTPS));
+      createdServer.disableTls();
+      assertThat(createdServer.getProtocol(), is(HTTP));
     } finally {
       createdServer.dispose();
     }

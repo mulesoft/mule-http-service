@@ -19,6 +19,8 @@ import org.glassfish.grizzly.filterchain.NextAction;
 import org.glassfish.grizzly.ssl.SSLConnectionContext;
 import org.glassfish.grizzly.ssl.SSLEngineConfigurator;
 import org.glassfish.grizzly.ssl.SSLFilter;
+import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.runtime.api.tls.TlsContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,4 +57,23 @@ public class MuleSslFilter extends SSLFilter {
     return sslConnectionContext.getSslEngine().getSession();
   }
 
+  protected static MuleSslFilter createSslFilter(final TlsContextFactory tlsContextFactory) {
+    try {
+      boolean clientAuth = tlsContextFactory.isTrustStoreConfigured();
+      final SSLEngineConfigurator serverConfig =
+          new SSLEngineConfigurator(tlsContextFactory.createSslContext(), false, clientAuth, false);
+      final String[] enabledProtocols = tlsContextFactory.getEnabledProtocols();
+      if (enabledProtocols != null) {
+        serverConfig.setEnabledProtocols(enabledProtocols);
+      }
+      final String[] enabledCipherSuites = tlsContextFactory.getEnabledCipherSuites();
+      if (enabledCipherSuites != null) {
+        serverConfig.setEnabledCipherSuites(enabledCipherSuites);
+      }
+      final SSLEngineConfigurator clientConfig = serverConfig.copy().setClientMode(true);
+      return new MuleSslFilter(serverConfig, clientConfig);
+    } catch (Exception e) {
+      throw new MuleRuntimeException(e);
+    }
+  }
 }

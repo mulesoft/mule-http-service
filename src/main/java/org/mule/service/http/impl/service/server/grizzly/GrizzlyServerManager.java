@@ -17,10 +17,20 @@ import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.core.api.config.MuleProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
-import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
-import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
+import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import static org.slf4j.LoggerFactory.getLogger;
+
+import org.glassfish.grizzly.filterchain.FilterChainBuilder;
+import org.glassfish.grizzly.filterchain.TransportFilter;
+import org.glassfish.grizzly.http.HttpServerFilter;
+import org.glassfish.grizzly.http.KeepAlive;
+import org.glassfish.grizzly.nio.RoundRobinConnectionDistributor;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
+import org.glassfish.grizzly.ssl.SSLFilter;
+import org.glassfish.grizzly.utils.DelayedExecutor;
+import org.glassfish.grizzly.utils.IdleTimeoutFilter;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
@@ -37,6 +47,7 @@ import org.mule.service.http.impl.service.HttpMessageLogger;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.HttpServerManager;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -44,19 +55,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
-
-import org.glassfish.grizzly.filterchain.FilterChainBuilder;
-import org.glassfish.grizzly.filterchain.TransportFilter;
-import org.glassfish.grizzly.http.HttpServerFilter;
-import org.glassfish.grizzly.http.KeepAlive;
-import org.glassfish.grizzly.nio.RoundRobinConnectionDistributor;
-import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
-import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
-import org.glassfish.grizzly.ssl.SSLEngineConfigurator;
-import org.glassfish.grizzly.ssl.SSLFilter;
-import org.glassfish.grizzly.utils.DelayedExecutor;
-import org.glassfish.grizzly.utils.IdleTimeoutFilter;
-import org.slf4j.Logger;
 
 public class GrizzlyServerManager implements HttpServerManager {
 
@@ -216,7 +214,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
                                                                          schedulerSupplier,
                                                                          () -> executorProvider.removeExecutor(serverAddress),
-                                                                         identifier, HTTPS);
+                                                                         identifier, sslFilterDelegate);
     executorProvider.addExecutor(serverAddress, grizzlyServer);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
@@ -240,7 +238,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
                                                                          schedulerSupplier,
                                                                          () -> executorProvider.removeExecutor(serverAddress),
-                                                                         identifier, HTTP);
+                                                                         identifier, sslFilterDelegate);
     executorProvider.addExecutor(serverAddress, grizzlyServer);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
@@ -275,26 +273,6 @@ public class GrizzlyServerManager implements HttpServerManager {
         timeout = connectionIdleTimeout + SERVER_TIMEOUT_DELAY_MILLIS;
       }
       timeoutFilterDelegate.addFilterForAddress(serverAddress, new IdleTimeoutFilter(delayedExecutor, timeout, MILLISECONDS));
-    }
-  }
-
-  private SSLFilter createSslFilter(final TlsContextFactory tlsContextFactory) {
-    try {
-      boolean clientAuth = tlsContextFactory.isTrustStoreConfigured();
-      final SSLEngineConfigurator serverConfig =
-          new SSLEngineConfigurator(tlsContextFactory.createSslContext(), false, clientAuth, false);
-      final String[] enabledProtocols = tlsContextFactory.getEnabledProtocols();
-      if (enabledProtocols != null) {
-        serverConfig.setEnabledProtocols(enabledProtocols);
-      }
-      final String[] enabledCipherSuites = tlsContextFactory.getEnabledCipherSuites();
-      if (enabledCipherSuites != null) {
-        serverConfig.setEnabledCipherSuites(enabledCipherSuites);
-      }
-      final SSLEngineConfigurator clientConfig = serverConfig.copy().setClientMode(true);
-      return new MuleSslFilter(serverConfig, clientConfig);
-    } catch (Exception e) {
-      throw new MuleRuntimeException(e);
     }
   }
 
@@ -349,8 +327,9 @@ public class GrizzlyServerManager implements HttpServerManager {
 
     public ManagedGrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport,
                                     HttpListenerRegistry listenerRegistry, Supplier<Scheduler> schedulerSupplier,
-                                    Runnable schedulerDisposer, ServerIdentifier identifier, Protocol protocol) {
-      super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, protocol);
+                                    Runnable schedulerDisposer, ServerIdentifier identifier,
+                                    GrizzlyAddressFilter<SSLFilter> sslFilter) {
+      super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, sslFilter);
       this.identifier = identifier;
     }
 
@@ -448,6 +427,16 @@ public class GrizzlyServerManager implements HttpServerManager {
     @Override
     public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
       return delegate.addRequestHandler(path, requestHandler);
+    }
+
+    @Override
+    public void enableTls(TlsContextFactory tlsContextFactory) {
+      delegate.enableTls(tlsContextFactory);
+    }
+
+    @Override
+    public void disableTls() {
+      delegate.disableTls();
     }
   }
 
