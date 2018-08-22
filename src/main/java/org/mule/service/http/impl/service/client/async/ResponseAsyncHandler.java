@@ -6,8 +6,10 @@
  */
 package org.mule.service.http.impl.service.client.async;
 
+import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
+import org.mule.service.http.impl.service.client.RequestResourcesManager;
 
 import com.ning.http.client.AsyncCompletionHandler;
 import com.ning.http.client.Response;
@@ -30,15 +32,21 @@ public class ResponseAsyncHandler extends AsyncCompletionHandler<Response> {
 
   private final CompletableFuture<HttpResponse> future;
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
+  private HttpRequest request;
+  private RequestResourcesManager requestManager;
 
-  public ResponseAsyncHandler(CompletableFuture<HttpResponse> future) {
+  public ResponseAsyncHandler(RequestResourcesManager requestManager, HttpRequest request,
+                              CompletableFuture<HttpResponse> future) {
     this.future = future;
+    this.request = request;
+    this.requestManager = requestManager;
   }
 
   @Override
   public Response onCompleted(Response response) throws Exception {
     try {
       future.complete(httpResponseCreator.create(response, response.getResponseBodyAsStream()));
+      requestManager.closeResources(request);
     } catch (Throwable t) {
       onThrowable(t);
     }

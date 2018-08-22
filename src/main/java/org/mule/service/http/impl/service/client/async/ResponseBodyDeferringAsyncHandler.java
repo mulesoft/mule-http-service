@@ -17,8 +17,11 @@ import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BU
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
+
+import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
+import org.mule.service.http.impl.service.client.RequestResourcesManager;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
@@ -66,6 +69,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
   private final AtomicBoolean handled = new AtomicBoolean(false);
+  private HttpRequest request;
+  private RequestResourcesManager requestManager;
 
   static {
     try {
@@ -76,9 +81,14 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
-  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize) throws IOException {
+  public ResponseBodyDeferringAsyncHandler(RequestResourcesManager requestManager, HttpRequest request,
+                                           CompletableFuture<HttpResponse> future,
+                                           int userDefinedBufferSize)
+      throws IOException {
     this.future = future;
     this.bufferSize = userDefinedBufferSize;
+    this.request = request;
+    this.requestManager = requestManager;
   }
 
   @Override
@@ -179,7 +189,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       int bodyLength = bodyPart.getBodyByteBuffer().remaining();
       LOGGER.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).", bodyLength, bufferSize);
       if (bufferSize - input.get().available() < bodyLength) {
-        //TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
+        // TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
         LOGGER
             .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
                    LOGGER, input.get().available());
@@ -196,6 +206,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   protected void closeOut() throws IOException {
+    requestManager.closeResources(request);
     if (output != null) {
       try {
         output.flush();

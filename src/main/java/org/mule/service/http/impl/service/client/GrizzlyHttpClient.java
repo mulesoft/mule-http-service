@@ -78,7 +78,7 @@ import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
 
-public class GrizzlyHttpClient implements HttpClient {
+public class GrizzlyHttpClient implements HttpClient, RequestResourcesManager {
 
   private static final int DEFAULT_SELECTOR_THREAD_COUNT =
       getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
@@ -332,6 +332,8 @@ public class GrizzlyHttpClient implements HttpClient {
       } else {
         throw new IOException(e.getMessage(), e);
       }
+    } finally {
+      closeResources(request);
     }
   }
 
@@ -341,13 +343,16 @@ public class GrizzlyHttpClient implements HttpClient {
     try {
       AsyncHandler<Response> asyncHandler;
       if (shouldStreamResponse(options)) {
-        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, options.getResponseBufferSize().orElse(responseBufferSize));
+        asyncHandler =
+            new ResponseBodyDeferringAsyncHandler(this, request, future,
+                                                  options.getResponseBufferSize().orElse(responseBufferSize));
       } else {
-        asyncHandler = new ResponseAsyncHandler(future);
+        asyncHandler = new ResponseAsyncHandler(this, request, future);
       }
 
       asyncHttpClient.executeRequest(createGrizzlyRequest(request, options), asyncHandler);
     } catch (Exception e) {
+      closeResources(request);
       future.completeExceptionally(e);
     }
     return future;
@@ -508,6 +513,15 @@ public class GrizzlyHttpClient implements HttpClient {
     asyncHttpClient.close();
     workerScheduler.stop();
     selectorScheduler.stop();
+  }
+
+  public void closeResources(HttpRequest request) {
+    if (request != null && request.getEntity() != null && request.getEntity().getContent() != null)
+      try {
+        request.getEntity().getContent().close();
+      } catch (IOException e) {
+        logger.warn("Error on closing http client stream.");
+      }
   }
 
 }
