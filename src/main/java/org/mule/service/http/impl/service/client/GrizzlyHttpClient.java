@@ -24,6 +24,19 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
+import static org.mule.service.http.impl.service.client.RequestResourcesUtils.closeResources;
+
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+
+import javax.net.ssl.SSLContext;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
@@ -45,14 +58,12 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
-import com.ning.http.client.BodyDeferringAsyncHandler;
 import com.ning.http.client.ListenableFuture;
 import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Realm;
@@ -66,19 +77,7 @@ import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
 import com.ning.http.client.uri.Uri;
 
-import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
-import javax.net.ssl.SSLContext;
-
-public class GrizzlyHttpClient implements HttpClient, RequestResourcesManager {
+public class GrizzlyHttpClient implements HttpClient {
 
   private static final int DEFAULT_SELECTOR_THREAD_COUNT =
       getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
@@ -277,7 +276,7 @@ public class GrizzlyHttpClient implements HttpClient, RequestResourcesManager {
     PipedOutputStream outPipe = new PipedOutputStream();
     PipedInputStream inPipe =
         new PipedInputStream(outPipe, getPipeSize(options));
-    BodyDeferringAsyncHandler asyncHandler = new BodyDeferringAsyncHandler(outPipe);
+    MuleBodyDeferringAsyncHandler asyncHandler = new MuleBodyDeferringAsyncHandler(request, outPipe);
     asyncHttpClient.executeRequest(grizzlyRequest, asyncHandler);
     try {
       Response response = asyncHandler.getResponse();
@@ -344,10 +343,10 @@ public class GrizzlyHttpClient implements HttpClient, RequestResourcesManager {
       AsyncHandler<Response> asyncHandler;
       if (shouldStreamResponse(options)) {
         asyncHandler =
-            new ResponseBodyDeferringAsyncHandler(this, request, future,
+            new ResponseBodyDeferringAsyncHandler(request, future,
                                                   options.getResponseBufferSize().orElse(responseBufferSize));
       } else {
-        asyncHandler = new ResponseAsyncHandler(this, request, future);
+        asyncHandler = new ResponseAsyncHandler(request, future);
       }
 
       asyncHttpClient.executeRequest(createGrizzlyRequest(request, options), asyncHandler);
@@ -515,13 +514,5 @@ public class GrizzlyHttpClient implements HttpClient, RequestResourcesManager {
     selectorScheduler.stop();
   }
 
-  public void closeResources(HttpRequest request) {
-    if (request != null && request.getEntity() != null && request.getEntity().getContent() != null)
-      try {
-        request.getEntity().getContent().close();
-      } catch (IOException e) {
-        logger.warn("Error on closing http client stream.");
-      }
-  }
 
 }

@@ -13,20 +13,26 @@ import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.mule.runtime.api.util.Reference;
+import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.service.http.impl.service.client.RequestResourcesManager;
+import org.mule.service.http.impl.service.client.MuleBodyDeferringAsyncHandler;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
+import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseStatus;
+import com.ning.http.client.Response;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseBodyPart;
 
 import io.qameta.allure.Feature;
@@ -35,25 +41,39 @@ import io.qameta.allure.Story;
 @RunWith(MockitoJUnitRunner.class)
 @Feature(HTTP_SERVICE)
 @Story(STREAMING)
-public class ResponseAsyncHandlerTestCase extends AbstractMuleTestCase {
+public class AsyncHandlerTestCase extends AbstractMuleTestCase {
 
   @Mock
   private HttpRequest request;
 
   @Mock
-  private RequestResourcesManager manager;
+  private HttpEntity entity;
+
+  @Mock
+  private InputStream content;
+
+  @Before
+  public void setup() {
+    when(request.getEntity()).thenReturn(entity);
+    when(entity.getContent()).thenReturn(content);
+  }
 
   @Test
-  public void closeRequestContentOnComplete() throws Exception {
-    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    Reference<InputStream> responseContent = new Reference<>();
-    ResponseAsyncHandler handler = new ResponseAsyncHandler(manager, request, future);
+  public void closeRequestContentOnCompleteWithResponseAsyncHandler() throws Exception {
+    testCloseRequestContentOnCompletWith(new ResponseAsyncHandler(request, new CompletableFuture<>()));
+  }
+
+  @Test
+  public void closeRequestContentOnCompleteWithDeferring() throws Exception {
+    testCloseRequestContentOnCompletWith(new MuleBodyDeferringAsyncHandler(request, new ByteArrayOutputStream()));
+  }
+
+  private void testCloseRequestContentOnCompletWith(AsyncHandler<Response> handler) throws Exception, IOException {
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(true);
-    future.whenComplete((response, exception) -> responseContent.set(response.getEntity().getContent()));
     handler.onCompleted();
-    verify(manager).closeResources(request);
+    verify(content).close();
   }
 
 }

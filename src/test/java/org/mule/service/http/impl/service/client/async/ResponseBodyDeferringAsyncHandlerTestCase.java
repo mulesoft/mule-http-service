@@ -23,9 +23,9 @@ import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import org.mule.runtime.api.util.Reference;
+import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.service.http.impl.service.client.RequestResourcesManager;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.probe.JUnitProbe;
 import org.mule.tck.probe.PollingProber;
@@ -39,8 +39,10 @@ import java.util.concurrent.CompletableFuture;
 
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
+
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.http.HttpContent;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -55,24 +57,33 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   private HttpRequest request;
 
   @Mock
-  private RequestResourcesManager resourceManager;
+  private HttpEntity entity;
+
+  @Mock
+  private InputStream content;
 
   private static final int PROBE_TIMEOUT = 5000;
   private static final int POLL_DELAY = 300;
   private static final int BUFFER_SIZE = 1024;
+
+  @Before
+  public void setup() {
+    when(request.getEntity()).thenReturn(entity);
+    when(entity.getContent()).thenReturn(content);
+  }
 
   @Test
   public void closeRequestContentOnComplete() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     Reference<InputStream> responseContent = new Reference<>();
     ResponseBodyDeferringAsyncHandler handler =
-        new ResponseBodyDeferringAsyncHandler(resourceManager, request, future, BUFFER_SIZE);
+        new ResponseBodyDeferringAsyncHandler(request, future, BUFFER_SIZE);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(true);
     future.whenComplete((response, exception) -> responseContent.set(response.getEntity().getContent()));
     handler.onCompleted();
-    verify(resourceManager).closeResources(request);
+    verify(content).close();
   }
 
   @Test
@@ -80,7 +91,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     Reference<InputStream> responseContent = new Reference<>();
     ResponseBodyDeferringAsyncHandler handler =
-        new ResponseBodyDeferringAsyncHandler(resourceManager, request, future, BUFFER_SIZE);
+        new ResponseBodyDeferringAsyncHandler(request, future, BUFFER_SIZE);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(true);
@@ -104,7 +115,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     Reference<InputStream> responseContent = new Reference<>();
     ResponseBodyDeferringAsyncHandler handler =
-        new ResponseBodyDeferringAsyncHandler(resourceManager, request, future, BUFFER_SIZE);
+        new ResponseBodyDeferringAsyncHandler(request, future, BUFFER_SIZE);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(false);
@@ -127,7 +138,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   public void abortsWhenPipeIsClosed() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     ResponseBodyDeferringAsyncHandler handler =
-        new ResponseBodyDeferringAsyncHandler(resourceManager, request, future, BUFFER_SIZE);
+        new ResponseBodyDeferringAsyncHandler(request, future, BUFFER_SIZE);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = spy(new GrizzlyResponseBodyPart(mock(HttpContent.class), mock(Connection.class)));
     when(bodyPart.isLast()).thenReturn(false);
