@@ -17,15 +17,7 @@ import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BU
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
-import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.service.http.impl.service.client.HttpResponseCreator;
-
-import com.ning.http.client.AsyncHandler;
-import com.ning.http.client.HttpResponseBodyPart;
-import com.ning.http.client.HttpResponseHeaders;
-import com.ning.http.client.HttpResponseStatus;
-import com.ning.http.client.Response;
-import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
+import static org.mule.service.http.impl.service.client.RequestResourcesUtils.closeResources;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,8 +30,18 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.glassfish.grizzly.http.HttpResponsePacket;
+import org.mule.runtime.http.api.domain.message.request.HttpRequest;
+import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.service.http.impl.service.client.HttpResponseCreator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.ning.http.client.AsyncHandler;
+import com.ning.http.client.HttpResponseBodyPart;
+import com.ning.http.client.HttpResponseHeaders;
+import com.ning.http.client.HttpResponseStatus;
+import com.ning.http.client.Response;
+import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
 
 /**
  * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives, propagating an
@@ -66,6 +68,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
   private final AtomicBoolean handled = new AtomicBoolean(false);
+  private HttpRequest request;
 
   static {
     try {
@@ -76,9 +79,13 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
-  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize) throws IOException {
+  public ResponseBodyDeferringAsyncHandler(HttpRequest request,
+                                           CompletableFuture<HttpResponse> future,
+                                           int userDefinedBufferSize)
+      throws IOException {
     this.future = future;
     this.bufferSize = userDefinedBufferSize;
+    this.request = request;
   }
 
   @Override
@@ -179,7 +186,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       int bodyLength = bodyPart.getBodyByteBuffer().remaining();
       LOGGER.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).", bodyLength, bufferSize);
       if (bufferSize - input.get().available() < bodyLength) {
-        //TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
+        // TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
         LOGGER
             .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
                    LOGGER, input.get().available());
@@ -196,6 +203,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   protected void closeOut() throws IOException {
+    closeResources(request);
     if (output != null) {
       try {
         output.flush();

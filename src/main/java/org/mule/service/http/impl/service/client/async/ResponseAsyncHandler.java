@@ -6,18 +6,20 @@
  */
 package org.mule.service.http.impl.service.client.async;
 
-import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.service.http.impl.service.client.HttpResponseCreator;
-
-import com.ning.http.client.AsyncCompletionHandler;
-import com.ning.http.client.Response;
+import static org.mule.service.http.impl.service.client.RequestResourcesUtils.closeResources;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 
+import org.mule.runtime.http.api.domain.message.request.HttpRequest;
+import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.service.http.impl.service.client.HttpResponseCreator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.ning.http.client.AsyncCompletionHandler;
+import com.ning.http.client.Response;
 
 /**
  * Non blocking {@link com.ning.http.client.AsyncHandler} which waits to load the whole response to memory before propagating it.
@@ -30,15 +32,19 @@ public class ResponseAsyncHandler extends AsyncCompletionHandler<Response> {
 
   private final CompletableFuture<HttpResponse> future;
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
+  private HttpRequest request;
 
-  public ResponseAsyncHandler(CompletableFuture<HttpResponse> future) {
+  public ResponseAsyncHandler(HttpRequest request,
+                              CompletableFuture<HttpResponse> future) {
     this.future = future;
+    this.request = request;
   }
 
   @Override
   public Response onCompleted(Response response) throws Exception {
     try {
       future.complete(httpResponseCreator.create(response, response.getResponseBodyAsStream()));
+      closeResources(request);
     } catch (Throwable t) {
       onThrowable(t);
     }
