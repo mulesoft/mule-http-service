@@ -60,15 +60,15 @@ public class AsyncHandlerTestCase extends AbstractMuleTestCase {
 
   @Test
   public void closeRequestContentOnCompleteWithResponseAsyncHandler() throws Exception {
-    testCloseRequestContentOnCompletWith(new ResponseAsyncHandler(request, new CompletableFuture<>()));
+    testCloseRequestContentOnCompleteWith(new ResponseAsyncHandler(request, new CompletableFuture<>()));
   }
 
   @Test
   public void closeRequestContentOnCompleteWithDeferring() throws Exception {
-    testCloseRequestContentOnCompletWith(new MuleBodyDeferringAsyncHandler(request, new ByteArrayOutputStream()));
+    testCloseRequestContentOnCompleteWith(new MuleBodyDeferringAsyncHandler(request, new ByteArrayOutputStream()));
   }
 
-  private void testCloseRequestContentOnCompletWith(AsyncHandler<Response> handler) throws Exception, IOException {
+  private void testCloseRequestContentOnCompleteWith(AsyncHandler<Response> handler) throws Exception, IOException {
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(true);

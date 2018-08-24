@@ -15,6 +15,12 @@ import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 
 import com.ning.http.client.BodyDeferringAsyncHandler;
 
+/**
+ * Handler to correctly manage resources involved in the deferring handling
+ * 
+ * @since 2.1.0
+ *
+ */
 public class MuleBodyDeferringAsyncHandler extends BodyDeferringAsyncHandler {
 
   private HttpRequest request;
