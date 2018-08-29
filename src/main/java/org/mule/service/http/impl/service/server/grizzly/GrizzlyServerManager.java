@@ -32,6 +32,8 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
+import org.mule.runtime.http.api.server.ws.WebSocketHandler;
+import org.mule.runtime.http.api.server.ws.WebSocketHandlerManager;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
 import org.mule.service.http.impl.service.HttpMessageLogger;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
@@ -56,6 +58,7 @@ import org.glassfish.grizzly.ssl.SSLEngineConfigurator;
 import org.glassfish.grizzly.ssl.SSLFilter;
 import org.glassfish.grizzly.utils.DelayedExecutor;
 import org.glassfish.grizzly.utils.IdleTimeoutFilter;
+import org.glassfish.grizzly.websockets.WebSocketFilter;
 import org.slf4j.Logger;
 
 public class GrizzlyServerManager implements HttpServerManager {
@@ -79,6 +82,7 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
   private final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
+  private final GrizzlyAddressDelegateFilter<WebSocketFilter> webSocketFilter;
   private final GrizzlyAddressDelegateFilter<HttpServerFilter> httpServerFilterDelegate;
   private final TCPNIOTransport transport;
   private final GrizzlyRequestDispatcherFilter requestHandlerFilter;
@@ -92,15 +96,19 @@ public class GrizzlyServerManager implements HttpServerManager {
   private boolean transportStarted;
   private int serverTimeout;
 
-  public GrizzlyServerManager(ExecutorService selectorPool, ExecutorService workerPool,
-                              ExecutorService idleTimeoutExecutorService, HttpListenerRegistry httpListenerRegistry,
-                              TcpServerSocketProperties serverSocketProperties, int selectorCount) {
+  public GrizzlyServerManager(ExecutorService selectorPool,
+                              ExecutorService workerPool,
+                              ExecutorService idleTimeoutExecutorService,
+                              HttpListenerRegistry httpListenerRegistry,
+                              TcpServerSocketProperties serverSocketProperties,
+                              int selectorCount) {
     this.httpListenerRegistry = httpListenerRegistry;
     //TODO - MULE-14960: Remove system property once this can be configured through a file
     this.serverTimeout = getInteger("mule.http.server.timeout", DEFAULT_SERVER_TIMEOUT_MILLIS);
     requestHandlerFilter = new GrizzlyRequestDispatcherFilter(httpListenerRegistry);
     timeoutFilterDelegate = new GrizzlyAddressDelegateFilter<>();
     sslFilterDelegate = new GrizzlyAddressDelegateFilter<>();
+    webSocketFilter = new GrizzlyAddressDelegateFilter<>();
     httpServerFilterDelegate = new GrizzlyAddressDelegateFilter<>();
 
     FilterChainBuilder serverFilterChainBuilder = FilterChainBuilder.stateless();
@@ -108,6 +116,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     serverFilterChainBuilder.add(timeoutFilterDelegate);
     serverFilterChainBuilder.add(sslFilterDelegate);
     serverFilterChainBuilder.add(httpServerFilterDelegate);
+    serverFilterChainBuilder.add(webSocketFilter);
     serverFilterChainBuilder.add(requestHandlerFilter);
 
     // Initialize Transport
@@ -217,7 +226,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
                                                                          schedulerSupplier,
                                                                          () -> executorProvider.removeExecutor(serverAddress),
-                                                                         identifier, HTTPS);
+                                                                         identifier, HTTPS, webSocketFilter);
     executorProvider.addExecutor(serverAddress, grizzlyServer);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
@@ -242,7 +251,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
                                                                          schedulerSupplier,
                                                                          () -> executorProvider.removeExecutor(serverAddress),
-                                                                         identifier, HTTP);
+                                                                         identifier, HTTP, webSocketFilter);
     executorProvider.addExecutor(serverAddress, grizzlyServer);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
@@ -350,10 +359,16 @@ public class GrizzlyServerManager implements HttpServerManager {
 
     // TODO - MULE-11117: Cleanup GrizzlyServerManager server specific data
 
-    public ManagedGrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport,
-                                    HttpListenerRegistry listenerRegistry, Supplier<Scheduler> schedulerSupplier,
-                                    Runnable schedulerDisposer, ServerIdentifier identifier, Protocol protocol) {
-      super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, protocol);
+    public ManagedGrizzlyHttpServer(ServerAddress serverAddress,
+                                    TCPNIOTransport transport,
+                                    HttpListenerRegistry listenerRegistry,
+                                    Supplier<Scheduler> schedulerSupplier,
+                                    Runnable schedulerDisposer,
+                                    ServerIdentifier identifier,
+                                    Protocol protocol,
+                                    GrizzlyAddressDelegateFilter<WebSocketFilter> webSocketFilter) {
+      super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, protocol,
+            webSocketFilter);
       this.identifier = identifier;
     }
 
@@ -452,6 +467,10 @@ public class GrizzlyServerManager implements HttpServerManager {
     public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
       return delegate.addRequestHandler(path, requestHandler);
     }
-  }
 
+    @Override
+    public WebSocketHandlerManager addWebSocketHandler(WebSocketHandler handler) {
+      return delegate.addWebSocketHandler(handler);
+    }
+  }
 }

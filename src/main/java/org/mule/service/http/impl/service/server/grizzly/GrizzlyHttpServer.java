@@ -15,15 +15,20 @@ import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ws.WebSocketHandler;
+import org.mule.runtime.http.api.server.ws.WebSocketHandlerManager;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
+import org.mule.service.http.impl.service.server.grizzly.ws.WebSocketHandlerRegistry;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
+import org.glassfish.grizzly.websockets.WebSocketFilter;
 
 /**
  * Grizzly based implementation of an {@link HttpServer}.
@@ -34,21 +39,30 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private final ServerAddress serverAddress;
   private final Protocol protocol;
   private final HttpListenerRegistry listenerRegistry;
+  private final WebSocketHandlerRegistry handlerRegistry = new WebSocketHandlerRegistry();
   private TCPNIOServerConnection serverConnection;
+  private GrizzlyAddressDelegateFilter<WebSocketFilter> webSocketFilter;
   private Supplier<Scheduler> schedulerSource;
   private Runnable schedulerDisposer;
   private Scheduler scheduler;
+  private AtomicBoolean webSocketFilterAdded = new AtomicBoolean(false);
   private boolean stopped = true;
   private boolean stopping;
 
-  public GrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport, HttpListenerRegistry listenerRegistry,
-                           Supplier<Scheduler> schedulerSource, Runnable schedulerDisposer, Protocol protocol) {
+  public GrizzlyHttpServer(ServerAddress serverAddress,
+                           TCPNIOTransport transport,
+                           HttpListenerRegistry listenerRegistry,
+                           Supplier<Scheduler> schedulerSource,
+                           Runnable schedulerDisposer,
+                           Protocol protocol,
+                           GrizzlyAddressDelegateFilter<WebSocketFilter> webSocketFilter) {
     this.serverAddress = serverAddress;
     this.protocol = protocol;
     this.transport = transport;
     this.listenerRegistry = listenerRegistry;
     this.schedulerSource = schedulerSource;
     this.schedulerDisposer = schedulerDisposer;
+    this.webSocketFilter = webSocketFilter;
   }
 
   @Override
@@ -118,6 +132,15 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
         .methodRequestMatcher(acceptAll())
         .path(path)
         .build());
+  }
+
+  @Override
+  public WebSocketHandlerManager addWebSocketHandler(WebSocketHandler handler) {
+    if (webSocketFilterAdded.compareAndSet(false, true)) {
+      webSocketFilter.addFilterForAddress(getServerAddress(), new WebSocketFilter());
+    }
+
+    return handlerRegistry.addHandler(handler);
   }
 
   @Override

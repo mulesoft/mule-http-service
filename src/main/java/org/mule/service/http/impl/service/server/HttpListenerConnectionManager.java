@@ -13,14 +13,13 @@ import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
-
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.api.scheduler.Scheduler;
-import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
+import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.core.api.util.NetworkUtils;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
@@ -50,6 +49,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
 
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
+
   private Scheduler selectorScheduler;
   private Scheduler workerScheduler;
   private Scheduler idleTimeoutScheduler;
