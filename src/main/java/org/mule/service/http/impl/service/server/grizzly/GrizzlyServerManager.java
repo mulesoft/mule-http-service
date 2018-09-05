@@ -212,7 +212,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     sslFilterDelegate.addFilterForAddress(serverAddress, createSslFilter(tlsContextFactory));
     httpServerFilterDelegate
         .addFilterForAddress(serverAddress,
-                             createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor));
+                             createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor, identifier));
     final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
                                                                          schedulerSupplier,
                                                                          () -> executorProvider.removeExecutor(serverAddress),
@@ -236,7 +236,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     addTimeoutFilter(serverAddress, usePersistentConnections, connectionIdleTimeout, delayedExecutor);
     httpServerFilterDelegate
         .addFilterForAddress(serverAddress,
-                             createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor));
+                             createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor, identifier));
     final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
                                                                          schedulerSupplier,
                                                                          () -> executorProvider.removeExecutor(serverAddress),
@@ -299,7 +299,7 @@ public class GrizzlyServerManager implements HttpServerManager {
   }
 
   private HttpServerFilter createHttpServerFilter(int connectionIdleTimeout, boolean usePersistentConnections,
-                                                  DelayedExecutor delayedExecutor) {
+                                                  DelayedExecutor delayedExecutor, ServerIdentifier identifier) {
     KeepAlive ka = null;
     if (usePersistentConnections) {
       ka = new KeepAlive();
@@ -308,7 +308,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     }
     HttpServerFilter httpServerFilter =
         new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), ka, delayedExecutor);
-    httpServerFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(LISTENER, currentThread().getContextClassLoader()));
+    httpServerFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(LISTENER, identifier.getName(), currentThread().getContextClassLoader()));
     httpServerFilter.setAllowPayloadForUndefinedHttpMethods(true);
     return httpServerFilter;
   }
