@@ -36,7 +36,8 @@ public class LoggerTransportCustomizer implements TransportCustomizer {
   @Override
   public void customize(TCPNIOTransport transport, FilterChainBuilder filterChainBuilder) {
     HttpCodecFilter httpCodecFilter = findHttpCodecFilter(filterChainBuilder);
-    httpCodecFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(REQUESTER, identifier, currentThread().getContextClassLoader()));
+    httpCodecFilter.getMonitoringConfig()
+        .addProbes(new HttpMessageLogger(REQUESTER, identifier, currentThread().getContextClassLoader()));
   }
 
   private HttpCodecFilter findHttpCodecFilter(FilterChainBuilder filterChainBuilder) {
