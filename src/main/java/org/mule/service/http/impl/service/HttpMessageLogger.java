@@ -19,8 +19,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HttpMessageLogger extends HttpProbe.Adapter {
 
-  private static final Logger logger = LoggerFactory.getLogger(HttpMessageLogger.class);
-
+  private final Logger logger;
   private final LoggerType loggerType;
   private final ClassLoader classLoader;
 
@@ -28,9 +27,10 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
     LISTENER, REQUESTER
   }
 
-  public HttpMessageLogger(final LoggerType loggerType, ClassLoader classLoader) {
+  public HttpMessageLogger(final LoggerType loggerType, String identifier, ClassLoader classLoader) {
     this.loggerType = loggerType;
     this.classLoader = classLoader;
+    this.logger = LoggerFactory.getLogger(HttpMessageLogger.class.getName() + "." + identifier);
   }
 
   @Override

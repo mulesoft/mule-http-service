@@ -223,7 +223,7 @@ public class GrizzlyHttpClient implements HttpClient {
     compositeTransportCustomizer
         .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler,
                                                                   DEFAULT_SELECTOR_THREAD_COUNT));
-    compositeTransportCustomizer.addTransportCustomizer(new LoggerTransportCustomizer());
+    compositeTransportCustomizer.addTransportCustomizer(new LoggerTransportCustomizer(name));
 
     if (clientSocketProperties != null) {
       compositeTransportCustomizer.addTransportCustomizer(new SocketConfigTransportCustomizer(clientSocketProperties));
