@@ -27,11 +27,16 @@ import org.slf4j.LoggerFactory;
 public class LoggerTransportCustomizer implements TransportCustomizer {
 
   private static final Logger logger = LoggerFactory.getLogger(LoggerTransportCustomizer.class);
+  private final String identifier;
+
+  public LoggerTransportCustomizer(String identifier) {
+    this.identifier = identifier;
+  }
 
   @Override
   public void customize(TCPNIOTransport transport, FilterChainBuilder filterChainBuilder) {
     HttpCodecFilter httpCodecFilter = findHttpCodecFilter(filterChainBuilder);
-    httpCodecFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(REQUESTER, currentThread().getContextClassLoader()));
+    httpCodecFilter.getMonitoringConfig().addProbes(new HttpMessageLogger(REQUESTER, identifier, currentThread().getContextClassLoader()));
   }
 
   private HttpCodecFilter findHttpCodecFilter(FilterChainBuilder filterChainBuilder) {

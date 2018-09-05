@@ -42,7 +42,7 @@ public class LoggerTransportCustomizerTestCase extends AbstractMuleTestCase {
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
 
-  private LoggerTransportCustomizer loggerTransportCustomizer = new LoggerTransportCustomizer();
+  private LoggerTransportCustomizer loggerTransportCustomizer = new LoggerTransportCustomizer("config");
 
   @Test
   public void httpMessageLoggerIsAdded() {
