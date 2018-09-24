@@ -6,15 +6,14 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
-
-import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
-import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
-import org.glassfish.grizzly.ssl.SSLFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpConstants.Protocol;
 import org.mule.runtime.http.api.server.HttpServer;
+import org.mule.runtime.http.api.server.MethodRequestMatcher;
+import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.server.ServerAddress;
@@ -24,6 +23,10 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
+
+import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
+import org.glassfish.grizzly.ssl.SSLFilter;
 
 /**
  * Grizzly based implementation of an {@link HttpServer}.
@@ -107,16 +110,18 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(Collection<String> methods, String path, RequestHandler requestHandler) {
-    return this.listenerRegistry.addRequestHandler(this, requestHandler,
-                                                   new ListenerRequestMatcher(new DefaultMethodRequestMatcher(methods
-                                                       .toArray(new String[methods.size()])),
-                                                                              path));
+    return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
+        .methodRequestMatcher(MethodRequestMatcher.builder(methods).build())
+        .path(path)
+        .build());
   }
 
   @Override
   public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
-    return this.listenerRegistry.addRequestHandler(this, requestHandler,
-                                                   new ListenerRequestMatcher(AcceptsAllMethodsRequestMatcher.instance(), path));
+    return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
+        .methodRequestMatcher(acceptAll())
+        .path(path)
+        .build());
   }
 
   @Override
