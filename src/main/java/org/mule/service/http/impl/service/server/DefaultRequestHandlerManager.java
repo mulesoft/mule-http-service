@@ -7,34 +7,28 @@
 package org.mule.service.http.impl.service.server;
 
 import org.mule.runtime.http.api.server.RequestHandlerManager;
+import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 
 public class DefaultRequestHandlerManager implements RequestHandlerManager {
 
-  private final HttpListenerRegistry.Path requestHandlerOwner;
-  private final HttpListenerRegistry.RequestHandlerMatcherPair requestHandlerMatcherPair;
-  private final HttpListenerRegistry.ServerAddressRequestHandlerRegistry serverAddressRequestHandlerRegistry;
+  private final RequestMatcherRegistry.RequestMatcherRegistryEntry entry;
 
-  public DefaultRequestHandlerManager(HttpListenerRegistry.Path requestHandlerOwner,
-                                      HttpListenerRegistry.RequestHandlerMatcherPair requestHandlerMatcherPair,
-                                      HttpListenerRegistry.ServerAddressRequestHandlerRegistry serverAddressRequestHandlerRegistry) {
-    this.requestHandlerOwner = requestHandlerOwner;
-    this.requestHandlerMatcherPair = requestHandlerMatcherPair;
-    this.serverAddressRequestHandlerRegistry = serverAddressRequestHandlerRegistry;
+  public DefaultRequestHandlerManager(RequestMatcherRegistry.RequestMatcherRegistryEntry entry) {
+    this.entry = entry;
   }
 
   @Override
   public void stop() {
-    requestHandlerMatcherPair.setIsRunning(false);
+    entry.disable();
   }
 
   @Override
   public void start() {
-    requestHandlerMatcherPair.setIsRunning(true);
+    entry.enable();
   }
 
   @Override
   public void dispose() {
-    serverAddressRequestHandlerRegistry.removeRequestHandler(requestHandlerMatcherPair.getRequestMatcher());
-    requestHandlerOwner.removeRequestHandlerMatcherPair(requestHandlerMatcherPair);
+    entry.remove();
   }
 }
