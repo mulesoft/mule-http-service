@@ -15,18 +15,20 @@ import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.metadata.MediaType.APPLICATION_JSON;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
+
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.tck.junit4.AbstractMuleTestCase;
+
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
-import org.junit.Before;
-import org.junit.Test;
 
 @Feature(HTTP_SERVICE)
 @Story("Entities")
@@ -108,11 +110,11 @@ public class StreamedMultipartHttpEntityTestCase extends AbstractMuleTestCase {
 
   @Test
   public void hasNoSizeUnlessSpecified() {
-    assertThat(entity.getLength().isPresent(), is(false));
+    assertThat(entity.getBytesLength().isPresent(), is(false));
     HttpEntity specifiedEntity = new StreamedMultipartHttpEntity(new ByteArrayInputStream(MULTIPART_CONTENT.getBytes()),
                                                                  "multipart/form-data; boundary=the-boundary",
                                                                  (long) MULTIPART_CONTENT.length());
-    assertThat(specifiedEntity.getLength().get(), is((long) MULTIPART_CONTENT.length()));
+    assertThat(specifiedEntity.getBytesLength().getAsLong(), is((long) MULTIPART_CONTENT.length()));
   }
 
 }
