@@ -9,13 +9,13 @@ package org.mule.service.http.impl.service.util;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.slf4j.LoggerFactory.getLogger;
-import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
+import org.mule.runtime.http.api.utils.MatcherCollisionException;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 
 import com.google.common.base.Joiner;
@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 
@@ -41,11 +42,12 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private Path rootPath = new Path("root", null);
   private Path catchAllPath = new Path(WILDCARD_CHARACTER, null);
   private Set<String> paths = new HashSet<>();
-  private T noMatchMismatchHandler;
-  private T notFoundMismatchHandler;
-  private T notAvailableMismatchHandler;
+  private Supplier<T> noMatchMismatchHandler;
+  private Supplier<T> notFoundMismatchHandler;
+  private Supplier<T> notAvailableMismatchHandler;
 
-  public DefaultRequestMatcherRegistry(T noMatchMismatchHandler, T notFoundMismatchHandler, T notAvailableMismatchHandler) {
+  public DefaultRequestMatcherRegistry(Supplier<T> noMatchMismatchHandler, Supplier<T> notFoundMismatchHandler,
+                                       Supplier<T> notAvailableMismatchHandler) {
     this.noMatchMismatchHandler = noMatchMismatchHandler;
     this.notFoundMismatchHandler = notFoundMismatchHandler;
     this.notAvailableMismatchHandler = notAvailableMismatchHandler;
@@ -135,7 +137,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
                 || (isUriParameter(possibleCollisionLastPathPart) && isCatchAllPath(newListenerRequestMatcherLastPathPart)
                     || (isUriParameter(possibleCollisionLastPathPart)
                         && isUriParameter(newListenerRequestMatcherLastPathPart)))) {
-              throw new MuleRuntimeException(CoreMessages.createStaticMessage(String
+              throw new MatcherCollisionException(CoreMessages.createStaticMessage(String
                   .format("Already exists a listener matching that path and methods. Listener matching %s new listener %s",
                           requestMatcher, newListenerRequestMatcher)));
             }
@@ -216,12 +218,12 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
         LOGGER.info("Available listeners are: [{}]", Joiner.on(", ").join(this.paths));
       }
       if (methodNotAllowed) {
-        return noMatchMismatchHandler;
+        return noMatchMismatchHandler.get();
       }
-      return notFoundMismatchHandler;
+      return notFoundMismatchHandler.get();
     }
     if (!requestHandlerMatcherPair.isRunning()) {
-      return notAvailableMismatchHandler;
+      return notAvailableMismatchHandler.get();
     }
     return requestHandlerMatcherPair.getRequestHandler();
   }
