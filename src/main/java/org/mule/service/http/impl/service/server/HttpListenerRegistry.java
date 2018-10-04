@@ -46,9 +46,9 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
     RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry = this.requestHandlerPerServerAddress.get(server);
     if (serverAddressRequestHandlerRegistry == null) {
       serverAddressRequestHandlerRegistry = new DefaultRequestMatcherRegistryBuilder<RequestHandler>()
-          .onMethodMismatch(NoMethodRequestHandler.getInstance())
-          .onNotFound(NoListenerRequestHandler.getInstance())
-          .onDisabled(ServiceTemporarilyUnavailableListenerRequestHandler.getInstance())
+          .onMethodMismatch(NoMethodRequestHandler::getInstance)
+          .onNotFound(NoListenerRequestHandler::getInstance)
+          .onDisabled(ServiceTemporarilyUnavailableListenerRequestHandler::getInstance)
           .build();
       requestHandlerPerServerAddress.put(server, serverAddressRequestHandlerRegistry);
       serverAddressToServerMap.put(server.getServerAddress(), server);
