@@ -7,13 +7,12 @@
 package org.mule.service.http.impl.service.util;
 
 import static java.util.Objects.requireNonNull;
+import static org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistry.NULL_SUPPLIER;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 
 import java.util.function.Supplier;
 
 public class DefaultRequestMatcherRegistryBuilder<T> implements RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> {
-
-  private static final Supplier NULL_SUPPLIER = () -> null;
 
   private Supplier<T> onMethodMismatch = NULL_SUPPLIER;
   private Supplier<T> onNotFound = NULL_SUPPLIER;
