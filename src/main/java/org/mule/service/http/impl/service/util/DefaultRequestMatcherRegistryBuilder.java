@@ -13,9 +13,11 @@ import java.util.function.Supplier;
 
 public class DefaultRequestMatcherRegistryBuilder<T> implements RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> {
 
-  private Supplier<T> onMethodMismatch;
-  private Supplier<T> onNotFound;
-  private Supplier<T> onDisabled;
+  private static final Supplier NULL_SUPPLIER = () -> null;
+
+  private Supplier<T> onMethodMismatch = NULL_SUPPLIER;
+  private Supplier<T> onNotFound = NULL_SUPPLIER;
+  private Supplier<T> onDisabled = NULL_SUPPLIER;
 
   @Override
   public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onMethodMismatch(Supplier<T> itemSupplier) {
