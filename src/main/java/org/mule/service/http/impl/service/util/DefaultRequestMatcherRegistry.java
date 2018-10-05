@@ -37,6 +37,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private static final Logger LOGGER = getLogger(DefaultRequestMatcherRegistry.class);
   private static final String WILDCARD_CHARACTER = "*";
   private static final String SLASH = "/";
+  static final Supplier NULL_SUPPLIER = () -> null;
 
   private Path serverRequestHandler;
   private Path rootPath = new Path("root", null);
@@ -45,6 +46,10 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private Supplier<T> noMatchMismatchHandler;
   private Supplier<T> notFoundMismatchHandler;
   private Supplier<T> notAvailableMismatchHandler;
+
+  public DefaultRequestMatcherRegistry() {
+    this(NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER);
+  }
 
   public DefaultRequestMatcherRegistry(Supplier<T> noMatchMismatchHandler, Supplier<T> notFoundMismatchHandler,
                                        Supplier<T> notAvailableMismatchHandler) {
