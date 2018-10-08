@@ -65,7 +65,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   public HttpServiceImplementation(SchedulerService schedulerService) {
     this.schedulerService = schedulerService;
-    listenerConnectionManager = new HttpListenerConnectionManager(schedulerService, config());
+    listenerConnectionManager = createListenerConnectionManager(schedulerService);
     clientConnectionManager = createClientConnectionManager();
   }
 
@@ -92,6 +92,10 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   protected HttpClientConnectionManager createClientConnectionManager() {
     return new HttpClientConnectionManager();
+  }
+
+  protected HttpListenerConnectionManager createListenerConnectionManager(SchedulerService schedulerService) {
+    return new HttpListenerConnectionManager(schedulerService, config());
   }
 
   @Override

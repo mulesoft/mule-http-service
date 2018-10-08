@@ -190,7 +190,6 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
 
   private boolean isWebSocketUpgrade(HttpHeader header) {
     final String upgrade = header.getHeader("upgrade");
-    return "WebSocket".equals(upgrade) || "websocket".equals(upgrade);
+    return "WebSocket".equalsIgnoreCase(upgrade);
   }
-
 }
