@@ -25,6 +25,11 @@ import java.util.Collection;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.Protocol;
 
+/**
+ * Base class for a grizzly based implementation of {@link BaseHttpMessage}
+ *
+ * @since 1.1.5
+ */
 public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements HttpRequest {
 
   protected final InetSocketAddress localAddress;

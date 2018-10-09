@@ -12,10 +12,32 @@ import org.mule.runtime.http.api.client.ClientNotFoundException;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 
+/**
+ * Factory object for {@link HttpClient} that partitions them considering a given creation context in which they can be later
+ * shared.
+ *
+ * @since 1.1.5
+ */
 public interface ContextHttpClientFactory {
 
+  /**
+   * Creates a new {@link HttpClient}
+   *
+   * @param config           the {@link HttpClientConfiguration}
+   * @param context          the context under which this server will be created
+   * @param schedulerService the {@link SchedulerService} to be used for async tasks
+   * @param schedulerConfig  a {@link SchedulerConfig}
+   * @return a new {@link HttpClient}
+   */
   HttpClient create(HttpClientConfiguration config, String context, SchedulerService schedulerService,
                     SchedulerConfig schedulerConfig);
 
+  /**
+   * Retrieves the {@link HttpClient} for the given {@code clientIdentifier}
+   *
+   * @param clientIdentifier an identified
+   * @return an {@link HttpClient} previously created through {@link #create(HttpClientConfiguration, String, SchedulerService, SchedulerConfig)}
+   * @throws ClientNotFoundException if no such client exists
+   */
   HttpClient lookupClient(ClientIdentifier clientIdentifier) throws ClientNotFoundException;
 }

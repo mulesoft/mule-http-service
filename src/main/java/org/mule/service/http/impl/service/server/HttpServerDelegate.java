@@ -18,6 +18,11 @@ import org.mule.runtime.http.api.server.ws.WebSocketHandlerManager;
 import java.io.IOException;
 import java.util.Collection;
 
+/**
+ * Base class for applying the delegate design pattern around an {@link HttpServer}
+ *
+ * @since 1.1.5
+ */
 public class HttpServerDelegate implements HttpServer {
 
   protected final HttpServer delegate;

@@ -13,6 +13,11 @@ import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.HttpClientFactory;
 
+/**
+ * Adapts a {@link ContextHttpClientFactory} to a {@link HttpClientFactory}.
+ *
+ * @since 1.1.5
+ */
 public class ContextHttpClientFactoryAdapter implements HttpClientFactory {
 
   private final String context;

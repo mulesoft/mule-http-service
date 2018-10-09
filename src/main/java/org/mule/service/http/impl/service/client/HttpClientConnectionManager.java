@@ -15,6 +15,11 @@ import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * Manages client connections
+ *
+ * @since 1.1.5
+ */
 public class HttpClientConnectionManager implements ContextHttpClientFactory {
 
   private final ConcurrentMap<ClientIdentifier, HttpClient> clients = new ConcurrentHashMap<>();
