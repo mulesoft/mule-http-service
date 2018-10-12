@@ -35,7 +35,7 @@ public interface ContextHttpClientFactory {
   /**
    * Retrieves the {@link HttpClient} for the given {@code clientIdentifier}
    *
-   * @param clientIdentifier an identified
+   * @param clientIdentifier an identifier
    * @return an {@link HttpClient} previously created through {@link #create(HttpClientConfiguration, String, SchedulerService, SchedulerConfig)}
    * @throws ClientNotFoundException if no such client exists
    */

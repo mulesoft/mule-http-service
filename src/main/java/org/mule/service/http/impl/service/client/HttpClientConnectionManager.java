@@ -6,8 +6,10 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import static org.mule.runtime.core.api.util.concurrent.FunctionalReadWriteLock.readWriteLock;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
+import org.mule.runtime.core.api.util.concurrent.FunctionalReadWriteLock;
 import org.mule.runtime.http.api.client.ClientNotFoundException;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
@@ -23,6 +25,7 @@ import java.util.concurrent.ConcurrentMap;
 public class HttpClientConnectionManager implements ContextHttpClientFactory {
 
   private final ConcurrentMap<ClientIdentifier, HttpClient> clients = new ConcurrentHashMap<>();
+  private final FunctionalReadWriteLock lock = readWriteLock();
 
   @Override
   public HttpClient create(HttpClientConfiguration config,
@@ -31,15 +34,17 @@ public class HttpClientConnectionManager implements ContextHttpClientFactory {
                            SchedulerConfig schedulerConfig) {
 
     ClientIdentifier identifier = new ClientIdentifier(context, config.getName());
-    if (clients.containsKey(identifier)) {
-      throw new IllegalArgumentException(String.format("Http client of name '%s' already exists for artifact '%s'",
-                                                       identifier.getName(), identifier.getContext()));
-    }
+    return lock.withWriteLock(() -> {
+      if (clients.containsKey(identifier)) {
+        throw new IllegalArgumentException(String.format("Http client of name '%s' already exists for artifact '%s'",
+                                                         identifier.getName(), identifier.getContext()));
+      }
 
-    HttpClient client = doCreateClient(config, schedulerService, schedulerConfig);
-    clients.put(identifier, client);
+      HttpClient client = doCreateClient(config, schedulerService, schedulerConfig);
+      clients.put(identifier, client);
 
-    return client;
+      return client;
+    });
   }
 
   protected HttpClient doCreateClient(HttpClientConfiguration config,
@@ -49,7 +54,7 @@ public class HttpClientConnectionManager implements ContextHttpClientFactory {
   }
 
   public HttpClient lookupClient(ClientIdentifier identifier) throws ClientNotFoundException {
-    HttpClient client = clients.get(identifier);
+    HttpClient client = lock.withReadLock(r -> clients.get(identifier));
     if (client == null) {
       throw new ClientNotFoundException(identifier.getName());
     }

@@ -6,7 +6,9 @@
  */
 package org.mule.service.http.impl.service.server;
 
+import static org.mule.runtime.core.api.util.concurrent.FunctionalReadWriteLock.readWriteLock;
 import static org.slf4j.LoggerFactory.getLogger;
+import org.mule.runtime.core.api.util.concurrent.FunctionalReadWriteLock;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
@@ -31,6 +33,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
 
   private final ServerAddressMap<HttpServer> serverAddressToServerMap = new ServerAddressMap<>();
   private final Map<HttpServer, RequestMatcherRegistry<RequestHandler>> requestHandlerPerServerAddress = new HashMap<>();
+  private final FunctionalReadWriteLock lock = readWriteLock();
 
   /**
    * Introduces a new {@link RequestHandler} for requests matching a given {@link PathAndMethodRequestMatcher} in the provided
@@ -43,17 +46,20 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
    */
   public synchronized RequestHandlerManager addRequestHandler(final HttpServer server, final RequestHandler requestHandler,
                                                               final PathAndMethodRequestMatcher requestMatcher) {
-    RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry = this.requestHandlerPerServerAddress.get(server);
-    if (serverAddressRequestHandlerRegistry == null) {
-      serverAddressRequestHandlerRegistry = new DefaultRequestMatcherRegistryBuilder<RequestHandler>()
-          .onMethodMismatch(NoMethodRequestHandler::getInstance)
-          .onNotFound(NoListenerRequestHandler::getInstance)
-          .onDisabled(ServiceTemporarilyUnavailableListenerRequestHandler::getInstance)
-          .build();
-      requestHandlerPerServerAddress.put(server, serverAddressRequestHandlerRegistry);
-      serverAddressToServerMap.put(server.getServerAddress(), server);
-    }
-    return new DefaultRequestHandlerManager(serverAddressRequestHandlerRegistry.add(requestMatcher, requestHandler));
+    return lock.withWriteLock(() -> {
+      RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
+          this.requestHandlerPerServerAddress.get(server);
+      if (serverAddressRequestHandlerRegistry == null) {
+        serverAddressRequestHandlerRegistry = new DefaultRequestMatcherRegistryBuilder<RequestHandler>()
+            .onMethodMismatch(NoMethodRequestHandler::getInstance)
+            .onNotFound(NoListenerRequestHandler::getInstance)
+            .onDisabled(ServiceTemporarilyUnavailableListenerRequestHandler::getInstance)
+            .build();
+        requestHandlerPerServerAddress.put(server, serverAddressRequestHandlerRegistry);
+        serverAddressToServerMap.put(server.getServerAddress(), server);
+      }
+      return new DefaultRequestHandlerManager(serverAddressRequestHandlerRegistry.add(requestMatcher, requestHandler));
+    });
   }
 
   /**
@@ -62,28 +68,31 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
    * @param server whose handlers will be removed
    */
   public synchronized void removeHandlersFor(HttpServer server) {
-    requestHandlerPerServerAddress.remove(server);
-    serverAddressToServerMap.remove(server.getServerAddress());
+    lock.withWriteLock(() -> {
+      requestHandlerPerServerAddress.remove(server);
+      serverAddressToServerMap.remove(server.getServerAddress());
+    });
   }
 
   @Override
   public synchronized boolean hasHandlerFor(ServerAddress serverAddress) {
-    return serverAddressToServerMap.get(serverAddress) != null;
+    return lock.withReadLock(r -> serverAddressToServerMap.get(serverAddress) != null);
   }
 
   @Override
   public RequestHandler getRequestHandler(ServerAddress serverAddress, final HttpRequest request) {
     LOGGER.debug("Looking RequestHandler for request: {}", request.getPath());
-    final HttpServer server = serverAddressToServerMap.get(serverAddress);
-    if (server != null && !server.isStopping() && !server.isStopped()) {
-      final RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
-          requestHandlerPerServerAddress.get(server);
-      if (serverAddressRequestHandlerRegistry != null) {
-        return serverAddressRequestHandlerRegistry.find(request);
+    return lock.withReadLock(r -> {
+      final HttpServer server = serverAddressToServerMap.get(serverAddress);
+      if (server != null && !server.isStopping() && !server.isStopped()) {
+        final RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
+            requestHandlerPerServerAddress.get(server);
+        if (serverAddressRequestHandlerRegistry != null) {
+          return serverAddressRequestHandlerRegistry.find(request);
+        }
       }
-    }
-    LOGGER.debug("No RequestHandler found for request: {}", request.getPath());
-    return NoListenerRequestHandler.getInstance();
+      LOGGER.debug("No RequestHandler found for request: {}", request.getPath());
+      return NoListenerRequestHandler.getInstance();
+    });
   }
-
 }
