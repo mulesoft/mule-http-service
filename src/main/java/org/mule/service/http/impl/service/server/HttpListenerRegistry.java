@@ -44,7 +44,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
    * @param requestMatcher the matcher to be applied for the handler
    * @return a {@link RequestHandlerManager} for the added handler that allows enabling, disabling and disposing it
    */
-  public synchronized RequestHandlerManager addRequestHandler(final HttpServer server, final RequestHandler requestHandler,
+  public RequestHandlerManager addRequestHandler(final HttpServer server, final RequestHandler requestHandler,
                                                               final PathAndMethodRequestMatcher requestMatcher) {
     return lock.withWriteLock(() -> {
       RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
@@ -67,7 +67,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
    *
    * @param server whose handlers will be removed
    */
-  public synchronized void removeHandlersFor(HttpServer server) {
+  public void removeHandlersFor(HttpServer server) {
     lock.withWriteLock(() -> {
       requestHandlerPerServerAddress.remove(server);
       serverAddressToServerMap.remove(server.getServerAddress());
@@ -75,7 +75,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
   }
 
   @Override
-  public synchronized boolean hasHandlerFor(ServerAddress serverAddress) {
+  public boolean hasHandlerFor(ServerAddress serverAddress) {
     return lock.withReadLock(r -> serverAddressToServerMap.get(serverAddress) != null);
   }
 
