@@ -35,6 +35,7 @@ import java.io.IOException;
 public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
 
   private final FilterChainContext ctx;
+  private final ClassLoader ctxClassLoader;
   private final HttpResponsePacket httpResponsePacket;
   private final HttpContent httpResponseContent;
   private final ResponseStatusCallback responseStatusCallback;
@@ -42,10 +43,12 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   private boolean isDone;
   private boolean contentSend;
 
-  public ResponseCompletionHandler(final FilterChainContext ctx, final HttpRequestPacket httpRequestPacket,
+  public ResponseCompletionHandler(final FilterChainContext ctx, ClassLoader ctxClassLoader,
+                                   final HttpRequestPacket httpRequestPacket,
                                    final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
     checkArgument((!(httpResponse.getEntity().isStreaming())), "HTTP response entity cannot be stream based");
     this.ctx = ctx;
+    this.ctxClassLoader = ctxClassLoader;
     this.protocol = httpRequestPacket.getProtocol();
     this.httpResponsePacket = buildHttpResponsePacket(httpRequestPacket, httpResponse);
     this.httpResponseContent = buildResponseContent(httpResponse);
@@ -161,5 +164,9 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
    */
   private void resume() {
     ctx.resume(ctx.getStopAction());
+  }
+
+  protected ClassLoader getCtxClassLoader() {
+    return ctxClassLoader;
   }
 }

@@ -21,6 +21,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
+
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
@@ -32,16 +33,6 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.RequestHandlerProvider;
 
-import java.io.IOException;
-import java.io.Writer;
-import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.net.ssl.SSLSession;
-
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.filterchain.FilterChainEvent;
@@ -52,6 +43,16 @@ import org.glassfish.grizzly.http.HttpEvents.OutgoingHttpUpgradeEvent;
 import org.glassfish.grizzly.http.HttpHeader;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
+
+import java.io.IOException;
+import java.io.Writer;
+import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ssl.SSLSession;
 
 /**
  * Grizzly filter that dispatches the request to the right request handler
@@ -133,9 +134,11 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
                 response = new HttpResponseBuilder(response).entity(new EmptyHttpEntity()).build();
               }
               if (response.getEntity().isStreaming()) {
-                new ResponseStreamingCompletionHandler(ctx, request, response, responseStatusCallback).start();
+                new ResponseStreamingCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
+                                                       responseStatusCallback).start();
               } else {
-                new ResponseCompletionHandler(ctx, request, response, responseStatusCallback).start();
+                new ResponseCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
+                                              responseStatusCallback).start();
               }
             } catch (Exception e) {
               responseStatusCallback.responseSendFailure(e);
@@ -145,7 +148,8 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
           @Override
           public Writer startResponse(HttpResponse response, ResponseStatusCallback responseStatusCallback, Charset encoding) {
             ResponseDelayedCompletionHandler responseCompletionHandler =
-                new ResponseDelayedCompletionHandler(ctx, request, response, responseStatusCallback);
+                new ResponseDelayedCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
+                                                     responseStatusCallback);
             responseCompletionHandler.start();
             return responseCompletionHandler.buildWriter(encoding);
           }

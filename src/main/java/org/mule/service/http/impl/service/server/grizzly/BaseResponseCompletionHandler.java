@@ -9,6 +9,7 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
+import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.core.api.util.UUID.getUUID;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -106,14 +107,20 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
 
   @Override
   public void cancelled() {
-    LOGGER.warn("HTTP response sending task was cancelled");
+    withContextClassLoader(getCtxClassLoader(), () -> {
+      LOGGER.warn("HTTP response sending task was cancelled");
+    });
   }
 
   @Override
   public void failed(Throwable throwable) {
-    if (LOGGER.isWarnEnabled()) {
-      LOGGER.warn(format("HTTP response sending task failed with error: %s", throwable.getMessage()));
-    }
+    withContextClassLoader(getCtxClassLoader(), () -> {
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn(format("HTTP response sending task failed with error: %s", throwable.getMessage()));
+      }
+    });
   }
+
+  protected abstract ClassLoader getCtxClassLoader();
 
 }
