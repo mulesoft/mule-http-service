@@ -32,7 +32,7 @@ import org.junit.runners.Parameterized.Parameters;
  */
 @RunWith(Parameterized.class)
 @Feature(HTTP_SERVICE)
-public class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
+public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
 
   @Parameter
   public String serviceToLoad;

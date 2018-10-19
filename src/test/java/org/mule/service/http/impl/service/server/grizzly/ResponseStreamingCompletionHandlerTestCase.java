@@ -6,18 +6,21 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Thread.currentThread;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
+
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
-import java.io.InputStream;
-
 import org.glassfish.grizzly.Transport;
 import org.junit.Before;
+
+import java.io.InputStream;
+
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 
@@ -33,6 +36,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
     when(connection.getTransport()).thenReturn(mock(Transport.class, RETURNS_DEEP_STUBS));
     InputStream mockStream = mock(InputStream.class);
     handler = new ResponseStreamingCompletionHandler(ctx,
+                                                     currentThread().getContextClassLoader(),
                                                      request,
                                                      HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build(),
                                                      callback);
