@@ -13,14 +13,13 @@ import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
-
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.api.scheduler.Scheduler;
-import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
+import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.core.api.util.NetworkUtils;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
@@ -43,17 +42,18 @@ import java.util.function.Supplier;
  */
 public class HttpListenerConnectionManager implements ContextHttpServerFactory, Initialisable, Disposable {
 
-  private static final int DEFAULT_SELECTOR_THREAD_COUNT =
+  private static final String LISTENER_THREAD_NAME_PREFIX = "http.listener";
+  protected static final int DEFAULT_SELECTOR_THREAD_COUNT =
       getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
                  max(getRuntime().availableProcessors(), 2));
-  private static final String LISTENER_THREAD_NAME_PREFIX = "http.listener";
 
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
-  private Scheduler selectorScheduler;
-  private Scheduler workerScheduler;
-  private Scheduler idleTimeoutScheduler;
-  private final HttpListenerRegistry httpListenerRegistry = new HttpListenerRegistry();
+
+  protected Scheduler selectorScheduler;
+  protected Scheduler workerScheduler;
+  protected Scheduler idleTimeoutScheduler;
+  protected final HttpListenerRegistry httpListenerRegistry = new HttpListenerRegistry();
   private HttpServerManager httpServerManager;
 
   private AtomicBoolean initialized = new AtomicBoolean(false);
@@ -77,9 +77,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
     idleTimeoutScheduler =
         schedulerService.ioScheduler(schedulersConfig.withName(LISTENER_THREAD_NAME_PREFIX + IDLE_TIMEOUT_THREADS_PREFIX_NAME));
-    httpServerManager = new GrizzlyServerManager(selectorScheduler, workerScheduler, idleTimeoutScheduler, httpListenerRegistry,
-                                                 tcpServerSocketProperties, DEFAULT_SELECTOR_THREAD_COUNT);
-
+    httpServerManager = createServerManager(tcpServerSocketProperties);
   }
 
   @Override
@@ -145,6 +143,11 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
     } else {
       throw new ServerAlreadyExistsException(serverAddress);
     }
+  }
+
+  protected GrizzlyServerManager createServerManager(TcpServerSocketProperties tcpServerSocketProperties) {
+    return new GrizzlyServerManager(selectorScheduler, workerScheduler, idleTimeoutScheduler, httpListenerRegistry,
+                                    tcpServerSocketProperties, DEFAULT_SELECTOR_THREAD_COUNT);
   }
 
   /**
