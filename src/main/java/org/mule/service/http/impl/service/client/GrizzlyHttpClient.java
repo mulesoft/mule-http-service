@@ -106,7 +106,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private Scheduler workerScheduler;
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
-  private AsyncHttpClient asyncHttpClient;
+  protected AsyncHttpClient asyncHttpClient;
   private SSLContext sslContext;
 
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();

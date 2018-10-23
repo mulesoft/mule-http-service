@@ -26,7 +26,8 @@ import org.mule.runtime.http.api.client.HttpClientFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
-import org.mule.service.http.impl.service.client.GrizzlyHttpClient;
+import org.mule.service.http.impl.service.client.ContextHttpClientFactoryAdapter;
+import org.mule.service.http.impl.service.client.HttpClientConnectionManager;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
 import org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistryBuilder;
@@ -55,31 +56,42 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   protected final SchedulerService schedulerService;
 
-  private HttpListenerConnectionManager connectionManager;
+  private final HttpListenerConnectionManager listenerConnectionManager;
+  protected final HttpClientConnectionManager clientConnectionManager;
 
   public HttpServiceImplementation(SchedulerService schedulerService) {
     this.schedulerService = schedulerService;
-    connectionManager = new HttpListenerConnectionManager(schedulerService, config());
+    listenerConnectionManager = createListenerConnectionManager(schedulerService);
+    clientConnectionManager = createClientConnectionManager();
   }
 
   @Override
   public HttpServerFactory getServerFactory() {
-    return new ContextHttpServerFactoryAdapter(CONTAINER_CONTEXT, connectionManager);
+    return new ContextHttpServerFactoryAdapter(CONTAINER_CONTEXT, listenerConnectionManager);
   }
 
   @Inject
   public HttpServerFactory getServerFactory(@Named(OBJECT_MULE_CONTEXT) MuleContext muleContext) {
-    return new ContextHttpServerFactoryAdapter(muleContext.getId(), connectionManager);
+    return new ContextHttpServerFactoryAdapter(muleContext.getId(), listenerConnectionManager);
   }
 
   @Override
   public HttpClientFactory getClientFactory() {
-    return config -> new GrizzlyHttpClient(config, schedulerService, config());
+    return new ContextHttpClientFactoryAdapter(CONTAINER_CONTEXT, schedulerService, config(), clientConnectionManager);
   }
 
   @Inject
-  public HttpClientFactory getClientFactory(@Named(OBJECT_SCHEDULER_BASE_CONFIG) SchedulerConfig schedulersConfig) {
-    return config -> new GrizzlyHttpClient(config, schedulerService, schedulersConfig);
+  public HttpClientFactory getClientFactory(@Named(OBJECT_MULE_CONTEXT) MuleContext muleContext,
+                                            @Named(OBJECT_SCHEDULER_BASE_CONFIG) SchedulerConfig schedulersConfig) {
+    return new ContextHttpClientFactoryAdapter(muleContext.getId(), schedulerService, schedulersConfig, clientConnectionManager);
+  }
+
+  protected HttpClientConnectionManager createClientConnectionManager() {
+    return new HttpClientConnectionManager();
+  }
+
+  protected HttpListenerConnectionManager createListenerConnectionManager(SchedulerService schedulerService) {
+    return new HttpListenerConnectionManager(schedulerService, config());
   }
 
   @Override
@@ -94,12 +106,11 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   @Override
   public void start() throws MuleException {
-    initialiseIfNeeded(connectionManager);
+    initialiseIfNeeded(listenerConnectionManager);
   }
 
   @Override
   public void stop() throws MuleException {
-    disposeIfNeeded(connectionManager, logger);
+    disposeIfNeeded(listenerConnectionManager, logger);
   }
-
 }

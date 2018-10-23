@@ -20,6 +20,26 @@ import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import static org.slf4j.LoggerFactory.getLogger;
+import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.runtime.api.scheduler.Scheduler;
+import org.mule.runtime.api.tls.TlsContextFactory;
+import org.mule.runtime.http.api.server.HttpServer;
+import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
+import org.mule.runtime.http.api.server.ServerCreationException;
+import org.mule.runtime.http.api.server.ServerNotFoundException;
+import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
+import org.mule.service.http.impl.service.HttpMessageLogger;
+import org.mule.service.http.impl.service.server.HttpListenerRegistry;
+import org.mule.service.http.impl.service.server.HttpServerDelegate;
+import org.mule.service.http.impl.service.server.HttpServerManager;
+import org.mule.service.http.impl.service.server.ServerIdentifier;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 import org.glassfish.grizzly.filterchain.FilterChainBuilder;
 import org.glassfish.grizzly.filterchain.TransportFilter;
@@ -31,30 +51,8 @@ import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
 import org.glassfish.grizzly.ssl.SSLFilter;
 import org.glassfish.grizzly.utils.DelayedExecutor;
 import org.glassfish.grizzly.utils.IdleTimeoutFilter;
-import org.mule.runtime.api.exception.MuleRuntimeException;
-import org.mule.runtime.api.scheduler.Scheduler;
-import org.mule.runtime.api.tls.TlsContextFactory;
-import org.mule.runtime.http.api.HttpConstants.Protocol;
-import org.mule.runtime.http.api.server.HttpServer;
-import org.mule.runtime.http.api.server.RequestHandler;
-import org.mule.runtime.http.api.server.RequestHandlerManager;
-import org.mule.runtime.http.api.server.ServerAddress;
-import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
-import org.mule.runtime.http.api.server.ServerCreationException;
-import org.mule.runtime.http.api.server.ServerNotFoundException;
-import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
-import org.mule.service.http.impl.service.HttpMessageLogger;
-import org.mule.service.http.impl.service.server.HttpListenerRegistry;
-import org.mule.service.http.impl.service.server.HttpServerManager;
-import org.mule.service.http.impl.service.server.ServerIdentifier;
+import org.glassfish.grizzly.websockets.WebSocketFilter;
 import org.slf4j.Logger;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.function.Supplier;
 
 public class GrizzlyServerManager implements HttpServerManager {
 
@@ -77,28 +75,33 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
   private final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
+  protected final GrizzlyAddressDelegateFilter<WebSocketFilter> webSocketFilter;
   private final GrizzlyAddressDelegateFilter<HttpServerFilter> httpServerFilterDelegate;
-  private final TCPNIOTransport transport;
+  protected final TCPNIOTransport transport;
   private final GrizzlyRequestDispatcherFilter requestHandlerFilter;
-  private final HttpListenerRegistry httpListenerRegistry;
-  private final WorkManagerSourceExecutorProvider executorProvider;
+  protected final HttpListenerRegistry httpListenerRegistry;
+  protected final WorkManagerSourceExecutorProvider executorProvider;
   private final ExecutorService idleTimeoutExecutorService;
-  private Map<ServerAddress, GrizzlyHttpServer> servers = new ConcurrentHashMap<>();
-  private Map<ServerIdentifier, GrizzlyHttpServer> serversByIdentifier = new ConcurrentHashMap<>();
+  private Map<ServerAddress, HttpServer> servers = new ConcurrentHashMap<>();
+  private Map<ServerIdentifier, HttpServer> serversByIdentifier = new ConcurrentHashMap<>();
   private Map<ServerAddress, IdleExecutor> idleExecutorPerServerAddressMap = new ConcurrentHashMap<>();
 
   private boolean transportStarted;
   private int serverTimeout;
 
-  public GrizzlyServerManager(ExecutorService selectorPool, ExecutorService workerPool,
-                              ExecutorService idleTimeoutExecutorService, HttpListenerRegistry httpListenerRegistry,
-                              TcpServerSocketProperties serverSocketProperties, int selectorCount) {
+  public GrizzlyServerManager(ExecutorService selectorPool,
+                              ExecutorService workerPool,
+                              ExecutorService idleTimeoutExecutorService,
+                              HttpListenerRegistry httpListenerRegistry,
+                              TcpServerSocketProperties serverSocketProperties,
+                              int selectorCount) {
     this.httpListenerRegistry = httpListenerRegistry;
     //TODO - MULE-14960: Remove system property once this can be configured through a file
     this.serverTimeout = getInteger("mule.http.server.timeout", DEFAULT_SERVER_TIMEOUT_MILLIS);
     requestHandlerFilter = new GrizzlyRequestDispatcherFilter(httpListenerRegistry);
     timeoutFilterDelegate = new GrizzlyAddressDelegateFilter<>();
     sslFilterDelegate = new GrizzlyAddressDelegateFilter<>();
+    webSocketFilter = new GrizzlyAddressDelegateFilter<>();
     httpServerFilterDelegate = new GrizzlyAddressDelegateFilter<>();
 
     FilterChainBuilder serverFilterChainBuilder = FilterChainBuilder.stateless();
@@ -106,6 +109,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     serverFilterChainBuilder.add(timeoutFilterDelegate);
     serverFilterChainBuilder.add(sslFilterDelegate);
     serverFilterChainBuilder.add(httpServerFilterDelegate);
+    serverFilterChainBuilder.add(webSocketFilter);
     serverFilterChainBuilder.add(requestHandlerFilter);
 
     // Initialize Transport
@@ -212,14 +216,24 @@ public class GrizzlyServerManager implements HttpServerManager {
         .addFilterForAddress(serverAddress,
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor,
                                                     identifier));
-    final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
-                                                                         schedulerSupplier,
-                                                                         () -> executorProvider.removeExecutor(serverAddress),
-                                                                         identifier, sslFilterDelegate);
-    executorProvider.addExecutor(serverAddress, grizzlyServer);
+
+    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(schedulerSupplier, serverAddress, identifier);
+    executorProvider.addExecutor(serverAddress, (Supplier<ExecutorService>) grizzlyServer.getDelegate());
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
     return grizzlyServer;
+  }
+
+  protected ManagedGrizzlyHttpServer createManagedServer(Supplier<Scheduler> schedulerSupplier,
+                                                         ServerAddress serverAddress,
+                                                         ServerIdentifier identifier) {
+    return new ManagedGrizzlyHttpServer(new GrizzlyHttpServer(serverAddress,
+                                                              transport,
+                                                              httpListenerRegistry,
+                                                              schedulerSupplier,
+                                                              () -> executorProvider.removeExecutor(serverAddress),
+                                                              sslFilterDelegate),
+                                        identifier);
   }
 
   @Override
@@ -237,11 +251,9 @@ public class GrizzlyServerManager implements HttpServerManager {
         .addFilterForAddress(serverAddress,
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor,
                                                     identifier));
-    final GrizzlyHttpServer grizzlyServer = new ManagedGrizzlyHttpServer(serverAddress, transport, httpListenerRegistry,
-                                                                         schedulerSupplier,
-                                                                         () -> executorProvider.removeExecutor(serverAddress),
-                                                                         identifier, sslFilterDelegate);
-    executorProvider.addExecutor(serverAddress, grizzlyServer);
+
+    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(schedulerSupplier, serverAddress, identifier);
+    executorProvider.addExecutor(serverAddress, (Supplier<ExecutorService>) grizzlyServer.getDelegate());
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
     return grizzlyServer;
@@ -249,7 +261,7 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   @Override
   public HttpServer lookupServer(ServerIdentifier identifier) throws ServerNotFoundException {
-    GrizzlyHttpServer httpServer = serversByIdentifier.get(identifier);
+    HttpServer httpServer = serversByIdentifier.get(identifier);
     if (httpServer != null) {
       return new NoLifecycleHttpServer(httpServer);
     } else {
@@ -322,17 +334,14 @@ public class GrizzlyServerManager implements HttpServerManager {
   /**
    * Wrapper that adds startup and disposal of manager specific data.
    */
-  private class ManagedGrizzlyHttpServer extends GrizzlyHttpServer {
+  private class ManagedGrizzlyHttpServer extends HttpServerDelegate {
 
     private final ServerIdentifier identifier;
 
     // TODO - MULE-11117: Cleanup GrizzlyServerManager server specific data
 
-    public ManagedGrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport,
-                                    HttpListenerRegistry listenerRegistry, Supplier<Scheduler> schedulerSupplier,
-                                    Runnable schedulerDisposer, ServerIdentifier identifier,
-                                    GrizzlyAddressFilter<SSLFilter> sslFilter) {
-      super(serverAddress, transport, listenerRegistry, schedulerSupplier, schedulerDisposer, sslFilter);
+    public ManagedGrizzlyHttpServer(HttpServer delegate, ServerIdentifier identifier) {
+      super(delegate);
       this.identifier = identifier;
     }
 
@@ -378,12 +387,10 @@ public class GrizzlyServerManager implements HttpServerManager {
   /**
    * Wrapper that avoids all lifecycle operations, so that the inner server owns that exclusively.
    */
-  private class NoLifecycleHttpServer implements HttpServer {
-
-    private final HttpServer delegate;
+  private class NoLifecycleHttpServer extends HttpServerDelegate {
 
     public NoLifecycleHttpServer(HttpServer delegate) {
-      this.delegate = delegate;
+      super(delegate);
     }
 
     @Override
@@ -399,47 +406,6 @@ public class GrizzlyServerManager implements HttpServerManager {
     @Override
     public void dispose() {
       // Do nothing
-    }
-
-    @Override
-    public ServerAddress getServerAddress() {
-      return delegate.getServerAddress();
-    }
-
-    @Override
-    public Protocol getProtocol() {
-      return delegate.getProtocol();
-    }
-
-    @Override
-    public boolean isStopping() {
-      return delegate.isStopping();
-    }
-
-    @Override
-    public boolean isStopped() {
-      return delegate.isStopped();
-    }
-
-    @Override
-    public RequestHandlerManager addRequestHandler(Collection<String> methods, String path,
-                                                   RequestHandler requestHandler) {
-      return delegate.addRequestHandler(methods, path, requestHandler);
-    }
-
-    @Override
-    public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
-      return delegate.addRequestHandler(path, requestHandler);
-    }
-
-    @Override
-    public void enableTls(TlsContextFactory tlsContextFactory) {
-      delegate.enableTls(tlsContextFactory);
-    }
-
-    @Override
-    public void disableTls() {
-      delegate.disableTls();
     }
   }
 
