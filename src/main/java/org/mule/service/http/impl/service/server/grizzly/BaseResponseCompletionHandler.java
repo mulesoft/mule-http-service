@@ -28,7 +28,7 @@ import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.http.Protocol;
 import org.slf4j.Logger;
 
-import java.util.Optional;
+import java.util.OptionalLong;
 
 public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandler<WriteResult> {
 
@@ -87,10 +87,10 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
     }
 
     // If there's no transfer type specified, check the entity length to prioritize content length transfer (unless it's 1.0)
-    Optional<Long> length = httpResponse.getEntity().getLength();
+    OptionalLong length = httpResponse.getEntity().getBytesLength();
     Protocol protocol = sourceRequest.getProtocol();
     if (!hasTransferEncoding && !hasContentLength && length.isPresent() && !protocol.equals(HTTP_1_0)) {
-      responsePacketBuilder.header(CONTENT_LENGTH, valueOf(length.get()));
+      responsePacketBuilder.header(CONTENT_LENGTH, valueOf(length.getAsLong()));
     }
 
     HttpResponsePacket httpResponsePacket = responsePacketBuilder.build();
