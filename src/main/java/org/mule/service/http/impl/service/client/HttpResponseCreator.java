@@ -39,20 +39,29 @@ public class HttpResponseCreator {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
     responseBuilder.statusCode(response.getStatusCode());
     responseBuilder.reasonPhrase(response.getStatusText());
-    String contentType = response.getHeader(HEADER_CONTENT_TYPE);
-    String contentLength = response.getHeader(HEADER_CONTENT_LENGTH);
-    responseBuilder.entity(createEntity(inputStream, contentType, contentLength));
 
+    String contentType = null;
+    String contentLength = null;
     if (response.hasResponseHeaders()) {
       for (Entry<String, List<String>> headerEntry : response.getHeaders().entrySet()) {
-        responseBuilder.addHeaders(headerEntry.getKey(), headerEntry.getValue());
+        String headerName = headerEntry.getKey();
+        responseBuilder.addHeaders(headerName, headerEntry.getValue());
+
+        if (headerName.equalsIgnoreCase(HEADER_CONTENT_TYPE)) {
+          contentType = response.getHeader(HEADER_CONTENT_TYPE);
+        } else if (headerName.equalsIgnoreCase(HEADER_CONTENT_LENGTH)) {
+          contentLength = response.getHeader(HEADER_CONTENT_LENGTH);
+        }
       }
     }
+
+    responseBuilder.entity(createEntity(inputStream, contentType, contentLength));
+
     return responseBuilder.build();
   }
 
   private HttpEntity createEntity(InputStream stream, String contentType, String contentLength) {
-    Long contentLengthAsLong = -1L;
+    long contentLengthAsLong = -1L;
     if (contentLength != null) {
       contentLengthAsLong = parseLong(contentLength);
     }

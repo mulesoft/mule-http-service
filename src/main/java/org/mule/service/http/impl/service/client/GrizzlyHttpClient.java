@@ -463,9 +463,9 @@ public class GrizzlyHttpClient implements HttpClient {
     }
 
     // If there's no transfer type specified, check the entity length to prioritize content length transfer
-    if (!hasTransferEncoding && !hasContentLength && request.getEntity().getLength().isPresent()) {
+    if (!hasTransferEncoding && !hasContentLength && request.getEntity().getBytesLength().isPresent()) {
       builder.addHeader(PRESERVE_HEADER_CASE ? CONTENT_LENGTH : HEADER_CONTENT_LENGTH,
-                        valueOf(request.getEntity().getLength().get()));
+                        valueOf(request.getEntity().getBytesLength().getAsLong()));
     }
 
     // If persistent connections are disabled, the "Connection: close" header must be explicitly added. AHC will
