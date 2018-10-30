@@ -203,7 +203,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   public T find(HttpRequest request) {
     final String fullPathName;
     try {
-      fullPathName = decodePath(request.getPath());//normalizePathWithSpacesOrEncodedSpaces(request.getPath());
+      fullPathName = decodePath(request.getPath());
     } catch (MuleRuntimeException e) {
       return this.invalidHandler.get();
     }
