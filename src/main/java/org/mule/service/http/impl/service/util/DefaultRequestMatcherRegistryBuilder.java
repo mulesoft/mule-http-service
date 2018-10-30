@@ -17,6 +17,7 @@ public class DefaultRequestMatcherRegistryBuilder<T> implements RequestMatcherRe
   private Supplier<T> onMethodMismatch = NULL_SUPPLIER;
   private Supplier<T> onNotFound = NULL_SUPPLIER;
   private Supplier<T> onDisabled = NULL_SUPPLIER;
+  private Supplier<T> onInvalid = NULL_SUPPLIER;
 
   @Override
   public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onMethodMismatch(Supplier<T> itemSupplier) {
@@ -33,6 +34,13 @@ public class DefaultRequestMatcherRegistryBuilder<T> implements RequestMatcherRe
   }
 
   @Override
+  public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onInvalid(Supplier<T> itemSupplier) {
+    requireNonNull(itemSupplier, "An invalid item supplier must be specified.");
+    onInvalid = itemSupplier;
+    return this;
+  }
+
+  @Override
   public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onDisabled(Supplier<T> itemSupplier) {
     requireNonNull(itemSupplier, "A disabled item supplier must be specified.");
     onDisabled = itemSupplier;
@@ -41,6 +49,6 @@ public class DefaultRequestMatcherRegistryBuilder<T> implements RequestMatcherRe
 
   @Override
   public RequestMatcherRegistry<T> build() {
-    return new DefaultRequestMatcherRegistry<>(onMethodMismatch, onNotFound, onDisabled);
+    return new DefaultRequestMatcherRegistry<>(onMethodMismatch, onNotFound, onInvalid, onDisabled);
   }
 }
