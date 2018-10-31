@@ -11,7 +11,7 @@ import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decod
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import com.sun.mail.util.DecodingException;
+import org.mule.runtime.http.api.server.DecodingException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
@@ -48,7 +48,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private Set<String> paths = new HashSet<>();
   private Supplier<T> noMatchMismatchHandler;
   private Supplier<T> notFoundMismatchHandler;
-  private Supplier<T> invalidHandler;
+  private Supplier<T> invalidRequestHandler;
   private Supplier<T> notAvailableMismatchHandler;
 
   public DefaultRequestMatcherRegistry() {
@@ -56,11 +56,11 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   }
 
   public DefaultRequestMatcherRegistry(Supplier<T> noMatchMismatchHandler, Supplier<T> notFoundMismatchHandler,
-                                       Supplier<T> invalidHandler,
+                                       Supplier<T> invalidRequestHandler,
                                        Supplier<T> notAvailableMismatchHandler) {
     this.noMatchMismatchHandler = noMatchMismatchHandler;
     this.notFoundMismatchHandler = notFoundMismatchHandler;
-    this.invalidHandler = invalidHandler;
+    this.invalidRequestHandler = invalidRequestHandler;
     this.notAvailableMismatchHandler = notAvailableMismatchHandler;
   }
 
@@ -205,7 +205,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     try {
       fullPathName = decodePath(request.getPath());
     } catch (DecodingException e) {
-      return this.invalidHandler.get();
+      return this.invalidRequestHandler.get();
     }
     checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");
     Stack<Path> foundPaths = findPossibleRequestHandlers(fullPathName);

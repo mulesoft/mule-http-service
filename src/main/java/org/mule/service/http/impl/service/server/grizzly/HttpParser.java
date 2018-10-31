@@ -8,13 +8,14 @@ package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.util.regex.Pattern.compile;
 import static java.net.URLDecoder.decode;
+import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_RELATED;
 import static org.mule.runtime.core.api.util.StringUtils.WHITE_SPACE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_DISPOSITION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_ID;
 
-import com.sun.mail.util.DecodingException;
+import org.mule.runtime.http.api.server.DecodingException;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 
 import org.apache.commons.io.IOUtils;
@@ -54,7 +55,7 @@ public class HttpParser {
     try {
       return decode(path, UTF_8.displayName());
     } catch (UnsupportedEncodingException | IllegalArgumentException e) {
-      throw new DecodingException(e.getMessage());
+      throw new DecodingException(format("Unable to decode malformed url %s", path), e);
     }
   }
 

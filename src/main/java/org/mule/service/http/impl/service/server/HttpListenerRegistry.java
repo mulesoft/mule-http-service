@@ -49,7 +49,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
       serverAddressRequestHandlerRegistry = new DefaultRequestMatcherRegistryBuilder<RequestHandler>()
           .onMethodMismatch(NoMethodRequestHandler::getInstance)
           .onNotFound(NoListenerRequestHandler::getInstance)
-          .onInvalid(BadRequestHandler::getInstance)
+          .onInvalidRequest(BadRequestHandler::getInstance)
           .onDisabled(ServiceTemporarilyUnavailableListenerRequestHandler::getInstance)
           .build();
       requestHandlerPerServerAddress.put(server, serverAddressRequestHandlerRegistry);
