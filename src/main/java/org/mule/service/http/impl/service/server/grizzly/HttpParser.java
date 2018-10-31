@@ -14,7 +14,7 @@ import static org.mule.runtime.core.api.util.StringUtils.WHITE_SPACE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_DISPOSITION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_ID;
 
-import org.mule.runtime.api.exception.MuleRuntimeException;
+import com.sun.mail.util.DecodingException;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 
 import org.apache.commons.io.IOUtils;
@@ -50,11 +50,11 @@ public class HttpParser {
     return path;
   }
 
-  public static String decodePath(String path) throws MuleRuntimeException {
+  public static String decodePath(String path) throws DecodingException {
     try {
       return decode(path, UTF_8.displayName());
     } catch (UnsupportedEncodingException | IllegalArgumentException e) {
-      throw new MuleRuntimeException(e);
+      throw new DecodingException(e.getMessage());
     }
   }
 

@@ -11,7 +11,7 @@ import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decod
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import org.mule.runtime.api.exception.MuleRuntimeException;
+import com.sun.mail.util.DecodingException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
@@ -204,7 +204,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     final String fullPathName;
     try {
       fullPathName = decodePath(request.getPath());
-    } catch (MuleRuntimeException e) {
+    } catch (DecodingException e) {
       return this.invalidHandler.get();
     }
     checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");

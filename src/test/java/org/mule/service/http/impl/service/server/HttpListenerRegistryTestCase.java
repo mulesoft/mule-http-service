@@ -17,7 +17,6 @@ import static org.mule.runtime.http.api.HttpConstants.Method.PUT;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 
-import org.hamcrest.core.IsInstanceOf;
 import org.junit.*;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.util.StringUtils;
@@ -325,7 +324,7 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
     final HttpRequest mockRequest = createMockRequestWithPath(MALFORMED);
     when(mockRequest.getMethod()).thenReturn(GET.name());
     assertThat(listenerRegistry.getRequestHandler(testServer.getServerAddress(), mockRequest),
-               IsInstanceOf.instanceOf(BadRequestHandler.class));
+               instanceOf(BadRequestHandler.class));
 
   }
 
