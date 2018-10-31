@@ -15,7 +15,7 @@ import static org.mule.runtime.core.api.util.StringUtils.WHITE_SPACE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_DISPOSITION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_ID;
 
-import org.mule.runtime.http.api.server.DecodingException;
+import org.mule.service.http.impl.service.server.DecodingException;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 
 import org.apache.commons.io.IOUtils;
