@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.service.server;
 
 import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
@@ -48,6 +49,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
       serverAddressRequestHandlerRegistry = new DefaultRequestMatcherRegistryBuilder<RequestHandler>()
           .onMethodMismatch(NoMethodRequestHandler::getInstance)
           .onNotFound(NoListenerRequestHandler::getInstance)
+          .onInvalidRequest(BadRequestHandler::getInstance)
           .onDisabled(ServiceTemporarilyUnavailableListenerRequestHandler::getInstance)
           .build();
       requestHandlerPerServerAddress.put(server, serverAddressRequestHandlerRegistry);
