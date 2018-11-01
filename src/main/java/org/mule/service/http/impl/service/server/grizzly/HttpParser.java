@@ -55,7 +55,7 @@ public class HttpParser {
     try {
       return decode(path, UTF_8.displayName());
     } catch (UnsupportedEncodingException | IllegalArgumentException e) {
-      throw new DecodingException(e);
+      throw new DecodingException(format("Unable to decode malformed url %s", path), e);
     }
   }
 
