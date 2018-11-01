@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.server;
 
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.service.http.impl.service.server.grizzly.DefaultMethodRequestMatcher.getMethodsListRepresentation;
+import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decodePath;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.api.exception.MuleRuntimeException;
@@ -207,7 +208,12 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
      * @return the corresponding {@link RequestHandler}
      */
     public RequestHandler findRequestHandler(final HttpRequest request) {
-      final String fullPathName = normalizePathWithSpacesOrEncodedSpaces(request.getPath());
+      final String fullPathName;
+      try {
+        fullPathName = decodePath(request.getPath());
+      } catch (DecodingException e) {
+        return BadRequestHandler.getInstance();
+      }
       checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");
       Stack<Path> foundPaths = findPossibleRequestHandlers(fullPathName);
       boolean methodNotAllowed = false;
