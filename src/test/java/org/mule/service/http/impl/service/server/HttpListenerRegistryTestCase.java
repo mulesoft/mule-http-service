@@ -50,6 +50,7 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
   public static final String ANOTHER_PATH = "/another-path";
   public static final String SOME_PATH = "some-path";
   public static final String SOME_OTHER_PATH = "some-other-path";
+  private static final String MALFORMED = "/api/ping%";
 
   public static final String PATH_SEPARATOR = "/";
   public static final String ROOT_PATH = PATH_SEPARATOR;
@@ -286,6 +287,25 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
         httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_IP, TEST_PORT),
                                                createMockRequestWithPath(ANOTHER_PATH));
     assertThat(requestHandler, is(instanceOf(NoListenerRequestHandler.class)));
+  }
+
+  @Test
+  public void httpListenerRegistryReturnsBadRequestHandlerOnMalformedUrl() {
+    Map<String, RequestHandler> requestHandlerPerPath = new HashMap<>();
+    HttpListenerRegistry listenerRegistry = new HttpListenerRegistry();
+    RequestHandler getHandler = mock(RequestHandler.class);
+
+    requestHandlerPerPath.put(FIRST_LEVEL_CATCH_ALL, getHandler);
+
+    //Register mock GET handler for wildcard endpoint.
+    listenerRegistry.addRequestHandler(testServer, requestHandlerPerPath.get(FIRST_LEVEL_CATCH_ALL),
+                                       new ListenerRequestMatcher(new DefaultMethodRequestMatcher(GET), FIRST_LEVEL_CATCH_ALL));
+
+    final HttpRequest mockRequest = createMockRequestWithPath(MALFORMED);
+    when(mockRequest.getMethod()).thenReturn(GET.name());
+    assertThat(listenerRegistry.getRequestHandler(testServer.getServerAddress(), mockRequest),
+               instanceOf(BadRequestHandler.class));
+
   }
 
   @Test
