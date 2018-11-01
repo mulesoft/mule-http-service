@@ -6,59 +6,26 @@
  */
 package org.mule.service.http.impl.service.client;
 
-import static org.mule.runtime.core.api.util.concurrent.FunctionalReadWriteLock.readWriteLock;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
-import org.mule.runtime.core.api.util.concurrent.FunctionalReadWriteLock;
-import org.mule.runtime.http.api.client.ClientNotFoundException;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 /**
- * Manages client connections
+ * Manages client connections.
  *
  * @since 1.1.5
  */
-public class HttpClientConnectionManager implements ContextHttpClientFactory {
+public class HttpClientConnectionManager {
 
-  private final ConcurrentMap<ClientIdentifier, HttpClient> clients = new ConcurrentHashMap<>();
-  private final FunctionalReadWriteLock lock = readWriteLock();
+  protected final SchedulerService schedulerService;
 
-  @Override
-  public HttpClient create(HttpClientConfiguration config,
-                           String context,
-                           SchedulerService schedulerService,
-                           SchedulerConfig schedulerConfig) {
-
-    ClientIdentifier identifier = new ClientIdentifier(context, config.getName());
-    return lock.withWriteLock(() -> {
-      if (clients.containsKey(identifier)) {
-        throw new IllegalArgumentException(String.format("Http client of name '%s' already exists for artifact '%s'",
-                                                         identifier.getName(), identifier.getContext()));
-      }
-
-      HttpClient client = doCreateClient(config, schedulerService, schedulerConfig);
-      clients.put(identifier, client);
-
-      return client;
-    });
+  public HttpClientConnectionManager(SchedulerService schedulerService) {
+    this.schedulerService = schedulerService;
   }
 
-  protected HttpClient doCreateClient(HttpClientConfiguration config,
-                                      SchedulerService schedulerService,
-                                      SchedulerConfig schedulerConfig) {
+  public HttpClient create(HttpClientConfiguration config, SchedulerConfig schedulerConfig) {
     return new GrizzlyHttpClient(config, schedulerService, schedulerConfig);
   }
 
-  public HttpClient lookupClient(ClientIdentifier identifier) throws ClientNotFoundException {
-    HttpClient client = lock.withReadLock(r -> clients.get(identifier));
-    if (client == null) {
-      throw new ClientNotFoundException(identifier.getName());
-    }
-
-    return client;
-  }
 }
