@@ -6,16 +6,18 @@
  */
 package org.mule.service.http.impl.service.server;
 
+import org.mule.runtime.api.exception.MuleException;
+
 /**
  * {@code DecodingException} Is an exception thrown when there is attempt to decode a malformed
  * or invalid text, url or url parameter.
  *
  * @since 1.2
  */
-public class DecodingException extends Exception {
+public class DecodingException extends MuleException {
 
-  public DecodingException(String message, Throwable cause) {
-    super(message, cause);
+  public DecodingException(Throwable cause) {
+    super(cause);
   }
 
 }
