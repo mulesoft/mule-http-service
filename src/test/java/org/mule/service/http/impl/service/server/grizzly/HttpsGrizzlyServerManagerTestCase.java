@@ -9,10 +9,12 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
+import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
+import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
+
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
@@ -21,6 +23,7 @@ import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
 
 import org.junit.Test;
+
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 
@@ -40,7 +43,7 @@ public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerMana
 
   @Test
   public void sslServerIsHttps() throws Exception {
-    final HttpServer createdServer = getServer(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
+    final HttpServer createdServer = getServer(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                                new ServerIdentifier("context", "name"));
     try {
       assertThat(createdServer.getProtocol(), is(HTTPS));
@@ -51,7 +54,7 @@ public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerMana
 
   @Test
   public void disableTls() throws Exception {
-    final HttpServer createdServer = getServer(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
+    final HttpServer createdServer = getServer(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                                new ServerIdentifier("context", "name"));
     try {
       assertThat(createdServer.getProtocol(), is(HTTPS));

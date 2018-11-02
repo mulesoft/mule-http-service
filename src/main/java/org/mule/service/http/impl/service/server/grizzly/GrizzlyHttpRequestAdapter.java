@@ -44,7 +44,6 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   private final String baseUri;
   private final InputStream requestContent;
   private final long contentLength;
-  private final boolean isTransferEncodingChunked;
   private HttpProtocol protocol;
   private URI uri;
   private String path;
@@ -56,8 +55,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
                                    InetSocketAddress localAddress) {
     this.requestPacket = (HttpRequestPacket) httpContent.getHttpHeader();
-    this.baseUri = PROTOCOL + "://" + localAddress.getHostName() + localAddress.getPort();
-    isTransferEncodingChunked = requestPacket.isChunked();
+    this.baseUri = PROTOCOL + "://" + localAddress.getHostString() + localAddress.getPort();
     long contentLengthAsLong = -1L;
     String contentLengthAsString = requestPacket.getHeader(CONTENT_LENGTH);
     if (contentLengthAsString != null) {
@@ -141,7 +139,7 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   @Override
   public HttpEntity getEntity() {
     if (this.body == null) {
-      final String contentTypeValue = getHeaderValueIgnoreCase(CONTENT_TYPE);
+      final String contentTypeValue = getHeaderValue(CONTENT_TYPE);
       if (contentTypeValue != null && contentTypeValue.contains(MULTIPART_MIXED.getPrimaryType())) {
         if (contentLength >= 0) {
           this.body = new StreamedMultipartHttpEntity(requestContent, contentTypeValue, contentLength);
