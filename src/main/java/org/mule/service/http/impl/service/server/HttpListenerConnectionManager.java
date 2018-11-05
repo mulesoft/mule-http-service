@@ -7,14 +7,15 @@
 package org.mule.service.http.impl.service.server;
 
 
-import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.core.api.util.NetworkUtils.getLocalHostAddress;
 import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.loadTcpServerSocketProperties;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
+
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
@@ -23,7 +24,6 @@ import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.api.tls.TlsContextFactory;
-import org.mule.runtime.core.api.util.NetworkUtils;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
@@ -71,7 +71,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
     }
 
     selectorScheduler = schedulerService.customScheduler(schedulersConfig.withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
-        .withName(LISTENER_THREAD_NAME_PREFIX), MAX_VALUE);
+        .withName(LISTENER_THREAD_NAME_PREFIX), 0);
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
     idleTimeoutScheduler =
         schedulerService.ioScheduler(schedulersConfig.withName(LISTENER_THREAD_NAME_PREFIX + IDLE_TIMEOUT_THREADS_PREFIX_NAME));
@@ -152,7 +152,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
    * Creates the server address object with the IP and port that a server should bind to.
    */
   private ServerAddress createServerAddress(String host, int port) throws UnknownHostException {
-    return new DefaultServerAddress(NetworkUtils.getLocalHostIp(host), port);
+    return new DefaultServerAddress(getLocalHostAddress(host), port);
   }
 
 }

@@ -10,7 +10,6 @@ import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
 import static com.ning.http.util.UTF8UrlEncoder.encodeQueryElement;
-import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
@@ -134,7 +133,7 @@ public class GrizzlyHttpClient implements HttpClient {
     selectorScheduler = schedulerService.customScheduler(schedulersConfig
         .withDirectRunCpuLightWhenTargetBusy(true)
         .withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
-        .withName(name), MAX_VALUE);
+        .withName(name), 0);
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();

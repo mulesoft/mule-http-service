@@ -6,17 +6,17 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.util.regex.Pattern.compile;
-import static java.net.URLDecoder.decode;
 import static java.lang.String.format;
+import static java.net.URLDecoder.decode;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.regex.Pattern.compile;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_RELATED;
 import static org.mule.runtime.core.api.util.StringUtils.WHITE_SPACE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_DISPOSITION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_ID;
 
-import org.mule.service.http.impl.service.server.DecodingException;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
+import org.mule.service.http.impl.service.server.DecodingException;
 
 import org.apache.commons.io.IOUtils;
 
@@ -34,7 +34,6 @@ import javax.mail.BodyPart;
 import javax.mail.Header;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
-import javax.mail.internet.ParseException;
 import javax.mail.util.ByteArrayDataSource;
 
 public class HttpParser {

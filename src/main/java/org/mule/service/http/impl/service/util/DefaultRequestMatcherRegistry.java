@@ -6,12 +6,12 @@
  */
 package org.mule.service.http.impl.service.util;
 
+import static java.util.Arrays.copyOf;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decodePath;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import org.mule.service.http.impl.service.server.DecodingException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
@@ -20,6 +20,9 @@ import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.utils.MatcherCollisionException;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
+import org.mule.service.http.impl.service.server.DecodingException;
+
+import org.slf4j.Logger;
 
 import com.google.common.base.Joiner;
 
@@ -32,8 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.function.Supplier;
-
-import org.slf4j.Logger;
 
 public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<T> {
 
