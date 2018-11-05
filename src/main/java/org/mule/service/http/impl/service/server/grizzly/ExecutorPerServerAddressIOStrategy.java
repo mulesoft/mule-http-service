@@ -9,17 +9,18 @@ package org.mule.service.http.impl.service.server.grizzly;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.EnumSet;
-import java.util.concurrent.Executor;
-import java.util.logging.Logger;
-
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.Grizzly;
 import org.glassfish.grizzly.IOEvent;
 import org.glassfish.grizzly.IOEventLifeCycleListener;
 import org.glassfish.grizzly.strategies.AbstractIOStrategy;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.EnumSet;
+import java.util.concurrent.Executor;
+import java.util.logging.Logger;
 
 /**
  * Grizzly IO Strategy that will handle each work to an specific {@link Executor} based on the
@@ -69,9 +70,9 @@ public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
   @Override
   public Executor getThreadPoolFor(Connection connection, IOEvent ioEvent) {
     if (WORKER_THREAD_EVENT_SET.contains(ioEvent)) {
-      final String ip = ((InetSocketAddress) connection.getLocalAddress()).getAddress().getHostAddress();
+      final InetAddress address = ((InetSocketAddress) connection.getLocalAddress()).getAddress();
       final int port = ((InetSocketAddress) connection.getLocalAddress()).getPort();
-      return executorProvider.getExecutor(new DefaultServerAddress(ip, port));
+      return executorProvider.getExecutor(new DefaultServerAddress(address, port));
     } else {
       // Run other types of IOEvent in selector thread.
       return null;

@@ -6,6 +6,8 @@
  */
 package org.mule.service.http.impl.service.util;
 
+import static java.util.Arrays.copyOf;
+
 import com.google.common.base.Joiner;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
@@ -18,7 +20,14 @@ import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 import org.mule.service.http.impl.service.server.DecodingException;
 import org.slf4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
 import java.util.function.Supplier;
 
 import static org.mule.runtime.api.util.Preconditions.checkArgument;

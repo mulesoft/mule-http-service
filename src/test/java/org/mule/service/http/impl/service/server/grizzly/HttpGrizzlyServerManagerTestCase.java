@@ -9,9 +9,11 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
+import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
+
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerCreationException;
@@ -19,6 +21,7 @@ import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
 
 import org.junit.Test;
+
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 
@@ -34,7 +37,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
 
   @Test
   public void serverIsHttp() throws Exception {
-    final HttpServer createdServer = getServer(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
+    final HttpServer createdServer = getServer(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                                new ServerIdentifier("context", "name"));
     try {
       assertThat(createdServer.getProtocol(), is(HTTP));
