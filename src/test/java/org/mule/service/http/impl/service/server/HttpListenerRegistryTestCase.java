@@ -16,8 +16,6 @@ import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.runtime.http.api.HttpConstants.Method.PUT;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
-
-import org.junit.*;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.HttpConstants.Method;
@@ -36,6 +34,10 @@ import java.util.Map;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 @SmallTest
@@ -48,7 +50,6 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
   public static final String ANOTHER_PATH = "/another-path";
   public static final String SOME_PATH = "some-path";
   public static final String SOME_OTHER_PATH = "some-other-path";
-  private static final String MALFORMED = "/api/ping%";
 
   public static final String PATH_SEPARATOR = "/";
   public static final String ROOT_PATH = PATH_SEPARATOR;
@@ -304,28 +305,6 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
         httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_IP, TEST_PORT),
                                                createMockRequestWithPath(ANOTHER_PATH));
     assertThat(requestHandler, is(instanceOf(NoListenerRequestHandler.class)));
-  }
-
-  @Test
-  public void httpListenerRegistryReturnsBadRequestHandlerOnMalformedUrl() {
-    Map<String, RequestHandler> requestHandlerPerPath = new HashMap<>();
-    HttpListenerRegistry listenerRegistry = new HttpListenerRegistry();
-    RequestHandler getHandler = mock(RequestHandler.class);
-
-    requestHandlerPerPath.put(FIRST_LEVEL_CATCH_ALL, getHandler);
-
-    //Register mock GET handler for wildcard endpoint.
-    listenerRegistry.addRequestHandler(testServer, requestHandlerPerPath.get(FIRST_LEVEL_CATCH_ALL),
-                                       PathAndMethodRequestMatcher.builder()
-                                           .methodRequestMatcher(MethodRequestMatcher.builder().add(GET).build())
-                                           .path(FIRST_LEVEL_CATCH_ALL)
-                                           .build());
-
-    final HttpRequest mockRequest = createMockRequestWithPath(MALFORMED);
-    when(mockRequest.getMethod()).thenReturn(GET.name());
-    assertThat(listenerRegistry.getRequestHandler(testServer.getServerAddress(), mockRequest),
-               instanceOf(BadRequestHandler.class));
-
   }
 
   @Test
