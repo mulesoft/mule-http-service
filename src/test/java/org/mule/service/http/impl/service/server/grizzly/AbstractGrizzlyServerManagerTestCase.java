@@ -61,8 +61,8 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     idleTimeoutExecutorService = newCachedThreadPool();
     HttpListenerRegistry registry = new HttpListenerRegistry();
     DefaultTcpServerSocketProperties socketProperties = new DefaultTcpServerSocketProperties();
-    serverManager = new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, registry,
-                                             socketProperties, getRuntime().availableProcessors());
+    serverManager = new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, registry, socketProperties,
+                                             getRuntime().availableProcessors());
   }
 
   @After

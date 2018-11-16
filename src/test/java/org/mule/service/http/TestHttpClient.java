@@ -10,26 +10,25 @@ package org.mule.service.http;
 import static java.lang.Integer.MAX_VALUE;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpService;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
-import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
-import org.mule.runtime.http.api.client.ws.WebSocketCallback;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.ws.WebSocket;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.SimpleUnitTestSupportSchedulerService;
 
+import org.junit.rules.ExternalResource;
+
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
-
-import org.junit.rules.ExternalResource;
 
 /**
  * Defines a {@link org.mule.runtime.http.api.client.HttpClient} using a default implementation of {@link HttpService}
@@ -92,14 +91,6 @@ public class TestHttpClient extends ExternalResource implements org.mule.runtime
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, int responseTimeout, boolean followRedirects,
                                                    HttpAuthentication authentication) {
     return httpClient.sendAsync(request, isDebugging() ? MAX_VALUE : responseTimeout, followRedirects, authentication);
-  }
-
-  @Override
-  public CompletableFuture<WebSocket> openWebSocket(HttpRequest request,
-                                                    HttpRequestOptions requestOptions,
-                                                    String socketId,
-                                                    WebSocketCallback callback) {
-    return httpClient.openWebSocket(request, requestOptions, socketId, callback);
   }
 
   public static class Builder {
@@ -179,6 +170,8 @@ public class TestHttpClient extends ExternalResource implements org.mule.runtime
    * <li><a href="http://docs.oracle.com/javase/8/docs/technotes/guides/jpda/conninv.html#Invocation" >javase-8</a></li>
    *
    *
+   * @param arguments the arguments passed to the runtime environment, usually this will be
+   *        {@link RuntimeMXBean#getInputArguments()}
    * @return true if the current JVM was started in debug mode, false otherwise.
    */
   private static boolean isDebugging() {

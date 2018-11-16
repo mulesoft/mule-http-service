@@ -169,7 +169,7 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
       final HttpHeader header = ((IncomingHttpUpgradeEvent) event).getHttpHeader();
       if (header.isRequest()) {
         // This replicates the HTTP2 handling in Grizzly
-        header.setIgnoreContentModifiers(isWebSocketUpgrade(header));
+        header.setIgnoreContentModifiers(false);
 
         return ctx.getStopAction();
       }
@@ -188,8 +188,4 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
     return super.handleEvent(ctx, event);
   }
 
-  private boolean isWebSocketUpgrade(HttpHeader header) {
-    final String upgrade = header.getHeader("upgrade");
-    return "WebSocket".equalsIgnoreCase(upgrade);
-  }
 }

@@ -21,7 +21,7 @@ import java.util.function.Supplier;
 public class WorkManagerSourceExecutorProvider implements ExecutorProvider {
 
   private ServerAddressMap<Supplier<ExecutorService>> executorPerServerAddress =
-      new ServerAddressMap<>(new ConcurrentHashMap<>());
+      new ServerAddressMap<>(new ConcurrentHashMap<ServerAddress, Supplier<ExecutorService>>());
 
   /**
    * Adds an {@link Executor} to be used when a request is made to a
