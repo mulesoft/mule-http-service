@@ -24,6 +24,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -42,6 +43,9 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -72,9 +76,6 @@ import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class GrizzlyHttpClient implements HttpClient {
 
   private static final int DEFAULT_SELECTOR_THREAD_COUNT =
@@ -104,7 +105,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private Scheduler workerScheduler;
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
-  protected AsyncHttpClient asyncHttpClient;
+  private AsyncHttpClient asyncHttpClient;
   private SSLContext sslContext;
 
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
@@ -351,8 +352,8 @@ public class GrizzlyHttpClient implements HttpClient {
     return future;
   }
 
-  protected Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
-                                         HttpAuthentication authentication)
+  private Request createGrizzlyRequest(HttpRequest request, int responseTimeout, boolean followRedirects,
+                                       HttpAuthentication authentication)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, builder -> {
       builder.setFollowRedirects(followRedirects);
