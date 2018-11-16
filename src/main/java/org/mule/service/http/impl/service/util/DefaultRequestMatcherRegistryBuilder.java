@@ -6,35 +6,29 @@
  */
 package org.mule.service.http.impl.service.util;
 
-import static java.util.Objects.requireNonNull;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
-
-import java.util.function.Supplier;
 
 public class DefaultRequestMatcherRegistryBuilder<T> implements RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> {
 
-  private Supplier<T> onMethodMismatch;
-  private Supplier<T> onNotFound;
-  private Supplier<T> onDisabled;
+  private T onMethodMismatch;
+  private T onNotFound;
+  private T onDisabled;
 
   @Override
-  public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onMethodMismatch(Supplier<T> itemSupplier) {
-    requireNonNull(itemSupplier, "A method mismatch item supplier must be specified.");
-    onMethodMismatch = itemSupplier;
+  public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onMethodMismatch(T item) {
+    onMethodMismatch = item;
     return this;
   }
 
   @Override
-  public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onNotFound(Supplier<T> itemSupplier) {
-    requireNonNull(itemSupplier, "A not found item supplier must be specified.");
-    onNotFound = itemSupplier;
+  public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onNotFound(T item) {
+    onNotFound = item;
     return this;
   }
 
   @Override
-  public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onDisabled(Supplier<T> itemSupplier) {
-    requireNonNull(itemSupplier, "A disabled item supplier must be specified.");
-    onDisabled = itemSupplier;
+  public RequestMatcherRegistry.RequestMatcherRegistryBuilder<T> onDisabled(T item) {
+    onDisabled = item;
     return this;
   }
 
