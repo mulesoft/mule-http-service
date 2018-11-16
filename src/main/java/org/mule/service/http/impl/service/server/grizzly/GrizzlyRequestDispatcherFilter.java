@@ -21,7 +21,6 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
-
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.domain.request.ServerConnection;
@@ -29,6 +28,14 @@ import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.RequestHandlerProvider;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ssl.SSLSession;
 
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
@@ -40,14 +47,6 @@ import org.glassfish.grizzly.http.HttpEvents.OutgoingHttpUpgradeEvent;
 import org.glassfish.grizzly.http.HttpHeader;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.net.ssl.SSLSession;
 
 /**
  * Grizzly filter that dispatches the request to the right request handler
@@ -126,11 +125,9 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
               httpResponse = new HttpResponseBuilder(httpResponse).entity(new EmptyHttpEntity()).build();
             }
             if (httpResponse.getEntity().isStreaming()) {
-              new ResponseStreamingCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, httpResponse,
-                                                     responseStatusCallback).start();
+              new ResponseStreamingCompletionHandler(ctx, request, httpResponse, responseStatusCallback).start();
             } else {
-              new ResponseCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, httpResponse,
-                                            responseStatusCallback).start();
+              new ResponseCompletionHandler(ctx, request, httpResponse, responseStatusCallback).start();
             }
           } catch (Exception e) {
             responseStatusCallback.responseSendFailure(e);
