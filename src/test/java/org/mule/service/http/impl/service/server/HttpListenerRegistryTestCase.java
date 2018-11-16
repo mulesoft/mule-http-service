@@ -17,6 +17,7 @@ import static org.mule.runtime.http.api.HttpConstants.Method.PUT;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 
+import org.junit.*;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.HttpConstants.Method;
@@ -30,20 +31,12 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.size.SmallTest;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
+import org.junit.rules.ExpectedException;
 
 @SmallTest
 @Feature(HTTP_SERVICE)
@@ -85,8 +78,7 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
   public final RequestHandler methodPathCatchAllGetRequestHandler = mock(RequestHandler.class);
   public final RequestHandler methodPathCatchAllPostRequestHandler = mock(RequestHandler.class);
 
-  private static InetAddress TEST_ADDRESS;
-  private static ServerAddress testServerAddress;
+  private final ServerAddress testServerAddress = new DefaultServerAddress(TEST_IP, TEST_PORT);
 
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
@@ -94,12 +86,6 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
   private Map<String, RequestHandler> requestHandlerPerPath = new HashMap<>();
   private HttpListenerRegistry httpListenerRegistry;
   private HttpServer testServer;
-
-  @BeforeClass
-  public static void resolveAddresses() throws UnknownHostException {
-    TEST_ADDRESS = InetAddress.getByName(TEST_IP);
-    testServerAddress = new DefaultServerAddress(TEST_ADDRESS, TEST_PORT);
-  }
 
   @Before
   public void createMockTestServer() {
@@ -315,7 +301,7 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
         .path(ROOT_PATH)
         .build());
     RequestHandler requestHandler =
-        httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_ADDRESS, TEST_PORT),
+        httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_IP, TEST_PORT),
                                                createMockRequestWithPath(ANOTHER_PATH));
     assertThat(requestHandler, is(instanceOf(NoListenerRequestHandler.class)));
   }
@@ -602,7 +588,7 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
   }
 
   private void routePath(String requestPath, String listenerPath) {
-    assertThat(httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_ADDRESS, TEST_PORT),
+    assertThat(httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_IP, TEST_PORT),
                                                       createMockRequestWithPath(requestPath)),
                is(requestHandlerPerPath.get(listenerPath)));
   }
@@ -610,7 +596,7 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
   private void routePath(String requestPath, Method requestMethod, RequestHandler expectedRequestHandler) {
     final HttpRequest mockRequest = createMockRequestWithPath(requestPath);
     when(mockRequest.getMethod()).thenReturn(requestMethod.name());
-    assertThat(httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_ADDRESS, TEST_PORT), mockRequest),
+    assertThat(httpListenerRegistry.getRequestHandler(new DefaultServerAddress(TEST_IP, TEST_PORT), mockRequest),
                is(expectedRequestHandler));
   }
 

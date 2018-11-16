@@ -48,7 +48,7 @@ public class GrizzlyHttpRequestAdapter extends GrizzlyHttpMessage implements Htt
   @Override
   public HttpEntity getEntity() {
     if (this.body == null) {
-      final String contentTypeValue = getHeaderValue(CONTENT_TYPE);
+      final String contentTypeValue = getHeaderValueIgnoreCase(CONTENT_TYPE);
       if (contentTypeValue != null && contentTypeValue.contains(MULTIPART_MIXED.getPrimaryType())) {
         if (contentLength >= 0) {
           this.body = new StreamedMultipartHttpEntity(requestContent, contentTypeValue, contentLength);

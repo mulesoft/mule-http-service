@@ -68,7 +68,8 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
   @Override
   public NextAction handleRead(final FilterChainContext ctx) throws IOException {
     InetSocketAddress localAddress = (InetSocketAddress) ctx.getConnection().getLocalAddress();
-    DefaultServerAddress serverAddress = new DefaultServerAddress(localAddress.getAddress(), localAddress.getPort());
+    DefaultServerAddress serverAddress =
+        new DefaultServerAddress(localAddress.getAddress().getHostAddress(), localAddress.getPort());
 
     AtomicInteger serverCounter = activeRequests.computeIfAbsent(serverAddress, sa -> new AtomicInteger());
     serverCounter.incrementAndGet();

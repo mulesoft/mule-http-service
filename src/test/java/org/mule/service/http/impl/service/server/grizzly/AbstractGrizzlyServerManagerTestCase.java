@@ -15,9 +15,7 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
@@ -31,25 +29,19 @@ import org.mule.service.http.impl.service.server.ServerIdentifier;
 import org.mule.tck.junit4.AbstractMuleContextTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.concurrent.ExecutorService;
-
 public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
-
-  private static InetAddress SOME_HOST_ADDRESS;
-  private static InetAddress OTHER_HOST_ADDRESS;
 
   @Rule
   public DynamicPort listenerPort = new DynamicPort("listener.port");
@@ -61,12 +53,6 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   private ExecutorService idleTimeoutExecutorService;
 
   protected GrizzlyServerManager serverManager;
-
-  @BeforeClass
-  public static void resolveAddresses() throws UnknownHostException {
-    SOME_HOST_ADDRESS = InetAddress.getByName("127.0.0.11");
-    OTHER_HOST_ADDRESS = InetAddress.getByName("127.0.0.12");
-  }
 
   @Before
   public void before() {
@@ -95,11 +81,10 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
         new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, new HttpListenerRegistry(),
                                  new DefaultTcpServerSocketProperties(), getRuntime().availableProcessors());
 
-    final HttpServer server =
-        serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                      (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                      new ServerIdentifier("context", "name"));
+    final HttpServer server = serverManager.createServerFor(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
+                                                            () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                                            (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
+                                                            new ServerIdentifier("context", "name"));
     final ResponseStatusCallback responseStatusCallback = mock(ResponseStatusCallback.class);
     server.addRequestHandler("/path", (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().statusCode(OK.getStatusCode()).build(),
@@ -136,11 +121,10 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   @Test
   public void canFindServerInSameContext() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    final HttpServer createdServer =
-        serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                      (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                      identifier);
+    final HttpServer createdServer = serverManager.createServerFor(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
+                                                                   () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                                                   (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
+                                                                   identifier);
     final HttpServer foundServer = serverManager.lookupServer(new ServerIdentifier("context", "name"));
     assertThat(createdServer.getServerAddress(), is(equalTo(foundServer.getServerAddress())));
     createdServer.dispose();
@@ -150,7 +134,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   public void cannotFindServerInDifferentContext() throws Exception {
     String name = "name";
     ServerIdentifier identifier = new ServerIdentifier("context", name);
-    HttpServer server = serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
+    HttpServer server = serverManager.createServerFor(new DefaultServerAddress("0.0.0.0", listenerPort.getNumber()),
                                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
                                                       identifier);
@@ -166,9 +150,9 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   @Test
   public void serverWithSameNameInSameContextOverlaps() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    DefaultServerAddress serverAddress = new DefaultServerAddress(SOME_HOST_ADDRESS, listenerPort.getNumber());
+    DefaultServerAddress serverAddress = new DefaultServerAddress("someHost", listenerPort.getNumber());
     HttpServer server = getServer(serverAddress, identifier);
-    DefaultServerAddress otherServerAddress = new DefaultServerAddress(OTHER_HOST_ADDRESS, listenerPort.getNumber());
+    DefaultServerAddress otherServerAddress = new DefaultServerAddress("otherHost", listenerPort.getNumber());
     try {
       assertThat(serverManager.containsServerFor(otherServerAddress, identifier), is(true));
     } finally {
@@ -180,9 +164,9 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   public void serverWithSameNameInDifferentContextDoesNotOverlaps() throws Exception {
     String name = "name";
     ServerIdentifier identifier = new ServerIdentifier("context", name);
-    DefaultServerAddress serverAddress = new DefaultServerAddress(SOME_HOST_ADDRESS, listenerPort.getNumber());
+    DefaultServerAddress serverAddress = new DefaultServerAddress("someHost", listenerPort.getNumber());
     HttpServer server = getServer(serverAddress, identifier);
-    DefaultServerAddress otherServerAddress = new DefaultServerAddress(OTHER_HOST_ADDRESS, listenerPort.getNumber());
+    DefaultServerAddress otherServerAddress = new DefaultServerAddress("otherHost", listenerPort.getNumber());
     ServerIdentifier otherIdentifier = new ServerIdentifier("otherContext", name);
     try {
       assertThat(serverManager.containsServerFor(otherServerAddress, otherIdentifier), is(false));
@@ -194,7 +178,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   @Test
   public void serverIsRemovedAfterDispose() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    DefaultServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
+    DefaultServerAddress serverAddress = new DefaultServerAddress("0.0.0.0", listenerPort.getNumber());
     HttpServer server = getServer(serverAddress, identifier);
     server.start();
     server.stop();
@@ -207,7 +191,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   @Test
   public void onlyOwnerCanStartServer() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    DefaultServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
+    DefaultServerAddress serverAddress = new DefaultServerAddress("0.0.0.0", listenerPort.getNumber());
     HttpServer owner = getServer(serverAddress, identifier);
     HttpServer reference = serverManager.lookupServer(identifier);
 
@@ -231,7 +215,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   @Test
   public void onlyOwnerCanStopServer() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    DefaultServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
+    DefaultServerAddress serverAddress = new DefaultServerAddress("0.0.0.0", listenerPort.getNumber());
     HttpServer owner = getServer(serverAddress, identifier);
     HttpServer reference = serverManager.lookupServer(identifier);
 
@@ -256,7 +240,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   @Test
   public void onlyOwnerCanDisposeServer() throws Exception {
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
-    DefaultServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
+    DefaultServerAddress serverAddress = new DefaultServerAddress("0.0.0.0", listenerPort.getNumber());
     HttpServer owner = getServer(serverAddress, identifier);
     HttpServer reference = serverManager.lookupServer(identifier);
 
