@@ -10,17 +10,19 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Integer.valueOf;
 import static java.lang.Math.min;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
+
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
-import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.slf4j.LoggerFactory.getLogger;
-
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -30,9 +32,6 @@ import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
 import org.slf4j.Logger;
-
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * {@link org.glassfish.grizzly.CompletionHandler}, responsible for asynchronous http response transferring when the response body
@@ -44,7 +43,6 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
 
   private final MemoryManager memoryManager;
   private final FilterChainContext ctx;
-  private final ClassLoader ctxClassLoader;
   private final HttpResponsePacket httpResponsePacket;
   private final InputStream inputStream;
   private final ResponseStatusCallback responseStatusCallback;
@@ -52,16 +50,14 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
 
   private volatile boolean isDone;
 
-  public ResponseStreamingCompletionHandler(final FilterChainContext ctx, ClassLoader ctxClassLoader,
-                                            final HttpRequestPacket request,
+  public ResponseStreamingCompletionHandler(final FilterChainContext ctx, final HttpRequestPacket request,
                                             final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
     checkArgument((httpResponse.getEntity().isStreaming()), "HTTP response entity must be stream based");
     this.ctx = ctx;
-    this.ctxClassLoader = ctxClassLoader;
     httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
     inputStream = httpResponse.getEntity().getContent();
     memoryManager = ctx.getConnection().getTransport().getMemoryManager();
-    bufferSize = withContextClassLoader(ctxClassLoader, () -> calculateBufferSize(ctx));
+    bufferSize = calculateBufferSize(ctx);
     this.responseStatusCallback = responseStatusCallback;
   }
 
@@ -87,9 +83,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     } else {
       LOGGER.debug("Transfer encoding header present, using fixed buffer size.");
     }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Response streaming chunk calculated buffer size = {} bytes.", bufferSize);
-    }
+    LOGGER.debug("Response streaming chunk calculated buffer size = {} bytes.", bufferSize);
     return bufferSize;
   }
 
@@ -189,10 +183,5 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    */
   private void resume() {
     ctx.resume(ctx.getStopAction());
-  }
-
-  @Override
-  protected ClassLoader getCtxClassLoader() {
-    return ctxClassLoader;
   }
 }
