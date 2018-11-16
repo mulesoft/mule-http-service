@@ -45,7 +45,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
    * @return a {@link RequestHandlerManager} for the added handler that allows enabling, disabling and disposing it
    */
   public RequestHandlerManager addRequestHandler(final HttpServer server, final RequestHandler requestHandler,
-                                                 final PathAndMethodRequestMatcher requestMatcher) {
+                                                              final PathAndMethodRequestMatcher requestMatcher) {
     return lock.withWriteLock(() -> {
       RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
           this.requestHandlerPerServerAddress.get(server);
