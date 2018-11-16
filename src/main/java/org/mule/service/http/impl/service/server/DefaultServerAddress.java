@@ -6,20 +6,18 @@
  */
 package org.mule.service.http.impl.service.server;
 
-import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
+import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_IP;
 
 import org.mule.runtime.http.api.server.ServerAddress;
 
-import java.net.InetAddress;
-
 public class DefaultServerAddress implements ServerAddress {
 
-  private final InetAddress address;
+  private final String ip;
   private int port;
 
-  public DefaultServerAddress(InetAddress address, int port) {
+  public DefaultServerAddress(String ip, int port) {
     this.port = port;
-    this.address = address;
+    this.ip = ip;
   }
 
   @Override
@@ -29,12 +27,7 @@ public class DefaultServerAddress implements ServerAddress {
 
   @Override
   public String getIp() {
-    return address.getHostAddress();
-  }
-
-  @Override
-  public InetAddress getAddress() {
-    return address;
+    return ip;
   }
 
   @Override
@@ -43,7 +36,7 @@ public class DefaultServerAddress implements ServerAddress {
   }
 
   public static boolean isAllInterfaces(ServerAddress serverAddress) {
-    return ALL_INTERFACES_ADDRESS.equals(serverAddress.getAddress());
+    return ALL_INTERFACES_IP.equals(serverAddress.getIp());
   }
 
   @Override
@@ -60,7 +53,7 @@ public class DefaultServerAddress implements ServerAddress {
     if (port != that.getPort()) {
       return false;
     }
-    if (!address.equals(that.getAddress())) {
+    if (!ip.equals(that.getIp())) {
       return false;
     }
 
@@ -69,13 +62,13 @@ public class DefaultServerAddress implements ServerAddress {
 
   @Override
   public int hashCode() {
-    int result = address.hashCode();
+    int result = ip.hashCode();
     result = 31 * result + port;
     return result;
   }
 
   @Override
   public String toString() {
-    return "ServerAddress{" + "ip='" + address.getHostAddress() + '\'' + ", port=" + port + '}';
+    return "ServerAddress{" + "ip='" + ip + '\'' + ", port=" + port + '}';
   }
 }

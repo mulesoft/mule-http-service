@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.ServerAddressMap;
 
 import org.glassfish.grizzly.Connection;
@@ -121,7 +122,9 @@ public class GrizzlyAddressDelegateFilter<F extends BaseFilter> extends BaseFilt
 
   private F retrieveFilter(Connection connection) {
     final InetSocketAddress inetAddress = (InetSocketAddress) connection.getLocalAddress();
-    return filters.get(inetAddress.getAddress(), inetAddress.getPort());
+    final int port = inetAddress.getPort();
+    final String ip = inetAddress.getAddress().getHostAddress();
+    return filters.get(new DefaultServerAddress(ip, port));
   }
 
   /**
