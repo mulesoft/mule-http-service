@@ -6,7 +6,9 @@
  */
 package org.mule.service.http.impl.service.util;
 
-import com.google.common.base.Joiner;
+import static org.mule.runtime.api.util.Preconditions.checkArgument;
+import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
+import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
@@ -15,16 +17,20 @@ import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.utils.MatcherCollisionException;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
-import org.mule.service.http.impl.service.server.DecodingException;
-import org.slf4j.Logger;
 
-import java.util.*;
+import com.google.common.base.Joiner;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
 import java.util.function.Supplier;
 
-import static org.mule.runtime.api.util.Preconditions.checkArgument;
-import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decodePath;
-import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
-import static org.slf4j.LoggerFactory.getLogger;
+import org.slf4j.Logger;
 
 public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<T> {
 
@@ -39,19 +45,16 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private Set<String> paths = new HashSet<>();
   private Supplier<T> noMatchMismatchHandler;
   private Supplier<T> notFoundMismatchHandler;
-  private Supplier<T> invalidRequestHandler;
   private Supplier<T> notAvailableMismatchHandler;
 
   public DefaultRequestMatcherRegistry() {
-    this(NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER);
+    this(NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER);
   }
 
   public DefaultRequestMatcherRegistry(Supplier<T> noMatchMismatchHandler, Supplier<T> notFoundMismatchHandler,
-                                       Supplier<T> invalidRequestHandler,
                                        Supplier<T> notAvailableMismatchHandler) {
     this.noMatchMismatchHandler = noMatchMismatchHandler;
     this.notFoundMismatchHandler = notFoundMismatchHandler;
-    this.invalidRequestHandler = invalidRequestHandler;
     this.notAvailableMismatchHandler = notAvailableMismatchHandler;
   }
 
@@ -192,12 +195,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
    */
   @Override
   public T find(HttpRequest request) {
-    final String fullPathName;
-    try {
-      fullPathName = decodePath(request.getPath());
-    } catch (DecodingException e) {
-      return this.invalidRequestHandler.get();
-    }
+    final String fullPathName = normalizePathWithSpacesOrEncodedSpaces(request.getPath());
     checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");
     Stack<Path> foundPaths = findPossibleRequestHandlers(fullPathName);
     boolean methodNotAllowed = false;

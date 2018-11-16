@@ -44,20 +44,22 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
    * @param requestMatcher the matcher to be applied for the handler
    * @return a {@link RequestHandlerManager} for the added handler that allows enabling, disabling and disposing it
    */
-  public synchronized RequestHandlerManager addRequestHandler(final HttpServer server, final RequestHandler requestHandler,
-                                                              final PathAndMethodRequestMatcher requestMatcher) {
-    RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry = this.requestHandlerPerServerAddress.get(server);
-    if (serverAddressRequestHandlerRegistry == null) {
-      serverAddressRequestHandlerRegistry = new DefaultRequestMatcherRegistryBuilder<RequestHandler>()
-          .onMethodMismatch(NoMethodRequestHandler::getInstance)
-          .onNotFound(NoListenerRequestHandler::getInstance)
-          .onInvalidRequest(BadRequestHandler::getInstance)
-          .onDisabled(ServiceTemporarilyUnavailableListenerRequestHandler::getInstance)
-          .build();
-      requestHandlerPerServerAddress.put(server, serverAddressRequestHandlerRegistry);
-      serverAddressToServerMap.put(server.getServerAddress(), server);
-    }
-    return new DefaultRequestHandlerManager(serverAddressRequestHandlerRegistry.add(requestMatcher, requestHandler));
+  public RequestHandlerManager addRequestHandler(final HttpServer server, final RequestHandler requestHandler,
+                                                 final PathAndMethodRequestMatcher requestMatcher) {
+    return lock.withWriteLock(() -> {
+      RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
+          this.requestHandlerPerServerAddress.get(server);
+      if (serverAddressRequestHandlerRegistry == null) {
+        serverAddressRequestHandlerRegistry = new DefaultRequestMatcherRegistryBuilder<RequestHandler>()
+            .onMethodMismatch(NoMethodRequestHandler::getInstance)
+            .onNotFound(NoListenerRequestHandler::getInstance)
+            .onDisabled(ServiceTemporarilyUnavailableListenerRequestHandler::getInstance)
+            .build();
+        requestHandlerPerServerAddress.put(server, serverAddressRequestHandlerRegistry);
+        serverAddressToServerMap.put(server.getServerAddress(), server);
+      }
+      return new DefaultRequestHandlerManager(serverAddressRequestHandlerRegistry.add(requestMatcher, requestHandler));
+    });
   }
 
   /**

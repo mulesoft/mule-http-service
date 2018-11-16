@@ -7,15 +7,11 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.util.regex.Pattern.compile;
-import static java.net.URLDecoder.decode;
-import static java.lang.String.format;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_RELATED;
 import static org.mule.runtime.core.api.util.StringUtils.WHITE_SPACE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_DISPOSITION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_ID;
 
-import org.mule.service.http.impl.service.server.DecodingException;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 
 import org.apache.commons.io.IOUtils;
@@ -24,7 +20,6 @@ import com.google.common.collect.Lists;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
@@ -34,7 +29,6 @@ import javax.mail.BodyPart;
 import javax.mail.Header;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
-import javax.mail.internet.ParseException;
 import javax.mail.util.ByteArrayDataSource;
 
 public class HttpParser {
@@ -49,14 +43,6 @@ public class HttpParser {
       path = path.substring(0, i);
     }
     return path;
-  }
-
-  public static String decodePath(String path) throws DecodingException {
-    try {
-      return decode(path, UTF_8.displayName());
-    } catch (UnsupportedEncodingException | IllegalArgumentException e) {
-      throw new DecodingException(format("Unable to decode malformed url %s", path), e);
-    }
   }
 
   public static Collection<HttpPart> parseMultipartContent(InputStream content, String contentType) throws IOException {
