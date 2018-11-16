@@ -8,7 +8,6 @@ package org.mule.service.http.impl.service.util;
 
 import static java.lang.String.format;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.Method.GET;
@@ -22,7 +21,6 @@ import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import io.qameta.allure.Feature;
-import org.hamcrest.Matcher;
 import org.junit.Test;
 
 @Feature(HTTP_SERVICE)
@@ -37,36 +35,27 @@ public class DefaultRequestMatcherRegistryTestCase extends AbstractMuleTestCase 
 
   @Test
   public void findByRequest() {
-    RequestMatcherRegistry registry = buildRegistry(getFullBuilder());
+    RequestMatcherRegistry registry = buildRegistry();
     validateRequestMatch(registry, "/path/somewhere", SECOND_LEVEL_CATCH_ALL);
     validateRequestMatch(registry, "/path/here", SECOND_LEVEL_SPECIFIC);
     validateRequestMatch(registry, "/here", DISABLED);
     validateRequestMatch(registry, "/nope", NOT_FOUND);
-    validateRequestMatch(registry, "/path/somewhere", sameInstance(METHOD_MISMATCH), POST);
+    validateRequestMatch(registry, "/path/somewhere", METHOD_MISMATCH, POST);
   }
 
   @Test
   public void findsByMethodAndPath() {
-    RequestMatcherRegistry registry = buildRegistry(getFullBuilder());
+    RequestMatcherRegistry registry = buildRegistry();
     validateMethodAndPathMatch(registry, "/path/somewhere", SECOND_LEVEL_CATCH_ALL);
     validateMethodAndPathMatch(registry, "/path/here", SECOND_LEVEL_SPECIFIC);
     validateMethodAndPathMatch(registry, "/here", DISABLED);
     validateMethodAndPathMatch(registry, "/nope", NOT_FOUND);
-    validateMethodAndPathMatch(registry, "/path/somewhere", sameInstance(METHOD_MISMATCH), POST);
+    validateMethodAndPathMatch(registry, "/path/somewhere", METHOD_MISMATCH, POST);
   }
 
-  @Test
-  public void allNullIfDefault() {
-    RequestMatcherRegistry registry = buildRegistry(new DefaultRequestMatcherRegistryBuilder());
-    validateMethodAndPathMatch(registry, "/path/somewhere", SECOND_LEVEL_CATCH_ALL);
-    validateMethodAndPathMatch(registry, "/path/here", SECOND_LEVEL_SPECIFIC);
-    validateMethodAndPathMatch(registry, "/here", nullValue(), GET);
-    validateMethodAndPathMatch(registry, "/nope", nullValue(), GET);
-    validateMethodAndPathMatch(registry, "/path/somewhere", nullValue(), POST);
-  }
-
-  private RequestMatcherRegistry buildRegistry(RequestMatcherRegistry.RequestMatcherRegistryBuilder builder) {
-    RequestMatcherRegistry<Object> registry = builder.build();
+  private RequestMatcherRegistry buildRegistry() {
+    RequestMatcherRegistry<Object> registry =
+        new DefaultRequestMatcherRegistry<>(() -> METHOD_MISMATCH, () -> NOT_FOUND, () -> DISABLED);
     registry.add(PathAndMethodRequestMatcher.builder()
         .methodRequestMatcher(MethodRequestMatcher.builder().add(GET).build())
         .path("/path/*")
@@ -77,28 +66,21 @@ public class DefaultRequestMatcherRegistryTestCase extends AbstractMuleTestCase 
     return registry;
   }
 
-  private RequestMatcherRegistry.RequestMatcherRegistryBuilder<Object> getFullBuilder() {
-    return new DefaultRequestMatcherRegistryBuilder<>()
-        .onMethodMismatch(() -> METHOD_MISMATCH)
-        .onNotFound(() -> NOT_FOUND)
-        .onDisabled(() -> DISABLED);
-  }
-
   private void validateRequestMatch(RequestMatcherRegistry registry, String path, Object expectedItem) {
-    validateRequestMatch(registry, path, sameInstance(expectedItem), GET);
+    validateRequestMatch(registry, path, expectedItem, GET);
   }
 
-  private void validateRequestMatch(RequestMatcherRegistry registry, String path, Matcher matcher, Method method) {
+  private void validateRequestMatch(RequestMatcherRegistry registry, String path, Object expectedItem, Method method) {
     assertThat(registry.find(HttpRequest.builder().uri(format("http://localhost:8081%s", path)).method(method).build()),
-               is(matcher));
+               is(sameInstance(expectedItem)));
   }
 
   private void validateMethodAndPathMatch(RequestMatcherRegistry registry, String path, Object expectedItem) {
-    validateMethodAndPathMatch(registry, path, sameInstance(expectedItem), GET);
+    validateMethodAndPathMatch(registry, path, expectedItem, GET);
   }
 
-  private void validateMethodAndPathMatch(RequestMatcherRegistry registry, String path, Matcher matcher, Method method) {
-    assertThat(registry.find(method.name(), path), is(matcher));
+  private void validateMethodAndPathMatch(RequestMatcherRegistry registry, String path, Object expectedItem, Method method) {
+    assertThat(registry.find(method.name(), path), is(sameInstance(expectedItem)));
   }
 
 }
