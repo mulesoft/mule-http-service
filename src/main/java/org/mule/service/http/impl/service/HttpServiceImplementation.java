@@ -27,6 +27,7 @@ import org.mule.runtime.http.api.client.HttpClientFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
+import org.mule.service.http.impl.service.client.ContextHttpClientFactoryAdapter;
 import org.mule.service.http.impl.service.client.HttpClientConnectionManager;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
@@ -60,7 +61,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
   protected final SchedulerService schedulerService;
 
   private final HttpListenerConnectionManager listenerConnectionManager;
-  private final HttpClientConnectionManager clientConnectionManager;
+  protected final HttpClientConnectionManager clientConnectionManager;
 
   public HttpServiceImplementation(SchedulerService schedulerService) {
     this.schedulerService = schedulerService;
@@ -80,16 +81,17 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   @Override
   public HttpClientFactory getClientFactory() {
-    return config -> clientConnectionManager.create(config, config());
+    return new ContextHttpClientFactoryAdapter(CONTAINER_CONTEXT, schedulerService, config(), clientConnectionManager);
   }
 
   @Inject
-  public HttpClientFactory getClientFactory(@Named(OBJECT_SCHEDULER_BASE_CONFIG) SchedulerConfig schedulersConfig) {
-    return config -> clientConnectionManager.create(config, schedulersConfig);
+  public HttpClientFactory getClientFactory(@Named(OBJECT_MULE_CONTEXT) MuleContext muleContext,
+                                            @Named(OBJECT_SCHEDULER_BASE_CONFIG) SchedulerConfig schedulersConfig) {
+    return new ContextHttpClientFactoryAdapter(muleContext.getId(), schedulerService, schedulersConfig, clientConnectionManager);
   }
 
   protected HttpClientConnectionManager createClientConnectionManager() {
-    return new HttpClientConnectionManager(schedulerService);
+    return new HttpClientConnectionManager();
   }
 
   protected HttpListenerConnectionManager createListenerConnectionManager(SchedulerService schedulerService) {
