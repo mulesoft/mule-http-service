@@ -9,28 +9,27 @@ package org.mule.service.http.impl.service;
 import static com.ning.http.util.AsyncHttpProviderUtils.REMOTELY_CLOSED_EXCEPTION;
 import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
 import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
-import static org.mule.runtime.api.scheduler.SchedulerConfig.config;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_MULE_CONTEXT;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_SCHEDULER_BASE_CONFIG;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.disposeIfNeeded;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
+import static org.mule.runtime.api.scheduler.SchedulerConfig.config;
 import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.Startable;
 import org.mule.runtime.api.lifecycle.Stoppable;
+import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
-import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.http.api.HttpService;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerFactory;
-import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 import org.mule.service.http.impl.service.client.GrizzlyHttpClient;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
-import org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistryBuilder;
 
 import java.io.IOException;
 
@@ -84,11 +83,6 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
   @Inject
   public HttpClientFactory getClientFactory(@Named(OBJECT_SCHEDULER_BASE_CONFIG) SchedulerConfig schedulersConfig) {
     return config -> new GrizzlyHttpClient(config, schedulerService, schedulersConfig);
-  }
-
-  @Override
-  public RequestMatcherRegistry.RequestMatcherRegistryBuilder getRequestMatcherRegistryBuilder() {
-    return new DefaultRequestMatcherRegistryBuilder();
   }
 
   @Override
