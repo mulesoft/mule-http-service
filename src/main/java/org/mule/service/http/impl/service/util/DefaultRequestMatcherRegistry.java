@@ -6,14 +6,15 @@
  */
 package org.mule.service.http.impl.service.util;
 
+import static java.lang.String.format;
 import static java.util.Collections.list;
 import static java.util.Collections.reverse;
+import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decodePath;
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
@@ -146,7 +147,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
       }
     }
     requestsPathsCache.invalidateAll();
-    return new DefaultRequestMatcherRegistryEntry(requestHandlerOwner, addedRequestHandlerMatcherPair, this);
+    return new DefaultRequestMatcherRegistryEntry(requestHandlerOwner, addedRequestHandlerMatcherPair);
   }
 
   private void validateCollision(PathAndMethodRequestMatcher newListenerRequestMatcher) {
@@ -167,8 +168,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
                 || (isUriParameter(possibleCollisionLastPathPart) && isCatchAllPath(newListenerRequestMatcherLastPathPart)
                     || (isUriParameter(possibleCollisionLastPathPart)
                         && isUriParameter(newListenerRequestMatcherLastPathPart)))) {
-              throw new MatcherCollisionException(CoreMessages.createStaticMessage(String
-                  .format("Already exists a listener matching that path and methods. Listener matching %s new listener %s",
+              throw new MatcherCollisionException(createStaticMessage(format("Already exists a listener matching that path and methods. Listener matching %s new listener %s",
                           requestMatcher, newListenerRequestMatcher)));
             }
           }
@@ -581,13 +581,10 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
     private final Path requestHandlerOwner;
     private final RequestHandlerMatcherPair requestHandlerMatcherPair;
-    private final DefaultRequestMatcherRegistry serverAddressRequestHandlerRegistry;
 
-    public DefaultRequestMatcherRegistryEntry(Path requestHandlerOwner, RequestHandlerMatcherPair requestHandlerMatcherPair,
-                                              DefaultRequestMatcherRegistry serverAddressRequestHandlerRegistry) {
+    public DefaultRequestMatcherRegistryEntry(Path requestHandlerOwner, RequestHandlerMatcherPair requestHandlerMatcherPair) {
       this.requestHandlerOwner = requestHandlerOwner;
       this.requestHandlerMatcherPair = requestHandlerMatcherPair;
-      this.serverAddressRequestHandlerRegistry = serverAddressRequestHandlerRegistry;
     }
 
     @Override
@@ -602,8 +599,9 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
     @Override
     public void remove() {
-      serverAddressRequestHandlerRegistry.removeRequestHandler(requestHandlerMatcherPair.getRequestMatcher());
+      removeRequestHandler(requestHandlerMatcherPair.getRequestMatcher());
       requestHandlerOwner.removeRequestHandlerMatcherPair(requestHandlerMatcherPair);
+      requestsPathsCache.invalidateAll();
     }
   }
 
