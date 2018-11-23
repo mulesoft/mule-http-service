@@ -23,7 +23,6 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
-
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -44,9 +43,6 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -71,11 +67,15 @@ import java.io.PipedOutputStream;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
@@ -369,10 +369,10 @@ public class GrizzlyHttpClient implements HttpClient {
 
       populateHeaders(request, builder);
 
-      request.getQueryParams().entryList()
-          .forEach(entry -> builder.addQueryParam(entry.getKey() != null ? encodeQueryElement(entry.getKey()) : null,
-                                                  entry.getValue() != null ? encodeQueryElement(entry.getValue()) : null));
-
+      for (Map.Entry<String, String> entry : request.getQueryParams().entryList()) {
+        builder.addQueryParam(entry.getKey() != null ? encodeQueryElement(entry.getKey()) : null,
+                              entry.getValue() != null ? encodeQueryElement(entry.getValue()) : null);
+      }
       options.getAuthentication().ifPresent((CheckedConsumer<HttpAuthentication>) (authentication -> {
         Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder()
             .setPrincipal(authentication.getUsername())
@@ -469,9 +469,9 @@ public class GrizzlyHttpClient implements HttpClient {
       }
 
       if (!specialHeader) {
-        request.getHeaderValues(headerName).forEach(headerValue -> {
+        for (String headerValue : request.getHeaderValues(headerName)) {
           builder.addHeader(headerName, headerValue);
-        });
+        }
       }
     }
 
