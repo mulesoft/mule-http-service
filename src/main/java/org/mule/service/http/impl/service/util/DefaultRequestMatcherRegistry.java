@@ -169,7 +169,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
                     || (isUriParameter(possibleCollisionLastPathPart)
                         && isUriParameter(newListenerRequestMatcherLastPathPart)))) {
               throw new MatcherCollisionException(createStaticMessage(format("Already exists a listener matching that path and methods. Listener matching %s new listener %s",
-                          requestMatcher, newListenerRequestMatcher)));
+                                                                             requestMatcher, newListenerRequestMatcher)));
             }
           }
         }
@@ -212,8 +212,8 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   }
 
   /**
-   * Navigates the current {@link Path} structure searching for possible handlers for the request path required, then checks
-   * which one matches the request method as well. Handles availability, existence and permission as well.
+   * Navigates the current {@link Path} structure searching for possible handlers for the request path required, then checks which
+   * one matches the request method as well. Handles availability, existence and permission as well.
    *
    * @param request the received {@link HttpRequest}
    * @return the corresponding {@link RequestHandler}
@@ -263,8 +263,9 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
   /**
    * Removes the request matcher path from the available ones. This method will not affect the current {@link Path} structure,
-   * which will require explicit removal of the associated request handler via {@link Path#removeRequestHandlerMatcherPair(RequestHandlerMatcherPair)}
-   * so that the tree-like structure prunes itself if necessary.
+   * which will require explicit removal of the associated request handler via
+   * {@link Path#removeRequestHandlerMatcherPair(RequestHandlerMatcherPair)} so that the tree-like structure prunes itself if
+   * necessary.
    *
    * @param requestMatcher the matcher for requests
    */
@@ -339,9 +340,9 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
   /**
    * Represents a URI path, which can be a parent to regular sub paths, a catch all sub path (/*) and a URI param path (/{param}).
-   * Request handler and matcher pairs (handlers for different methods, for example) can be added and removed from it. If all
-   * its handlers and children's handlers' are removed, it will notify its parent the path itself can be removed. This means that
-   * the tree-like structure that results from binding paths together changes as handlers are created and disposed so special care
+   * Request handler and matcher pairs (handlers for different methods, for example) can be added and removed from it. If all its
+   * handlers and children's handlers' are removed, it will notify its parent the path itself can be removed. This means that the
+   * tree-like structure that results from binding paths together changes as handlers are created and disposed so special care
    * needs to be taken regarding available paths.
    */
   public static class Path<H> {
@@ -381,7 +382,8 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
     /**
      * @param subPath the sub part of the path to find
-     * @param nextSubPath the next sub part of the path. It is useful for deciding between static paths and middle-wildcard paths when they are similar.
+     * @param nextSubPath the next sub part of the path. It is useful for deciding between static paths and middle-wildcard paths
+     *        when they are similar.
      * @return the node with the existent mappings. null if there's no such node.
      */
     public Path getChildPath(final String subPath, String nextSubPath) {
@@ -504,8 +506,8 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     }
 
     /**
-     * Removes a request handler and matcher pair whether it's in a regular sub path, the catch all sub path or a uri param
-     * sub path. The latter two will be removed if empty as will the path it self if now empty.
+     * Removes a request handler and matcher pair whether it's in a regular sub path, the catch all sub path or a uri param sub
+     * path. The latter two will be removed if empty as will the path it self if now empty.
      *
      * @param requestHandlerMatcherPair
      * @return whether the removal was successful
