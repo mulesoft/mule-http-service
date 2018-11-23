@@ -601,6 +601,9 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     public void remove() {
       removeRequestHandler(requestHandlerMatcherPair.getRequestMatcher());
       requestHandlerOwner.removeRequestHandlerMatcherPair(requestHandlerMatcherPair);
+
+      // This is just for housekeeping. Since the Path is mutable, its state is always kept up to date, so the cached value is
+      // kept consistent.
       requestsPathsCache.invalidateAll();
     }
   }
