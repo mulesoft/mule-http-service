@@ -6,10 +6,15 @@
  */
 package org.mule.service.http.impl.service.util;
 
-import static java.util.Arrays.copyOf;
+import static java.lang.String.format;
+import static java.util.Collections.list;
+import static java.util.Collections.reverse;
+import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.api.util.Preconditions.checkArgument;
+import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decodePath;
+import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
+import static org.slf4j.LoggerFactory.getLogger;
 
-import com.google.common.base.Joiner;
-import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
@@ -18,7 +23,12 @@ import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.utils.MatcherCollisionException;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 import org.mule.service.http.impl.service.server.DecodingException;
+
 import org.slf4j.Logger;
+
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.common.base.Joiner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,11 +40,6 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.function.Supplier;
 
-import static org.mule.runtime.api.util.Preconditions.checkArgument;
-import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decodePath;
-import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
-import static org.slf4j.LoggerFactory.getLogger;
-
 public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<T> {
 
   private static final Logger LOGGER = getLogger(DefaultRequestMatcherRegistry.class);
@@ -43,13 +48,27 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   static final Supplier NULL_SUPPLIER = () -> null;
 
   private Path serverRequestHandler;
-  private Path rootPath = new Path("root", null);
-  private Path catchAllPath = new Path(WILDCARD_CHARACTER, null);
-  private Set<String> paths = new HashSet<>();
-  private Supplier<T> noMatchMismatchHandler;
-  private Supplier<T> notFoundMismatchHandler;
-  private Supplier<T> invalidRequestHandler;
-  private Supplier<T> notAvailableMismatchHandler;
+  private final Path rootPath = new Path("root", null);
+  private final Path catchAllPath = new Path(WILDCARD_CHARACTER, null);
+  private final Set<String> paths = new HashSet<>();
+  private final Supplier<T> noMatchMismatchHandler;
+  private final Supplier<T> notFoundMismatchHandler;
+  private final Supplier<T> invalidRequestHandler;
+  private final Supplier<T> notAvailableMismatchHandler;
+
+  private final LoadingCache<String, List<Path>> requestsPathsCache =
+      Caffeine.<String, List<Path>>newBuilder().maximumSize(32).build(requestPath -> {
+        try {
+          String fullPathName = decodePath(requestPath);
+          checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");
+          Stack<Path> found = findPossibleRequestHandlers(fullPathName);
+          List<Path> foundAsList = list(found.elements());
+          reverse(foundAsList);
+          return foundAsList;
+        } catch (DecodingException e) {
+          return null;
+        }
+      });
 
   public DefaultRequestMatcherRegistry() {
     this(NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER);
@@ -127,7 +146,8 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
         requestHandlerOwner = path;
       }
     }
-    return new DefaultRequestMatcherRegistryEntry(requestHandlerOwner, addedRequestHandlerMatcherPair, this);
+    requestsPathsCache.invalidateAll();
+    return new DefaultRequestMatcherRegistryEntry(requestHandlerOwner, addedRequestHandlerMatcherPair);
   }
 
   private void validateCollision(PathAndMethodRequestMatcher newListenerRequestMatcher) {
@@ -148,9 +168,8 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
                 || (isUriParameter(possibleCollisionLastPathPart) && isCatchAllPath(newListenerRequestMatcherLastPathPart)
                     || (isUriParameter(possibleCollisionLastPathPart)
                         && isUriParameter(newListenerRequestMatcherLastPathPart)))) {
-              throw new MatcherCollisionException(CoreMessages.createStaticMessage(String
-                  .format("Already exists a listener matching that path and methods. Listener matching %s new listener %s",
-                          requestMatcher, newListenerRequestMatcher)));
+              throw new MatcherCollisionException(createStaticMessage(format("Already exists a listener matching that path and methods. Listener matching %s new listener %s",
+                                                                             requestMatcher, newListenerRequestMatcher)));
             }
           }
         }
@@ -158,7 +177,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     }
   }
 
-  private boolean isUriParameter(String pathPart) {
+  private static boolean isUriParameter(String pathPart) {
     return (pathPart.startsWith("{") || pathPart.startsWith("/{")) && pathPart.endsWith("}");
   }
 
@@ -188,7 +207,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     return path.split(SLASH, -1);
   }
 
-  private boolean isCatchAllPath(String path) {
+  private static boolean isCatchAllPath(String path) {
     return WILDCARD_CHARACTER.equals(path);
   }
 
@@ -201,18 +220,16 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
    */
   @Override
   public T find(HttpRequest request) {
-    final String fullPathName;
-    try {
-      fullPathName = decodePath(request.getPath());
-    } catch (DecodingException e) {
+    List<Path> foundPaths = requestsPathsCache.get(request.getPath());
+
+    if (foundPaths == null) {
       return this.invalidRequestHandler.get();
     }
-    checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");
-    Stack<Path> foundPaths = findPossibleRequestHandlers(fullPathName);
+
     boolean methodNotAllowed = false;
     RequestHandlerMatcherPair<T> requestHandlerMatcherPair = null;
-    while (!foundPaths.empty()) {
-      final Path path = foundPaths.pop();
+
+    for (Path path : foundPaths) {
       List<RequestHandlerMatcherPair<T>> requestHandlerMatcherPairs = path.getRequestHandlerMatcherPairs();
 
       if (requestHandlerMatcherPairs == null && path.getCatchAll() != null) {
@@ -327,13 +344,13 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
    * the tree-like structure that results from binding paths together changes as handlers are created and disposed so special care
    * needs to be taken regarding available paths.
    */
-  public class Path<H> {
+  public static class Path<H> {
 
-    List<RequestHandlerMatcherPair<H>> requestHandlerMatcherPairs = new ArrayList<>();
+    private final List<RequestHandlerMatcherPair<H>> requestHandlerMatcherPairs = new ArrayList<>();
 
-    private String name;
-    private Path parent;
-    private Map<String, Path> subPaths = new HashMap<>();
+    private final String name;
+    private final Path parent;
+    private final Map<String, Path> subPaths = new HashMap<>();
     private Path catchAll;
     private Path catchAllUriParam;
 
@@ -531,10 +548,10 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
    * Association of a {@link RequestHandler} and a {@link PathAndMethodRequestMatcher} as they were introduced, which allows a
    * joint view and availability handling.
    */
-  public class RequestHandlerMatcherPair<A> {
+  public static class RequestHandlerMatcherPair<A> {
 
-    private PathAndMethodRequestMatcher requestMatcher;
-    private A requestHandler;
+    private final PathAndMethodRequestMatcher requestMatcher;
+    private final A requestHandler;
     private boolean running = true;
 
     private RequestHandlerMatcherPair(PathAndMethodRequestMatcher requestMatcher, A requestHandler) {
@@ -564,13 +581,10 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
     private final Path requestHandlerOwner;
     private final RequestHandlerMatcherPair requestHandlerMatcherPair;
-    private final DefaultRequestMatcherRegistry serverAddressRequestHandlerRegistry;
 
-    public DefaultRequestMatcherRegistryEntry(Path requestHandlerOwner, RequestHandlerMatcherPair requestHandlerMatcherPair,
-                                              DefaultRequestMatcherRegistry serverAddressRequestHandlerRegistry) {
+    public DefaultRequestMatcherRegistryEntry(Path requestHandlerOwner, RequestHandlerMatcherPair requestHandlerMatcherPair) {
       this.requestHandlerOwner = requestHandlerOwner;
       this.requestHandlerMatcherPair = requestHandlerMatcherPair;
-      this.serverAddressRequestHandlerRegistry = serverAddressRequestHandlerRegistry;
     }
 
     @Override
@@ -585,8 +599,12 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
     @Override
     public void remove() {
-      serverAddressRequestHandlerRegistry.removeRequestHandler(requestHandlerMatcherPair.getRequestMatcher());
+      removeRequestHandler(requestHandlerMatcherPair.getRequestMatcher());
       requestHandlerOwner.removeRequestHandlerMatcherPair(requestHandlerMatcherPair);
+
+      // This is just for housekeeping. Since the Path is mutable, its state is always kept up to date, so the cached value is
+      // kept consistent.
+      requestsPathsCache.invalidateAll();
     }
   }
 
