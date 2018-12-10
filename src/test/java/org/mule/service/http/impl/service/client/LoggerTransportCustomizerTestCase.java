@@ -6,8 +6,8 @@
  */
 package org.mule.service.http.impl.service.client;
 
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.isA;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
@@ -25,7 +25,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Answers;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import io.qameta.allure.Feature;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -35,10 +35,13 @@ public class LoggerTransportCustomizerTestCase extends AbstractMuleTestCase {
 
   @Mock
   private FilterChainBuilder mockFilterChainBuilder;
+
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private HttpCodecFilter mockHttpCodeFilter;
+
   @Mock
   private MuleRuntimeException mockMuleRuntimeException;
+
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
 
