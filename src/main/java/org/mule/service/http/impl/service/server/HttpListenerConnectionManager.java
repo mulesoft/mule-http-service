@@ -7,7 +7,6 @@
 package org.mule.service.http.impl.service.server;
 
 
-import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
@@ -15,19 +14,15 @@ import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.core.api.util.NetworkUtils.getLocalHostAddress;
 import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.loadTcpServerSocketProperties;
-import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
-import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.loadTcpServerSocketProperties;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
-
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.api.scheduler.Scheduler;
-import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
-import org.mule.runtime.core.api.util.NetworkUtils;
+import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
@@ -35,7 +30,6 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
-import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
 import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 
 import java.net.UnknownHostException;
@@ -49,17 +43,17 @@ import java.util.function.Supplier;
  */
 public class HttpListenerConnectionManager implements ContextHttpServerFactory, Initialisable, Disposable {
 
-  private static final int DEFAULT_SELECTOR_THREAD_COUNT =
+  protected static final int DEFAULT_SELECTOR_THREAD_COUNT =
       getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
                  max(getRuntime().availableProcessors(), 2));
   private static final String LISTENER_THREAD_NAME_PREFIX = "http.listener";
 
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
-  private Scheduler selectorScheduler;
-  private Scheduler workerScheduler;
-  private Scheduler idleTimeoutScheduler;
-  private final HttpListenerRegistry httpListenerRegistry = new HttpListenerRegistry();
+  protected Scheduler selectorScheduler;
+  protected Scheduler workerScheduler;
+  protected Scheduler idleTimeoutScheduler;
+  protected final HttpListenerRegistry httpListenerRegistry = new HttpListenerRegistry();
   private HttpServerManager httpServerManager;
 
   private AtomicBoolean initialized = new AtomicBoolean(false);

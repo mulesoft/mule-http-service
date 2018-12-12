@@ -74,7 +74,7 @@ public class GrizzlyServerManager implements HttpServerManager {
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
 
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
-  private final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
+  protected final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
   protected final GrizzlyAddressDelegateFilter<WebSocketFilter> webSocketFilter;
   private final GrizzlyAddressDelegateFilter<HttpServerFilter> httpServerFilterDelegate;
   protected final TCPNIOTransport transport;
@@ -334,7 +334,7 @@ public class GrizzlyServerManager implements HttpServerManager {
   /**
    * Wrapper that adds startup and disposal of manager specific data.
    */
-  private class ManagedGrizzlyHttpServer extends HttpServerDelegate {
+  protected class ManagedGrizzlyHttpServer extends HttpServerDelegate {
 
     private final ServerIdentifier identifier;
 
