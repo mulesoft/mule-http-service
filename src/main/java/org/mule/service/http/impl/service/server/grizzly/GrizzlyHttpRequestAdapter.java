@@ -31,8 +31,12 @@ public class GrizzlyHttpRequestAdapter extends GrizzlyHttpMessage implements Htt
 
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
                                    InetSocketAddress localAddress) {
-    super((HttpRequestPacket) httpContent.getHttpHeader(), null, localAddress);
+    this(filterChainContext, httpContent, (HttpRequestPacket) httpContent.getHttpHeader(), localAddress);
+  }
 
+  protected GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
+                                      HttpRequestPacket requestPacket, InetSocketAddress localAddress) {
+    super(requestPacket, null, localAddress);
     if (httpContent.isLast()) {
       requestContent = new BufferInputStream(httpContent.getContent());
     } else {

@@ -12,19 +12,18 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
 import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
-
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.domain.CaseInsensitiveMultiMap;
 import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.http.api.domain.message.BaseHttpMessage;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 
-import org.glassfish.grizzly.http.HttpRequestPacket;
-import org.glassfish.grizzly.http.Protocol;
-
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Collection;
+
+import org.glassfish.grizzly.http.HttpRequestPacket;
+import org.glassfish.grizzly.http.Protocol;
 
 /**
  * Base class for a grizzly based implementation of {@link BaseHttpMessage}
@@ -137,8 +136,13 @@ public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements Http
   public URI getUri() {
     if (this.uri == null) {
       String baseUri = getBaseProtocol() + "://" + localAddress.getHostString() + ":" + localAddress.getPort();
-      this.uri = getUriFromString(baseUri + requestPacket.getRequestURI()
-          + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
+      String path =
+          requestPacket.getRequestURI() + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString());
+      try {
+        this.uri = getUriFromString(baseUri + path);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Malformed URI: " + path);
+      }
     }
     return this.uri;
   }
