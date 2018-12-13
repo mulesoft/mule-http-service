@@ -14,7 +14,6 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
 import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
-
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.domain.CaseInsensitiveMultiMap;
 import org.mule.runtime.http.api.domain.HttpProtocol;
@@ -25,16 +24,16 @@ import org.mule.runtime.http.api.domain.message.BaseHttpMessage;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
+import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.util.Collection;
+
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.utils.BufferInputStream;
-
-import java.io.InputStream;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.util.Collection;
 
 public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRequest {
 
@@ -54,8 +53,13 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
 
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
                                    InetSocketAddress localAddress) {
-    this.requestPacket = (HttpRequestPacket) httpContent.getHttpHeader();
-    this.baseUri = PROTOCOL + "://" + localAddress.getHostString() + localAddress.getPort();
+    this(filterChainContext, httpContent, (HttpRequestPacket) httpContent.getHttpHeader(), localAddress);
+  }
+
+  protected GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
+                                      HttpRequestPacket requestPacket, InetSocketAddress localAddress) {
+    this.requestPacket = requestPacket;
+    this.baseUri = PROTOCOL + "://" + localAddress.getHostString() + ":" + localAddress.getPort();
     long contentLengthAsLong = -1L;
     String contentLengthAsString = requestPacket.getHeader(CONTENT_LENGTH);
     if (contentLengthAsString != null) {
@@ -170,8 +174,13 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   @Override
   public URI getUri() {
     if (this.uri == null) {
-      this.uri = getUriFromString(baseUri + requestPacket.getRequestURI()
-          + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
+      String path =
+          requestPacket.getRequestURI() + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString());
+      try {
+        this.uri = getUriFromString(baseUri + path);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Malformed URI: " + path);
+      }
     }
     return this.uri;
   }
