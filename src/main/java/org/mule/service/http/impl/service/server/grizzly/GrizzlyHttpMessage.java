@@ -36,6 +36,7 @@ public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements Http
   protected final boolean isTransferEncodingChunked;
   protected final long contentLength;
   protected final HttpRequestPacket requestPacket;
+  private final String baseUri;
 
   protected String method;
   protected MultiMap<String, String> queryParams;
@@ -50,6 +51,7 @@ public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements Http
     this.requestPacket = requestPacket;
     this.localAddress = localAddress;
     isTransferEncodingChunked = requestPacket.isChunked();
+    this.baseUri = getBaseProtocol() + "://" + localAddress.getHostString() + ":" + localAddress.getPort();
 
     long contentLengthAsLong = -1L;
     String contentLengthAsString = requestPacket.getHeader(CONTENT_LENGTH);
@@ -137,9 +139,13 @@ public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements Http
   @Override
   public URI getUri() {
     if (this.uri == null) {
-      String baseUri = getBaseProtocol() + "://" + localAddress.getHostName() + ":" + localAddress.getPort();
-      this.uri = getUriFromString(baseUri + requestPacket.getRequestURI()
-          + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString()));
+      String path =
+          requestPacket.getRequestURI() + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString());
+      try {
+        this.uri = getUriFromString(baseUri + path);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Malformed URI: " + path);
+      }
     }
     return this.uri;
   }
