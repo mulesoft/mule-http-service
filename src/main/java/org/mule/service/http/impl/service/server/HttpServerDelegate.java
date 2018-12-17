@@ -21,7 +21,7 @@ import java.util.Collection;
 /**
  * Base class for applying the delegate design pattern around an {@link HttpServer}
  *
- * @since 1.1.5
+ * @since 1.3.0
  */
 public class HttpServerDelegate implements HttpServer {
 

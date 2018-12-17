@@ -14,7 +14,7 @@ import org.mule.runtime.http.api.client.HttpClientConfiguration;
 /**
  * Manages client connections.
  *
- * @since 1.1.5
+ * @since 1.3.0
  */
 public class HttpClientConnectionManager {
 

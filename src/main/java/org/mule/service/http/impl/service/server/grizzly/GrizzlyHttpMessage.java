@@ -28,7 +28,7 @@ import org.glassfish.grizzly.http.Protocol;
 /**
  * Base class for a grizzly based implementation of {@link BaseHttpMessage}
  *
- * @since 1.1.5
+ * @since 1.3.0
  */
 public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements HttpRequest {
 
