@@ -6,66 +6,40 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.lang.Long.parseLong;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
-import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
-import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
-import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
-import org.mule.runtime.api.util.MultiMap;
-import org.mule.runtime.http.api.domain.CaseInsensitiveMultiMap;
-import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
-import org.mule.runtime.http.api.domain.message.BaseHttpMessage;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
 import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.util.Collection;
 
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
-import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.utils.BufferInputStream;
 
-public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRequest {
+public class GrizzlyHttpRequestAdapter extends GrizzlyHttpMessage implements HttpRequest {
 
   private static final String PROTOCOL = "http";
 
-  private final HttpRequestPacket requestPacket;
-  private final String baseUri;
   private final InputStream requestContent;
-  private final long contentLength;
-  private HttpProtocol protocol;
-  private URI uri;
-  private String path;
-  private String method;
   private HttpEntity body;
-  private MultiMap<String, String> headers;
-  private MultiMap<String, String> queryParams;
 
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
                                    InetSocketAddress localAddress) {
     this(filterChainContext, httpContent, (HttpRequestPacket) httpContent.getHttpHeader(), localAddress);
   }
 
-  protected GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
-                                      HttpRequestPacket requestPacket, InetSocketAddress localAddress) {
-    this.requestPacket = requestPacket;
-    this.baseUri = PROTOCOL + "://" + localAddress.getHostString() + ":" + localAddress.getPort();
-    long contentLengthAsLong = -1L;
-    String contentLengthAsString = requestPacket.getHeader(CONTENT_LENGTH);
-    if (contentLengthAsString != null) {
-      contentLengthAsLong = parseLong(contentLengthAsString);
-    }
-    this.contentLength = contentLengthAsLong;
+  public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext,
+                                   HttpContent httpContent,
+                                   HttpRequestPacket requestPacket,
+                                   InetSocketAddress localAddress) {
+    super(requestPacket, null, localAddress);
+
     if (httpContent.isLast()) {
       requestContent = new BufferInputStream(httpContent.getContent());
     } else {
@@ -74,70 +48,8 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
   }
 
   @Override
-  public HttpProtocol getProtocol() {
-    if (this.protocol == null) {
-      this.protocol = requestPacket.getProtocol() == Protocol.HTTP_1_0 ? HttpProtocol.HTTP_1_0 : HttpProtocol.HTTP_1_1;
-    }
-    return this.protocol;
-  }
-
-  @Override
-  public String getPath() {
-    if (this.path == null) {
-      this.path = requestPacket.getRequestURI();
-    }
-    return this.path;
-  }
-
-  @Override
-  public String getMethod() {
-    if (this.method == null) {
-      this.method = requestPacket.getMethod().getMethodString();
-    }
-    return this.method;
-  }
-
-  @Override
-  public Collection<String> getHeaderNames() {
-    if (this.headers == null) {
-      initializeHeaders();
-    }
-    return this.headers.keySet();
-  }
-
-  @Override
-  public String getHeaderValue(String headerName) {
-    if (this.headers == null) {
-      initializeHeaders();
-    }
-    return this.headers.get(headerName);
-  }
-
-  @Override
-  public Collection<String> getHeaderValues(String headerName) {
-    if (this.headers == null) {
-      initializeHeaders();
-    }
-    return this.headers.getAll(headerName);
-  }
-
-  @Override
-  public MultiMap<String, String> getHeaders() {
-    if (this.headers == null) {
-      initializeHeaders();
-    }
-    return this.headers;
-  }
-
-  private void initializeHeaders() {
-    this.headers = new CaseInsensitiveMultiMap(!PRESERVE_HEADER_CASE);
-    for (String grizzlyHeaderName : requestPacket.getHeaders().names()) {
-      final Iterable<String> headerValues = requestPacket.getHeaders().values(grizzlyHeaderName);
-      for (String headerValue : headerValues) {
-        this.headers.put(grizzlyHeaderName, headerValue);
-      }
-    }
-    this.headers = this.headers.toImmutableMultiMap();
+  protected String getBaseProtocol() {
+    return PROTOCOL;
   }
 
   @Override
@@ -162,27 +74,4 @@ public class GrizzlyHttpRequestAdapter extends BaseHttpMessage implements HttpRe
     }
     return this.body;
   }
-
-  @Override
-  public MultiMap<String, String> getQueryParams() {
-    if (queryParams == null) {
-      queryParams = decodeQueryString(requestPacket.getQueryString());
-    }
-    return queryParams;
-  }
-
-  @Override
-  public URI getUri() {
-    if (this.uri == null) {
-      String path =
-          requestPacket.getRequestURI() + (isEmpty(requestPacket.getQueryString()) ? "" : "?" + requestPacket.getQueryString());
-      try {
-        this.uri = getUriFromString(baseUri + path);
-      } catch (IllegalArgumentException e) {
-        throw new IllegalArgumentException("Malformed URI: " + path);
-      }
-    }
-    return this.uri;
-  }
-
 }

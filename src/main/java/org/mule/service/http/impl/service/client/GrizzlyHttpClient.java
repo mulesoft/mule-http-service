@@ -106,7 +106,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private Scheduler workerScheduler;
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
-  private AsyncHttpClient asyncHttpClient;
+  protected AsyncHttpClient asyncHttpClient;
   private SSLContext sslContext;
 
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
@@ -362,7 +362,7 @@ public class GrizzlyHttpClient implements HttpClient {
     return options.isStreamResponse().orElse(streamingEnabled);
   }
 
-  private Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
+  protected Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, options, builder -> {
       builder.setFollowRedirects(options.isFollowsRedirect());

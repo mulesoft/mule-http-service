@@ -15,7 +15,6 @@ import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.core.api.util.NetworkUtils.getLocalHostAddress;
 import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.loadTcpServerSocketProperties;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
-
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
@@ -44,17 +43,17 @@ import java.util.function.Supplier;
  */
 public class HttpListenerConnectionManager implements ContextHttpServerFactory, Initialisable, Disposable {
 
-  private static final int DEFAULT_SELECTOR_THREAD_COUNT =
+  protected static final int DEFAULT_SELECTOR_THREAD_COUNT =
       getInteger(HttpListenerConnectionManager.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
                  max(getRuntime().availableProcessors(), 2));
   private static final String LISTENER_THREAD_NAME_PREFIX = "http.listener";
 
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
-  private Scheduler selectorScheduler;
-  private Scheduler workerScheduler;
-  private Scheduler idleTimeoutScheduler;
-  private final HttpListenerRegistry httpListenerRegistry = new HttpListenerRegistry();
+  protected Scheduler selectorScheduler;
+  protected Scheduler workerScheduler;
+  protected Scheduler idleTimeoutScheduler;
+  protected final HttpListenerRegistry httpListenerRegistry = new HttpListenerRegistry();
   private HttpServerManager httpServerManager;
 
   private AtomicBoolean initialized = new AtomicBoolean(false);
@@ -75,12 +74,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
     workerScheduler = schedulerService.ioScheduler(schedulersConfig);
     idleTimeoutScheduler =
         schedulerService.ioScheduler(schedulersConfig.withName(LISTENER_THREAD_NAME_PREFIX + IDLE_TIMEOUT_THREADS_PREFIX_NAME));
-    try {
-      httpServerManager = new GrizzlyServerManager(selectorScheduler, workerScheduler, idleTimeoutScheduler, httpListenerRegistry,
-                                                   loadTcpServerSocketProperties(), DEFAULT_SELECTOR_THREAD_COUNT);
-    } catch (MuleException e) {
-      throw new InitialisationException(createStaticMessage("Could not load server socket properties."), e, this);
-    }
+    httpServerManager = createServerManager();
   }
 
   @Override
@@ -145,6 +139,15 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
                                                   connectionIdleTimeout, identifier);
     } else {
       throw new ServerAlreadyExistsException(serverAddress);
+    }
+  }
+
+  protected GrizzlyServerManager createServerManager() throws InitialisationException {
+    try {
+      return new GrizzlyServerManager(selectorScheduler, workerScheduler, idleTimeoutScheduler, httpListenerRegistry,
+                                      loadTcpServerSocketProperties(), DEFAULT_SELECTOR_THREAD_COUNT);
+    } catch (MuleException e) {
+      throw new InitialisationException(createStaticMessage("Could not load server socket properties."), e, this);
     }
   }
 

@@ -101,6 +101,11 @@
         </dependency>
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
+            <artifactId>grizzly-http-servlet</artifactId>
+            <version>${grizzlyVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mule.glassfish.grizzly</groupId>
             <artifactId>connection-pool</artifactId>
             <version>${grizzlyVersion}</version>
         </dependency>

@@ -44,8 +44,11 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private boolean stopped = true;
   private boolean stopping;
 
-  public GrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport, HttpListenerRegistry listenerRegistry,
-                           Supplier<Scheduler> schedulerSource, Runnable schedulerDisposer,
+  public GrizzlyHttpServer(ServerAddress serverAddress,
+                           TCPNIOTransport transport,
+                           HttpListenerRegistry listenerRegistry,
+                           Supplier<Scheduler> schedulerSource,
+                           Runnable schedulerDisposer,
                            GrizzlyAddressFilter<SSLFilter> sslFilter) {
     this.serverAddress = serverAddress;
     this.transport = transport;
