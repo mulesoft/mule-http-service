@@ -10,6 +10,7 @@ import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
 import static com.ning.http.util.UTF8UrlEncoder.encodeQueryElement;
+import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
@@ -17,6 +18,7 @@ import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -85,12 +87,15 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final int MAX_CONNECTION_LIFETIME = 30 * 60 * 1000;
   public static final String HOST_SEPARATOR = ",";
   private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
+  private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
   private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
   private static final String HEADER_CONTENT_LENGTH = CONTENT_LENGTH.toLowerCase();
   private static final String HEADER_TRANSFER_ENCODING = TRANSFER_ENCODING.toLowerCase();
+
+  private static boolean DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
 
   private final TlsContextFactory tlsContextFactory;
   private final ProxyConfig proxyConfig;
@@ -102,6 +107,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private final int responseBufferSize;
   private final String name;
+  private final boolean decompressionEnabled;
   private Scheduler selectorScheduler;
   private Scheduler workerScheduler;
   private final SchedulerService schedulerService;
@@ -122,6 +128,7 @@ public class GrizzlyHttpClient implements HttpClient {
     this.connectionIdleTimeout = config.getConnectionIdleTimeout();
     this.streamingEnabled = config.isStreaming();
     this.responseBufferSize = config.getResponseBufferSize();
+    this.decompressionEnabled = config.isDecompress().orElse(DEFAULT_DECOMPRESS);
     this.name = config.getName();
 
     this.schedulerService = schedulerService;
@@ -231,8 +238,7 @@ public class GrizzlyHttpClient implements HttpClient {
     }
 
     providerConfig.addProperty(TRANSPORT_CUSTOMIZER, compositeTransportCustomizer);
-    // Grizzly now decompresses encoded responses, this flag maintains the previous behaviour
-    providerConfig.addProperty(DECOMPRESS_RESPONSE, Boolean.FALSE);
+    providerConfig.addProperty(DECOMPRESS_RESPONSE, this.decompressionEnabled);
     builder.setAsyncHttpClientProviderConfig(providerConfig);
   }
 
@@ -507,6 +513,10 @@ public class GrizzlyHttpClient implements HttpClient {
     asyncHttpClient.close();
     workerScheduler.stop();
     selectorScheduler.stop();
+  }
+
+  public static void refreshSystemProperties() {
+    DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
   }
 
 }
