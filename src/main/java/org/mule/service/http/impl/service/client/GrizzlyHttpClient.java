@@ -128,7 +128,7 @@ public class GrizzlyHttpClient implements HttpClient {
     this.connectionIdleTimeout = config.getConnectionIdleTimeout();
     this.streamingEnabled = config.isStreaming();
     this.responseBufferSize = config.getResponseBufferSize();
-    this.decompressionEnabled = config.isDecompress().orElse(DEFAULT_DECOMPRESS);
+    this.decompressionEnabled = config.isDecompress() != null ? config.isDecompress() : DEFAULT_DECOMPRESS;
     this.name = config.getName();
 
     this.schedulerService = schedulerService;
