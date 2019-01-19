@@ -19,6 +19,7 @@ import static java.lang.String.valueOf;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
+import static org.mule.runtime.api.util.Preconditions.checkState;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -261,6 +262,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public HttpResponse send(HttpRequest request, HttpRequestOptions options) throws IOException, TimeoutException {
+    checkState(asyncHttpClient != null, "The client must be started before use.");
     if (shouldStreamResponse(options)) {
       return sendAndDefer(request, options);
     } else {
@@ -342,6 +344,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options) {
+    checkState(asyncHttpClient != null, "The client must be started before use.");
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
