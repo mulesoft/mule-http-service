@@ -59,6 +59,7 @@ public class HttpParserTestCase extends AbstractMuleTestCase {
     assertThat(httpPartCollection.size(), is(1));
     HttpPart httpPart = httpPartCollection.iterator().next();
     assertThat(httpPart.getName(), is(CONTENT_ID));
+    assertThat(true, is(false));
   }
 
 }
