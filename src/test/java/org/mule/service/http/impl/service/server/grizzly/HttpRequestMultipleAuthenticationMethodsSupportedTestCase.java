@@ -6,7 +6,6 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.CLIENT_AUTHENTICATION;
@@ -79,14 +78,14 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
     } else if (authType.length() > 0) {
       chosenAuthMethod = authType;
       responseBuilder.statusCode(OK.getStatusCode())
-              .reasonPhrase(OK.getReasonPhrase());
+          .reasonPhrase(OK.getReasonPhrase());
     } else {
       responseBuilder.statusCode(UNAUTHORIZED.getStatusCode());
     }
     return responseBuilder.build();
   }
 
-  public HttpRequestOptions getOptions(HttpAuthenticationBuilder authenticationBuilder){
+  public HttpRequestOptions getOptions(HttpAuthenticationBuilder authenticationBuilder) {
     HttpAuthentication authentication = authenticationBuilder.build();
     return HttpRequestOptions.builder().authentication(authentication).build();
   }
@@ -95,8 +94,8 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
     return HttpRequest.builder().method(GET).uri(getUri()).build();
   }
 
-  public String getRequestAuthType(String authHeader){
-    return StringUtils.isEmpty(authHeader)? "" : authHeader.substring(0, authHeader.indexOf(" "));
+  public String getRequestAuthType(String authHeader) {
+    return StringUtils.isEmpty(authHeader) ? "" : authHeader.substring(0, authHeader.indexOf(" "));
   }
 
   @Before
@@ -107,7 +106,9 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
 
   @After
   public void stopClient() {
-    client.stop();
+    if (client != null) {
+      client.stop();
+    }
   }
 
   @Test
@@ -125,11 +126,11 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
     sendRequestAssertCorrectAuthMethodChosen(HttpAuthentication.basic(TEST_USER, TEST_PASS), BASIC);
   }
 
-  protected void sendRequestAssertCorrectAuthMethodChosen(HttpAuthenticationBuilder authBuilder, String authMethod){
+  protected void sendRequestAssertCorrectAuthMethodChosen(HttpAuthenticationBuilder authBuilder, String authMethod) {
     HttpRequestOptions options = getOptions(authBuilder);
     HttpRequest request = getRequest();
     client.sendAsync(request, options).whenComplete(
-            (response, exception) -> responseReference.set(response));
+                                                    (response, exception) -> responseReference.set(response));
     pollingProber.check(new ResponseReceivedProbe(responseReference));
     pollingProber.check(new ResponseSuccessProbe());
     assertThat(chosenAuthMethod, equalTo(authMethod));
