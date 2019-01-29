@@ -6,6 +6,10 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.IsEqual.equalTo;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.CLIENT_AUTHENTICATION;
 import static sun.net.www.protocol.http.AuthScheme.NTLM;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.UNAUTHORIZED;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
@@ -22,6 +26,7 @@ import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
+import org.mule.runtime.http.api.client.auth.HttpAuthenticationBuilder;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
@@ -35,7 +40,7 @@ import org.mule.tck.probe.PollingProber;
 import org.mule.tck.probe.Probe;
 
 @Feature(HTTP_SERVICE)
-@Story(WWW_AUTHENTICATE)
+@Story(CLIENT_AUTHENTICATION)
 public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends AbstractHttpClientTestCase {
 
   private static final int TIMEOUT_MILLIS = 1000;
@@ -44,10 +49,9 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
   private static final String BASIC = "Basic";
   private static final String NONCE =
       "+Upgraded+v1a574e295ff1f41c52582b82815bb734c5c50331c97c4d301bc97f789c5e9e73ca9564b24cbd898ce5f1c13598999faa2ab013ee5b1597087";
-  private static boolean choseDigest = false;
-  private static boolean choseNtlm = false;
-  private static boolean choseBasic = false;
-
+  private static String chosenAuthMethod = "";
+  private static String TEST_USER = "user";
+  private static String TEST_PASS = "password";
   private static HttpClient client;
 
   private HttpClientConfiguration.Builder clientBuilder = new HttpClientConfiguration.Builder().setName("auth-test");
@@ -62,9 +66,8 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
   protected HttpResponse setUpHttpResponse(HttpRequest request) {
     HttpResponseBuilder responseBuilder = HttpResponse.builder();
     String authHeader = request.getHeaderValue(AUTHORIZATION);
-    choseBasic = false;
-    choseDigest = false;
-    choseNtlm = false;
+    String authType = getRequestAuthType(authHeader);
+    chosenAuthMethod = "";
 
     if (StringUtils.isEmpty(authHeader)) {
       responseBuilder.statusCode(UNAUTHORIZED.getStatusCode())
@@ -73,44 +76,27 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
           .addHeader(WWW_AUTHENTICATE,
                      DIGEST + " qop=\"auth\",algorithm=MD5-sess," +
                          "nonce=\"" + NONCE + "\",charset=utf-8,realm=\"INT\"");
-    } else if (authHeader.startsWith(DIGEST) && authHeader.contains(NONCE)) {
+    } else if (authType.length() > 0) {
+      chosenAuthMethod = authType;
       responseBuilder.statusCode(OK.getStatusCode())
-          .reasonPhrase(OK.getReasonPhrase());
-      choseDigest = true;
-    } else if (authHeader.startsWith(BASIC)) {
-      responseBuilder.statusCode(OK.getStatusCode())
-          .reasonPhrase(OK.getReasonPhrase());
-      choseBasic = true;
-    } else if (authHeader.startsWith(NTLM.name())) {
-      responseBuilder.statusCode(OK.getStatusCode())
-          .reasonPhrase(OK.getReasonPhrase());
-      choseNtlm = true;
+              .reasonPhrase(OK.getReasonPhrase());
     } else {
       responseBuilder.statusCode(UNAUTHORIZED.getStatusCode());
     }
     return responseBuilder.build();
   }
 
-  public HttpRequestOptions getOptionsDigest() {
-    HttpAuthentication authentication =
-        HttpAuthentication.digest("user", "password").preemptive(false).build();
-    return HttpRequestOptions.builder().authentication(authentication).build();
-  }
-
-  public HttpRequestOptions getOptionsNtlm() {
-    HttpAuthentication authentication =
-        HttpAuthentication.ntlm("user", "password").preemptive(false).build();
-    return HttpRequestOptions.builder().authentication(authentication).build();
-  }
-
-  public HttpRequestOptions getOptionsBasic() {
-    HttpAuthentication authentication =
-        HttpAuthentication.basic("user", "password").preemptive(false).build();
+  public HttpRequestOptions getOptions(HttpAuthenticationBuilder authenticationBuilder){
+    HttpAuthentication authentication = authenticationBuilder.build();
     return HttpRequestOptions.builder().authentication(authentication).build();
   }
 
   public HttpRequest getRequest() {
     return HttpRequest.builder().method(GET).uri(getUri()).build();
+  }
+
+  public String getRequestAuthType(String authHeader){
+    return StringUtils.isEmpty(authHeader)? "" : authHeader.substring(0, authHeader.indexOf(" "));
   }
 
   @Before
@@ -126,69 +112,39 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
 
   @Test
   public void onMultipleAuthenticationMethodsSupportedLocallySetMethodIsChosenDigest() {
-    HttpRequestOptions options = getOptionsDigest();
-    HttpRequest request = getRequest();
-    client.sendAsync(request, options).whenComplete(
-                                                    (response, exception) -> responseReference.set(response));
-
-    pollingProber.check(new ResponseReceivedProbe(responseReference));
-    pollingProber.check(new Probe() {
-
-      @Override
-      public boolean isSatisfied() {
-        return choseDigest;
-      }
-
-      @Override
-      public String describeFailure() {
-        return "Authorization method chosen should be Digest!";
-      }
-
-    });
+    sendRequestAssertCorrectAuthMethodChosen(HttpAuthentication.digest(TEST_USER, TEST_PASS), DIGEST);
   }
 
   @Test
   public void onMultipleAuthenticationMethodsSupportedLocallySetMethodIsChosenNtlm() {
-    HttpRequestOptions options = getOptionsNtlm();
-    HttpRequest request = getRequest();
-    client.sendAsync(request, options).whenComplete(
-                                                    (response, exception) -> responseReference.set(response));
-
-    pollingProber.check(new ResponseReceivedProbe(responseReference));
-    pollingProber.check(new Probe() {
-
-      @Override
-      public boolean isSatisfied() {
-        return choseNtlm;
-      }
-
-      @Override
-      public String describeFailure() {
-        return "Authorization method chosen should be Ntlm!";
-      }
-
-    });
+    sendRequestAssertCorrectAuthMethodChosen(HttpAuthentication.ntlm(TEST_USER, TEST_PASS), NTLM.name());
   }
 
   @Test
   public void onMultipleAuthenticationMethodsSupportedLocallySetMethodIsChosenBasic() {
-    HttpRequestOptions options = getOptionsBasic();
+    sendRequestAssertCorrectAuthMethodChosen(HttpAuthentication.basic(TEST_USER, TEST_PASS), BASIC);
+  }
+
+  protected void sendRequestAssertCorrectAuthMethodChosen(HttpAuthenticationBuilder authBuilder, String authMethod){
+    HttpRequestOptions options = getOptions(authBuilder);
     HttpRequest request = getRequest();
     client.sendAsync(request, options).whenComplete(
-                                                    (response, exception) -> responseReference.set(response));
+            (response, exception) -> responseReference.set(response));
     pollingProber.check(new ResponseReceivedProbe(responseReference));
-    pollingProber.check(new Probe() {
+    pollingProber.check(new ResponseSuccessProbe());
+    assertThat(chosenAuthMethod, equalTo(authMethod));
+  }
 
-      @Override
-      public boolean isSatisfied() {
-        return choseBasic;
-      }
+  private class ResponseSuccessProbe implements Probe {
 
-      @Override
-      public String describeFailure() {
-        return "Authorization method chosen should be Basic!";
-      }
+    @Override
+    public boolean isSatisfied() {
+      return responseReference.get().getStatusCode() == OK.getStatusCode();
+    }
 
-    });
+    @Override
+    public String describeFailure() {
+      return "Authorization method chosen should be Basic!";
+    }
   }
 }
