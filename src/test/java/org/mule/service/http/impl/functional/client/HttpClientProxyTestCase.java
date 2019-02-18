@@ -129,4 +129,8 @@ public class HttpClientProxyTestCase extends AbstractHttpClientTestCase {
     assertThat(IOUtils.toString(response.getEntity().getContent()), is(REQUEST_RESPONSE));
   }
 
+  @Test
+  public void mockTest(){
+    assert(true);
+  }
 }
