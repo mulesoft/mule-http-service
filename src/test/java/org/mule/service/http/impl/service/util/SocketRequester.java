@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.service.util;
 
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
+import static java.lang.System.lineSeparator;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -59,12 +60,12 @@ public class SocketRequester {
 
     //Reading headers.
     while (!isEmpty((outputString = bufferedReader.readLine()))) {
-      stringBuilder.append(outputString).append("\n");
+      stringBuilder.append(outputString).append(lineSeparator());
     }
 
     //Reading body.
     while (!isEmpty((outputString = bufferedReader.readLine()))) {
-      stringBuilder.append(outputString).append("\n");
+      stringBuilder.append(outputString).append(lineSeparator());
     }
 
     return stringBuilder.toString();
