@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import org.glassfish.grizzly.filterchain.FilterChainBuilder;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.strategies.SameThreadIOStrategy;
+import org.glassfish.grizzly.strategies.WorkerThreadIOStrategy;
 
 /**
  * Transport customizer that sets the IO strategy to {@code SameThreadIOStrategy} and the thread pool for the NIO transport
@@ -20,19 +21,23 @@ import org.glassfish.grizzly.strategies.SameThreadIOStrategy;
  */
 public class IOStrategyTransportCustomizer implements TransportCustomizer {
 
+  private final boolean streamingEnabled;
   private ExecutorService selectorPool;
   private ExecutorService workerPool;
   private int selectorCount;
 
-  public IOStrategyTransportCustomizer(ExecutorService selectorPool, ExecutorService workerPool, int selectorCount) {
+  public IOStrategyTransportCustomizer(ExecutorService selectorPool, ExecutorService workerPool, boolean streamingEnabled,
+                                       int selectorCount) {
     this.selectorPool = selectorPool;
     this.workerPool = workerPool;
+    this.streamingEnabled = streamingEnabled;
     this.selectorCount = selectorCount;
   }
 
   @Override
   public void customize(TCPNIOTransport transport, FilterChainBuilder filterChainBuilder) {
-    transport.setIOStrategy(SameThreadIOStrategy.getInstance());
+    // When streaming is enabled, a larger pool is required to handle large responses that take many iterations to process
+    transport.setIOStrategy(streamingEnabled ? WorkerThreadIOStrategy.getInstance() : SameThreadIOStrategy.getInstance());
     transport.setKernelThreadPool(selectorPool);
     transport.setWorkerThreadPool(workerPool);
     transport.setSelectorRunnersCount(selectorCount);
