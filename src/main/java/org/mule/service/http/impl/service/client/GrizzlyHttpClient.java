@@ -225,7 +225,7 @@ public class GrizzlyHttpClient implements HttpClient {
     GrizzlyAsyncHttpProviderConfig providerConfig = new GrizzlyAsyncHttpProviderConfig();
     CompositeTransportCustomizer compositeTransportCustomizer = new CompositeTransportCustomizer();
     compositeTransportCustomizer
-        .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler,
+        .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler, streamingEnabled,
                                                                   DEFAULT_SELECTOR_THREAD_COUNT));
     compositeTransportCustomizer.addTransportCustomizer(new LoggerTransportCustomizer(name));
 
