@@ -229,7 +229,7 @@ public class GrizzlyHttpClient implements HttpClient {
     GrizzlyAsyncHttpProviderConfig providerConfig = new GrizzlyAsyncHttpProviderConfig();
     CompositeTransportCustomizer compositeTransportCustomizer = new CompositeTransportCustomizer();
     compositeTransportCustomizer
-        .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler,
+        .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler, streamingEnabled,
                                                                   DEFAULT_SELECTOR_THREAD_COUNT));
     compositeTransportCustomizer.addTransportCustomizer(new LoggerTransportCustomizer(name));
 
@@ -263,7 +263,7 @@ public class GrizzlyHttpClient implements HttpClient {
   @Override
   public HttpResponse send(HttpRequest request, HttpRequestOptions options) throws IOException, TimeoutException {
     checkState(asyncHttpClient != null, "The client must be started before use.");
-    if (shouldStreamResponse(options)) {
+    if (streamingEnabled) {
       return sendAndDefer(request, options);
     } else {
       return sendAndWait(request, options);
@@ -283,7 +283,7 @@ public class GrizzlyHttpClient implements HttpClient {
     Request grizzlyRequest = createGrizzlyRequest(request, options);
     PipedOutputStream outPipe = new PipedOutputStream();
     PipedInputStream inPipe =
-        new PipedInputStream(outPipe, getPipeSize(options));
+        new PipedInputStream(outPipe, responseBufferSize > 0 ? responseBufferSize : DEFAULT_SEND_AND_DEFER_BUFFER_SIZE);
     BodyDeferringAsyncHandler asyncHandler = new BodyDeferringAsyncHandler(outPipe);
     asyncHttpClient.executeRequest(grizzlyRequest, asyncHandler);
     try {
@@ -300,11 +300,6 @@ public class GrizzlyHttpClient implements HttpClient {
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
-  }
-
-  private int getPipeSize(HttpRequestOptions options) {
-    int responseBufferSize = options.getResponseBufferSize().orElse(this.responseBufferSize);
-    return responseBufferSize > 0 ? responseBufferSize : DEFAULT_SEND_AND_DEFER_BUFFER_SIZE;
   }
 
   /**
@@ -348,8 +343,8 @@ public class GrizzlyHttpClient implements HttpClient {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
-      if (shouldStreamResponse(options)) {
-        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, options.getResponseBufferSize().orElse(responseBufferSize));
+      if (streamingEnabled) {
+        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, responseBufferSize);
       } else {
         asyncHandler = new ResponseAsyncHandler(future);
       }
@@ -359,16 +354,6 @@ public class GrizzlyHttpClient implements HttpClient {
       future.completeExceptionally(e);
     }
     return future;
-  }
-
-  /**
-   * Checks whether the client global streaming config has been overridden at the request level.
-   *
-   * @param options the request options
-   * @return whether the response should be streamed
-   */
-  private boolean shouldStreamResponse(HttpRequestOptions options) {
-    return options.isStreamResponse().orElse(streamingEnabled);
   }
 
   protected Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)

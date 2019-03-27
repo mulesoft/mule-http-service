@@ -219,6 +219,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       try {
         future.complete(httpResponseCreator.create(response, input.orElse(response.getResponseBodyAsStream())));
       } catch (IOException e) {
+        // Make sure all resources are accounted for and since we've set the handled flag, handle the future explicitly
+        onThrowable(e);
         future.completeExceptionally(e);
       }
     }
