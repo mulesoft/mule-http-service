@@ -16,11 +16,13 @@ import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.slf4j.LoggerFactory.getLogger;
-
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -30,9 +32,6 @@ import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
 import org.slf4j.Logger;
-
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * {@link org.glassfish.grizzly.CompletionHandler}, responsible for asynchronous http response transferring when the response body
@@ -170,6 +169,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   public void failed(Throwable throwable) {
     super.failed(throwable);
     close();
+    responseStatusCallback.responseSendError(throwable);
     resume();
   }
 

@@ -10,10 +10,13 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.lang.System.arraycopy;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
-
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+
+import java.io.IOException;
+import java.io.Writer;
+import java.nio.charset.Charset;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -22,10 +25,6 @@ import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
-
-import java.io.IOException;
-import java.io.Writer;
-import java.nio.charset.Charset;
 
 final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandler {
 
@@ -110,7 +109,7 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
   @Override
   public void failed(Throwable throwable) {
     super.failed(throwable);
-    responseStatusCallback.responseSendFailure(throwable);
+    responseStatusCallback.responseSendError(throwable);
     resume();
   }
 
