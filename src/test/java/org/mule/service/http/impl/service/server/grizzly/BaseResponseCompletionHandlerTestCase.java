@@ -30,7 +30,19 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
   protected FilterChainContext ctx = mock(FilterChainContext.class);
   protected Connection connection = mock(Connection.class, RETURNS_DEEP_STUBS);
   protected HttpRequestPacket request = mock(HttpRequestPacket.class);
-  protected ResponseStatusCallback callback = spy(ResponseStatusCallback.class);
+  protected ResponseStatusCallback callback = spy(new ResponseStatusCallback() {
+
+    @Override
+    public void responseSendFailure(Throwable throwable) {
+
+    }
+
+    @Override
+    public void responseSendSuccessfully() {
+
+    }
+
+  });
 
   protected abstract BaseResponseCompletionHandler getHandler();
 
@@ -39,6 +51,7 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
     when(connection.isOpen()).thenReturn(false);
     getHandler().failed(new IOException(ERROR));
     verify(callback, never()).responseSendFailure(any(Throwable.class));
+    verify(callback, atLeastOnce()).onErrorSendingResponse(any(Throwable.class));
   }
 
   @Test
