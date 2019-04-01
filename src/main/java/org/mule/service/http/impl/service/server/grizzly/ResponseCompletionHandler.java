@@ -11,11 +11,12 @@ import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+
+import java.io.IOException;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -26,8 +27,6 @@ import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.http.HttpServerFilter;
 import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.memory.Buffers;
-
-import java.io.IOException;
 
 /**
  * {@link org.glassfish.grizzly.CompletionHandler}, responsible for asynchronous response writing
@@ -156,6 +155,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   @Override
   public void failed(Throwable throwable) {
     super.failed(throwable);
+    responseStatusCallback.onErrorSendingResponse(throwable);
     resume();
   }
 
