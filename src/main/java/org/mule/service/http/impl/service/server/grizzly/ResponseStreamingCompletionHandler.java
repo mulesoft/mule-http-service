@@ -169,7 +169,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   public void failed(Throwable throwable) {
     super.failed(throwable);
     close();
-    responseStatusCallback.responseSendError(throwable);
+    responseStatusCallback.onErrorSendingResponse(throwable);
     resume();
   }
 

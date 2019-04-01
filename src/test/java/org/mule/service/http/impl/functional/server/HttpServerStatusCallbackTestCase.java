@@ -65,7 +65,7 @@ public class HttpServerStatusCallbackTestCase extends AbstractHttpServerTestCase
 
       @Override
       protected boolean test() throws Exception {
-        verify(statusCallback, atLeastOnce()).responseSendError(any());
+        verify(statusCallback, atLeastOnce()).onErrorSendingResponse(any());
         return true;
       }
 

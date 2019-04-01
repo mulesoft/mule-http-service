@@ -155,7 +155,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   @Override
   public void failed(Throwable throwable) {
     super.failed(throwable);
-    responseStatusCallback.responseSendError(throwable);
+    responseStatusCallback.onErrorSendingResponse(throwable);
     resume();
   }
 

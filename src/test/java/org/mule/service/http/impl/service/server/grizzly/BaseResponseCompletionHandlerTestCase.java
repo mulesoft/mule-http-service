@@ -39,7 +39,7 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
     when(connection.isOpen()).thenReturn(false);
     getHandler().failed(new IOException(ERROR));
     verify(callback, never()).responseSendFailure(any(Throwable.class));
-    verify(callback, atLeastOnce()).responseSendError(any(Throwable.class));
+    verify(callback, atLeastOnce()).onErrorSendingResponse(any(Throwable.class));
   }
 
   @Test

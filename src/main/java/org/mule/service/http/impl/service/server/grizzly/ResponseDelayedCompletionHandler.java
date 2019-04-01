@@ -109,7 +109,7 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
   @Override
   public void failed(Throwable throwable) {
     super.failed(throwable);
-    responseStatusCallback.responseSendError(throwable);
+    responseStatusCallback.onErrorSendingResponse(throwable);
     resume();
   }
 
