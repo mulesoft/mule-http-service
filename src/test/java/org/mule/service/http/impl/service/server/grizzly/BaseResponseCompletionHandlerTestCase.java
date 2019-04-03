@@ -14,7 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+import org.mule.service.http.impl.service.server.ErrorAwareResponseStatusCallback;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import java.io.IOException;
@@ -30,23 +30,7 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
   protected FilterChainContext ctx = mock(FilterChainContext.class);
   protected Connection connection = mock(Connection.class, RETURNS_DEEP_STUBS);
   protected HttpRequestPacket request = mock(HttpRequestPacket.class);
-  protected ResponseStatusCallback callback = spy(new ResponseStatusCallback() {
-
-    @Override
-    public void responseSendFailure(Throwable throwable) {
-
-    }
-
-    @Override
-    public void responseSendSuccessfully() {
-
-    }
-
-    public void onErrorSendingResponse(Throwable throwable) {
-
-    }
-
-  });
+  protected ErrorAwareResponseStatusCallback callback = spy(ErrorAwareResponseStatusCallback.class);
 
   protected abstract BaseResponseCompletionHandler getHandler();
 

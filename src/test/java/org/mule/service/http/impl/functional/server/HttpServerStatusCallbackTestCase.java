@@ -16,9 +16,9 @@ import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
-import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 import org.mule.service.http.impl.functional.FillAndWaitStream;
+import org.mule.service.http.impl.service.server.ErrorAwareResponseStatusCallback;
 import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.tck.probe.JUnitProbe;
 import org.mule.tck.probe.PollingProber;
@@ -41,22 +41,7 @@ public class HttpServerStatusCallbackTestCase extends AbstractHttpServiceTestCas
 
   private HttpServer server;
   private Latch latch = new Latch();
-  private ResponseStatusCallback statusCallback = spy(new ResponseStatusCallback() {
-
-    @Override
-    public void responseSendFailure(Throwable throwable) {
-
-    }
-
-    @Override
-    public void responseSendSuccessfully() {
-
-    }
-
-    public void onErrorSendingResponse(Throwable throwable) {
-
-    }
-  });
+  private ErrorAwareResponseStatusCallback statusCallback = spy(ErrorAwareResponseStatusCallback.class);
 
   public HttpServerStatusCallbackTestCase(String serviceToLoad) {
     super(serviceToLoad);
