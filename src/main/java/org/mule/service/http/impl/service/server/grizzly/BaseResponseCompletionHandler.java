@@ -17,8 +17,11 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.BOUNDARY;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.slf4j.LoggerFactory.getLogger;
-
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+
+import java.lang.reflect.Method;
+import java.util.Optional;
 
 import org.glassfish.grizzly.EmptyCompletionHandler;
 import org.glassfish.grizzly.WriteResult;
@@ -27,14 +30,19 @@ import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.http.Protocol;
 import org.slf4j.Logger;
 
-import java.util.Optional;
-
 public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandler<WriteResult> {
 
   private static final Logger LOGGER = getLogger(BaseResponseCompletionHandler.class);
   private static final String MULTIPART_CONTENT_TYPE_FORMAT = "%s; %s=\"%s\"";
 
+  protected final ResponseStatusCallback responseStatusCallback;
   protected boolean hasContentLength = false;
+
+  private Method onErrorSendingResponse;
+
+  public BaseResponseCompletionHandler(ResponseStatusCallback responseStatusCallback) {
+    this.responseStatusCallback = responseStatusCallback;
+  }
 
   protected HttpResponsePacket buildHttpResponsePacket(HttpRequestPacket sourceRequest, HttpResponse httpResponse) {
     final HttpResponsePacket.Builder responsePacketBuilder = HttpResponsePacket.builder(sourceRequest)
@@ -113,6 +121,17 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
   public void failed(Throwable throwable) {
     if (LOGGER.isWarnEnabled()) {
       LOGGER.warn(format("HTTP response sending task failed with error: %s", throwable.getMessage()));
+    }
+  }
+
+  protected void callOnErrorSendingResponseIfPossible(Throwable throwable) {
+    try {
+      if (onErrorSendingResponse == null) {
+        onErrorSendingResponse = responseStatusCallback.getClass().getMethod("onErrorSendingResponse", Throwable.class);
+      }
+      onErrorSendingResponse.invoke(responseStatusCallback, throwable);
+    } catch (Exception e) {
+      LOGGER.warn("Could not call 'onErrorSendingResponse', please make sure the latest HTTP version is in use.", e);
     }
   }
 

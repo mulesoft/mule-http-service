@@ -45,20 +45,19 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private final FilterChainContext ctx;
   private final HttpResponsePacket httpResponsePacket;
   private final InputStream inputStream;
-  private final ResponseStatusCallback responseStatusCallback;
   private final int bufferSize;
 
   private volatile boolean isDone;
 
   public ResponseStreamingCompletionHandler(final FilterChainContext ctx, final HttpRequestPacket request,
                                             final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
+    super(responseStatusCallback);
     checkArgument((httpResponse.getEntity().isStreaming()), "HTTP response entity must be stream based");
     this.ctx = ctx;
     httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
     inputStream = httpResponse.getEntity().getContent();
     memoryManager = ctx.getConnection().getTransport().getMemoryManager();
     bufferSize = calculateBufferSize(ctx);
-    this.responseStatusCallback = responseStatusCallback;
   }
 
   /**
@@ -164,6 +163,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   public void failed(Throwable throwable) {
     super.failed(throwable);
     close();
+    callOnErrorSendingResponseIfPossible(throwable);
     resume();
   }
 
