@@ -33,7 +33,6 @@ import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
 import org.mule.runtime.core.api.util.IOUtils;
-import org.mule.runtime.core.api.util.StreamingUtils;
 import org.mule.runtime.core.api.util.func.CheckedConsumer;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
@@ -92,6 +91,9 @@ public class GrizzlyHttpClient implements HttpClient {
   public static final String HOST_SEPARATOR = ",";
   private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
+
+  private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
+  private static boolean requestStreamingDisabled = (System.getProperty(DISABLE_REQUEST_STREAMING_PROPERTY_NAME) != null);
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
@@ -425,7 +427,7 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private void setStreamingBodyToRequestBuilder(HttpRequest request, RequestBuilder builder) throws IOException {
-    if (StreamingUtils.isRequestStreamingEnabled()) {
+    if (isRequestStreamingEnabled()) {
       FeedableBodyGenerator bodyGenerator = new FeedableBodyGenerator();
       FeedableBodyGenerator.Feeder nonBlockingFeeder =
           new NonBlockingInputStreamFeeder(bodyGenerator, request.getEntity().getContent());
@@ -522,4 +524,7 @@ public class GrizzlyHttpClient implements HttpClient {
     DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
   }
 
+  private static boolean isRequestStreamingEnabled() {
+    return !requestStreamingDisabled;
+  }
 }
