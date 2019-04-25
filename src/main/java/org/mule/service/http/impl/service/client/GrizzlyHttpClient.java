@@ -16,6 +16,7 @@ import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
+import static java.lang.System.getProperties;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
@@ -92,8 +93,8 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
-  private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
-  private static boolean requestStreamingDisabled = (System.getProperty(DISABLE_REQUEST_STREAMING_PROPERTY_NAME) != null);
+  private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.disableRequestStreaming";
+  private static boolean requestStreamingDisabled = getProperties().contains(DISABLE_REQUEST_STREAMING_PROPERTY_NAME);
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
