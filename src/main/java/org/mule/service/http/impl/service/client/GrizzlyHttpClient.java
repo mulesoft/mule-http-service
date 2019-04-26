@@ -93,8 +93,12 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
-  private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.disableRequestStreaming";
+  private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.disable";
   private static boolean requestStreamingDisabled = getProperties().contains(DISABLE_REQUEST_STREAMING_PROPERTY_NAME);
+
+  private static final String REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME =
+      SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.bufferSize";
+  private static int requestStreamingBufferSize = getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, 8192);
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
@@ -431,7 +435,7 @@ public class GrizzlyHttpClient implements HttpClient {
     if (isRequestStreamingEnabled()) {
       FeedableBodyGenerator bodyGenerator = new FeedableBodyGenerator();
       FeedableBodyGenerator.Feeder nonBlockingFeeder =
-          new NonBlockingInputStreamFeeder(bodyGenerator, request.getEntity().getContent());
+          new NonBlockingInputStreamFeeder(bodyGenerator, request.getEntity().getContent(), requestStreamingBufferSize);
       bodyGenerator.setFeeder(nonBlockingFeeder);
       builder.setBody(bodyGenerator);
     } else {
