@@ -94,7 +94,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
   private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.disable";
-  private static boolean requestStreamingDisabled = getProperties().contains(DISABLE_REQUEST_STREAMING_PROPERTY_NAME);
+  private static boolean requestStreamingDisabled = getProperties().containsKey(DISABLE_REQUEST_STREAMING_PROPERTY_NAME);
 
   private static final String REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME =
       SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.bufferSize";
