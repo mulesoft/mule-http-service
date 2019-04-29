@@ -16,6 +16,7 @@ import static java.lang.Integer.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
+import static java.lang.System.getProperties;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
@@ -60,6 +61,8 @@ import com.ning.http.client.Response;
 import com.ning.http.client.filter.FilterException;
 import com.ning.http.client.generators.InputStreamBodyGenerator;
 import com.ning.http.client.multipart.ByteArrayPart;
+import com.ning.http.client.providers.grizzly.FeedableBodyGenerator;
+import com.ning.http.client.providers.grizzly.NonBlockingInputStreamFeeder;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
 import com.ning.http.client.uri.Uri;
@@ -89,6 +92,15 @@ public class GrizzlyHttpClient implements HttpClient {
   public static final String HOST_SEPARATOR = ",";
   private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
+
+  private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.disable";
+  private static boolean requestStreamingDisabled = getProperties().containsKey(DISABLE_REQUEST_STREAMING_PROPERTY_NAME);
+
+  private static final int DEFAULT_REQUEST_STREAMING_BUFFER_SIZE = 8 * 1024;
+  private static final String REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME =
+      SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.bufferSize";
+  private static int requestStreamingBufferSize =
+      getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, DEFAULT_REQUEST_STREAMING_BUFFER_SIZE);
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
@@ -394,7 +406,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
       if (request.getEntity() != null) {
         if (request.getEntity().isStreaming()) {
-          builder.setBody(new InputStreamBodyGenerator(request.getEntity().getContent()));
+          setStreamingBodyToRequestBuilder(request, builder);
         } else if (request.getEntity().isComposed()) {
           for (HttpPart part : request.getEntity().getParts()) {
             if (part.getFileName() != null) {
@@ -419,6 +431,18 @@ public class GrizzlyHttpClient implements HttpClient {
                               uri.getRawQuery() != null ? uri.getRawQuery() + (request.getQueryParams().isEmpty() ? "" : "&")
                                   : null));
     return reqBuilder.build();
+  }
+
+  private void setStreamingBodyToRequestBuilder(HttpRequest request, RequestBuilder builder) throws IOException {
+    if (isRequestStreamingEnabled()) {
+      FeedableBodyGenerator bodyGenerator = new FeedableBodyGenerator();
+      FeedableBodyGenerator.Feeder nonBlockingFeeder =
+          new NonBlockingInputStreamFeeder(bodyGenerator, request.getEntity().getContent(), requestStreamingBufferSize);
+      bodyGenerator.setFeeder(nonBlockingFeeder);
+      builder.setBody(bodyGenerator);
+    } else {
+      builder.setBody(new InputStreamBodyGenerator(request.getEntity().getContent()));
+    }
   }
 
   protected RequestBuilder createRequestBuilder(HttpRequest request, HttpRequestOptions options,
@@ -507,4 +531,7 @@ public class GrizzlyHttpClient implements HttpClient {
     DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
   }
 
+  private static boolean isRequestStreamingEnabled() {
+    return !requestStreamingDisabled;
+  }
 }
