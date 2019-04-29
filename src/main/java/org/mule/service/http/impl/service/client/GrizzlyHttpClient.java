@@ -96,9 +96,11 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.disable";
   private static boolean requestStreamingDisabled = getProperties().containsKey(DISABLE_REQUEST_STREAMING_PROPERTY_NAME);
 
+  private static final int DEFAULT_REQUEST_STREAMING_BUFFER_SIZE = 8 * 1024;
   private static final String REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME =
       SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.bufferSize";
-  private static int requestStreamingBufferSize = getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, 8192);
+  private static int requestStreamingBufferSize =
+      getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, DEFAULT_REQUEST_STREAMING_BUFFER_SIZE);
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
