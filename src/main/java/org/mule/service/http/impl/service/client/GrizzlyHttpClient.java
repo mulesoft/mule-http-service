@@ -89,8 +89,8 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = "mule.http.client.decompress";
 
-  private static final String DISABLE_REQUEST_STREAMING_PROPERTY_NAME = "mule.http.requestStreaming.disable";
-  private static boolean requestStreamingDisabled = getProperties().containsKey(DISABLE_REQUEST_STREAMING_PROPERTY_NAME);
+  private static final String ENABLE_REQUEST_STREAMING_PROPERTY_NAME = "mule.http.requestStreaming.enable";
+  private static boolean requestStreamingEnabled = getProperties().containsKey(ENABLE_REQUEST_STREAMING_PROPERTY_NAME);
 
   private static final int DEFAULT_REQUEST_STREAMING_BUFFER_SIZE = 8 * 1024;
   private static final String REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME = "mule.http.requestStreaming.bufferSize";
@@ -529,6 +529,6 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private static boolean isRequestStreamingEnabled() {
-    return !requestStreamingDisabled;
+    return requestStreamingEnabled;
   }
 }
