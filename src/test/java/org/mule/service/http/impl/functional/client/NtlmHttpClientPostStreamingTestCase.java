@@ -8,6 +8,8 @@ package org.mule.service.http.impl.functional.client;
 
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
+import static org.mule.service.http.impl.NtlmMockResponseGenerator.State.FAILURE;
+import static org.mule.service.http.impl.NtlmMockResponseGenerator.State.SUCCESS;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication.HttpNtlmAuthentication;
@@ -27,7 +29,7 @@ import org.junit.Before;
 @DisplayName("Validates that the POST body is preserved on NTLM authentication")
 public class NtlmHttpClientPostStreamingTestCase extends HttpClientPostStreamingTestCase {
 
-  private NtlmMockResponseGenerator responseGenerator;
+  private NtlmMockResponseGenerator ntlmResponseGenerator;
 
   public NtlmHttpClientPostStreamingTestCase(String serviceToLoad) {
     super(serviceToLoad);
@@ -37,17 +39,15 @@ public class NtlmHttpClientPostStreamingTestCase extends HttpClientPostStreaming
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    responseGenerator = new NtlmMockResponseGenerator("NTLM TlRMTVNTUAABAAAAAYIIogAAAAAoAAAAAAAAACgAAAAFASgKAAAADw==",
-                                                      "NTLM TlRMTVNTUAACAAAAAAAAACgAAAABggAAU3J2Tm9uY2UAAAAAAAAAAA==",
-                                                      "NTLM TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAABQAFAB4AAAADAAMAIwAAAAUABQAmAAAAAAAAACsAAAAAYIAAgUBKAoAAAAPrYfKbe/jRoW5xDxHeoxC1gBmfWiS5+iX4OAN4xBKG/IFPwfH3agtPEia6YnhsADTVQBSAFMAQQAtAE0ASQBOAE8AUgBaAGEAcABoAG8AZABwAGIAYQBsAGIAaQAtAGwAdABtAA==");;
+    ntlmResponseGenerator = NtlmMockResponseGenerator.forDefaultCredentials();
   }
 
   @Override
   public HttpResponse doSetUpHttpResponse(HttpRequest request) {
-    HttpResponseBuilder responseBuilder = responseGenerator.generateForRequest(request);
+    HttpResponseBuilder responseBuilder = ntlmResponseGenerator.generateForRequest(request);
 
-    if (responseGenerator.getState().equals(NtlmMockResponseGenerator.State.SUCCESS) ||
-        responseGenerator.getState().equals(NtlmMockResponseGenerator.State.FAILURE)) {
+    if (ntlmResponseGenerator.getState().equals(SUCCESS) ||
+        ntlmResponseGenerator.getState().equals(FAILURE)) {
       extractPayload(request);
     }
 
@@ -58,7 +58,11 @@ public class NtlmHttpClientPostStreamingTestCase extends HttpClientPostStreaming
   @Override
   public HttpRequestOptions getOptions() {
     HttpAuthentication authentication =
-        HttpNtlmAuthentication.builder().username("Zaphod").password("Beeblebrox").domain("Ursa-Minor").build();
+        HttpNtlmAuthentication.builder()
+            .username(ntlmResponseGenerator.getUsername())
+            .password(ntlmResponseGenerator.getPassword())
+            .domain(ntlmResponseGenerator.getDomain())
+            .build();
     return HttpRequestOptions.builder().responseTimeout(RESPONSE_TIMEOUT).authentication(authentication).build();
   }
 

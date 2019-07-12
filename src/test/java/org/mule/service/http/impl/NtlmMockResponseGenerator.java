@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl;
 
+import static java.lang.ClassLoader.getSystemClassLoader;
 import static org.apache.http.client.config.AuthSchemes.NTLM;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.UNAUTHORIZED;
@@ -15,6 +16,9 @@ import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
+
+import java.io.FileInputStream;
+import java.util.Properties;
 
 import org.slf4j.Logger;
 
@@ -33,13 +37,34 @@ public class NtlmMockResponseGenerator {
   private final String challenge;
   private final String secondMessageExpectedHeader;
 
+  private final String username;
+  private final String password;
+  private final String domain;
+
   private State currentState;
 
+  private final static String DEFAULT_CREDENTIALS_FILE = "ntlm-credentials.conf";
+
+  public static NtlmMockResponseGenerator forDefaultCredentials() throws Exception {
+    Properties credentialsProperties = new Properties();
+    credentialsProperties
+        .load(new FileInputStream(getSystemClassLoader().getResource(DEFAULT_CREDENTIALS_FILE).getFile()));
+    return new NtlmMockResponseGenerator(credentialsProperties.getProperty("first-message-header"),
+                                         credentialsProperties.getProperty("challenge"),
+                                         credentialsProperties.getProperty("second-message-header"),
+                                         credentialsProperties.getProperty("username"),
+                                         credentialsProperties.getProperty("password"),
+                                         credentialsProperties.getProperty("domain"));
+  }
+
   public NtlmMockResponseGenerator(String firstMessageExpectedHeader, String challenge,
-                                   String secondMessageExpectedHeader) {
+                                   String secondMessageExpectedHeader, String username, String password, String domain) {
     this.firstMessageExpectedHeader = firstMessageExpectedHeader;
     this.challenge = challenge;
     this.secondMessageExpectedHeader = secondMessageExpectedHeader;
+    this.username = username;
+    this.password = password;
+    this.domain = domain;
     this.currentState = State.NOT_INITIATED;
   }
 
@@ -84,6 +109,19 @@ public class NtlmMockResponseGenerator {
   public State getState() {
     return currentState;
   }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public String getDomain() {
+    return domain;
+  }
+
 }
 
 
