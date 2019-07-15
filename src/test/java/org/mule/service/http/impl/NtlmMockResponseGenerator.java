@@ -86,7 +86,7 @@ public class NtlmMockResponseGenerator {
       responseBuilder.statusCode(UNAUTHORIZED.getStatusCode());
       responseBuilder.addHeader(WWW_AUTHENTICATE, this.challenge);
       this.currentState = State.CHALLENGE_SENT;
-      // First message with challenge sent, verifying outcome of dace
+      // First message with challenge sent, verifying outcome of dance
     } else if (authorization
         .equals(this.secondMessageExpectedHeader)) {
       responseBuilder.statusCode(OK.getStatusCode());
