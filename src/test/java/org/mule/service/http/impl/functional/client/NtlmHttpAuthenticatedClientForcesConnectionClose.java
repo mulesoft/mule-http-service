@@ -66,6 +66,7 @@ public class NtlmHttpAuthenticatedClientForcesConnectionClose extends AbstractHt
             .username(ntlmResponseGenerator.getUsername())
             .password(ntlmResponseGenerator.getPassword())
             .domain(ntlmResponseGenerator.getDomain())
+            .forceConnectionClose(true)
             .build();
     HttpRequestOptions options = HttpRequestOptions.builder().authentication(authentication).build();
     HttpRequest request = HttpRequest.builder().method(POST).uri(getUri()).build();

@@ -62,14 +62,15 @@ import com.ning.http.client.filter.FilterException;
 import com.ning.http.client.generators.InputStreamBodyGenerator;
 import com.ning.http.client.multipart.ByteArrayPart;
 import com.ning.http.client.providers.grizzly.FeedableBodyGenerator;
-import com.ning.http.client.providers.grizzly.NonBlockingInputStreamFeeder;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
+import com.ning.http.client.providers.grizzly.NonBlockingInputStreamFeeder;
 import com.ning.http.client.uri.Uri;
 
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -94,7 +95,8 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
   private static final String ENABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.enable";
-  private static boolean requestStreamingEnabled = getProperties().containsKey(ENABLE_REQUEST_STREAMING_PROPERTY_NAME);
+    private static final String FORCE_CONNECTION_CLOSE = "forceConnectionClose";
+    private static boolean requestStreamingEnabled = getProperties().containsKey(ENABLE_REQUEST_STREAMING_PROPERTY_NAME);
 
   private static final int DEFAULT_REQUEST_STREAMING_BUFFER_SIZE = 8 * 1024;
   private static final String REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME =
@@ -397,7 +399,17 @@ public class GrizzlyHttpClient implements HttpClient {
           String workstation = ((HttpAuthentication.HttpNtlmAuthentication) authentication).getWorkstation();
           String ntlmHost = workstation != null ? workstation : getHostName();
           realmBuilder.setNtlmHost(ntlmHost).setScheme(NTLM);
-          realmBuilder.setForceConnectionClose(true);
+
+          // If Authentication has forceConnectionClose method, set it in the authentication Realm
+          try {
+            Method forceConnectionCloseMethod = authentication.getClass().getMethod(FORCE_CONNECTION_CLOSE);
+            // To prevent cross-package access exceptions
+            forceConnectionCloseMethod.setAccessible(true);
+            realmBuilder.setForceConnectionClose((boolean) forceConnectionCloseMethod.invoke(authentication));
+          } catch (Exception e) {
+            logger
+                .warn("The authentication object used configuring an NTLM authentication does not implement 'forceConnectionClose'.");
+          }
         }
 
         builder.setRealm(realmBuilder.build());
