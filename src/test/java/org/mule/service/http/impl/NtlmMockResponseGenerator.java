@@ -94,7 +94,7 @@ public class NtlmMockResponseGenerator {
     } else {
       responseBuilder.statusCode(UNAUTHORIZED.getStatusCode());
       LOGGER.error("NTLM dance failed in state: {}", this.currentState.toString());
-      LOGGER.error("Recieved request: {}", request.getHeaderValue(AUTHORIZATION));
+      LOGGER.error("Received request: {}", request.getHeaderValue(AUTHORIZATION));
       this.currentState = State.FAILURE;
     }
 
