@@ -70,7 +70,6 @@ import com.ning.http.client.uri.Uri;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -399,17 +398,8 @@ public class GrizzlyHttpClient implements HttpClient {
           String workstation = ((HttpAuthentication.HttpNtlmAuthentication) authentication).getWorkstation();
           String ntlmHost = workstation != null ? workstation : getHostName();
           realmBuilder.setNtlmHost(ntlmHost).setScheme(NTLM);
-
-          // If Authentication has forceConnectionClose method, set it in the authentication Realm
-          try {
-            Method forceConnectionCloseMethod = authentication.getClass().getMethod(FORCE_CONNECTION_CLOSE);
-            // To prevent cross-package access exceptions
-            forceConnectionCloseMethod.setAccessible(true);
-            realmBuilder.setForceConnectionClose((boolean) forceConnectionCloseMethod.invoke(authentication));
-          } catch (Exception e) {
-            logger
-                .warn("The authentication object used configuring an NTLM authentication does not implement 'forceConnectionClose'.");
-          }
+          realmBuilder
+              .setForceConnectionClose(((HttpAuthentication.HttpNtlmAuthentication) authentication).forceConnectionClose());
         }
 
         builder.setRealm(realmBuilder.build());
