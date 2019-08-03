@@ -8,9 +8,11 @@ package org.mule.service.http.impl.service.client;
 
 import static java.lang.Long.parseLong;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.NOT_MODIFIED;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.NO_CONTENT;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.RESET_CONTENT;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
@@ -55,12 +57,12 @@ public class HttpResponseCreator {
       }
     }
 
-    responseBuilder.entity(createEntity(inputStream, contentType, contentLength));
+    responseBuilder.entity(createEntity(inputStream, contentType, contentLength, response.getStatusCode()));
 
     return responseBuilder.build();
   }
 
-  private HttpEntity createEntity(InputStream stream, String contentType, String contentLength) {
+  private HttpEntity createEntity(InputStream stream, String contentType, String contentLength, int statusCode) {
     long contentLengthAsLong = -1L;
     if (contentLength != null) {
       contentLengthAsLong = parseLong(contentLength);
@@ -75,6 +77,9 @@ public class HttpResponseCreator {
       if (contentLengthAsLong > 0) {
         return new InputStreamHttpEntity(stream, contentLengthAsLong);
       } else if (contentLengthAsLong == 0) {
+        return new EmptyHttpEntity();
+      } else if (statusCode == NO_CONTENT.getStatusCode() || statusCode == NOT_MODIFIED.getStatusCode()
+          || statusCode == RESET_CONTENT.getStatusCode()) {
         return new EmptyHttpEntity();
       } else {
         return new InputStreamHttpEntity(stream);
