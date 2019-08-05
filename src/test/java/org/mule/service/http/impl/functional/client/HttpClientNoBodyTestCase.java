@@ -77,7 +77,7 @@ public class HttpClientNoBodyTestCase extends AbstractHttpClientTestCase {
   }
 
   private void assertEmptyOnStatus(String path, HttpStatus expectedStatus) throws IOException, TimeoutException {
-    HttpResponse response = client.send(HttpRequest.builder().uri(getUri() + path).build());
+    HttpResponse response = client.send(HttpRequest.builder().uri(getUri() + path).build(), TIMEOUT, true, null);
     assertThat(response.getStatusCode(), is(expectedStatus.getStatusCode()));
     assertThat(response.getEntity().getBytesLength().isPresent(), is(true));
     assertThat(response.getEntity().getBytesLength().getAsLong(), is(0L));
