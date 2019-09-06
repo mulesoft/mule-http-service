@@ -17,7 +17,7 @@
     <version>1.5.0-SNAPSHOT</version>
 
     <properties>
-        <asyncHttpClientVersion>1.14-MULE-011</asyncHttpClientVersion>
+        <asyncHttpClientVersion>1.14-MULE-012</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-011</grizzlyVersion>
         <javax.activation.version>1.2.0</javax.activation.version>
         <sun.mailapi.version>1.6.2</sun.mailapi.version>
