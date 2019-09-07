@@ -22,8 +22,12 @@ import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
+import com.sun.mail.util.LineInputStream;
+
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.Optional;
 
 import io.qameta.allure.Story;
 import org.apache.http.HttpEntity;
@@ -38,23 +42,38 @@ import org.junit.Test;
 @Story(MULTIPART)
 public class HttpServerPartsTestCase extends AbstractHttpServerTestCase {
 
+  private static final String MIME_UTF_PROPERTY = "mail.mime.allowutf8";
+  private static final String MIME_PROPERTY_READ_FIELD_NAME = "defaultutf8";
+
   private static final String TEXT_BODY_FIELD_NAME = "field1";
   private static final String TEXT_BODY_FIELD_VALUE = "yes";
   private static final String BASE_PATH = "/";
   private static final String NO_HEADER = "/no-header";
   private static final String PARTIAL_HEADER = "/partial-header";
   private static final String FULL_HEADER = "/full-header";
+  private static final String UTF = "/utf";
   private static final String BOUNDARY_PART = "; boundary=\"the-boundary\"";
+  private static final String MIXED_CONTENT =
+      "--the-boundary\r\n"
+          + "Content-Type: text/plain; charset=ISO-8859-1\r\n"
+          + "Content-Transfer-Encoding: 8bit\r\n"
+          + "Content-Disposition: inline; name=\"field1\"; filename=\"£10.txt\" \r\n"
+          + "\r\n"
+          + "yes\r\n"
+          + "--the-boundary--\r\n";
 
   public HttpServerPartsTestCase(String serviceToLoad) {
     super(serviceToLoad);
   }
 
+  @Rule
+  public SystemProperty encoding = new SystemProperty(MIME_UTF_PROPERTY, "true");
+
   @Before
   public void setUp() throws Exception {
     setUpServer();
+    IgnoreResponseStatusCallback statusCallback = new IgnoreResponseStatusCallback();
     server.addRequestHandler(BASE_PATH, (requestContext, responseCallback) -> {
-      IgnoreResponseStatusCallback statusCallback = new IgnoreResponseStatusCallback();
       try {
         Collection<HttpPart> parts = requestContext.getRequest().getEntity().getParts();
         responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(parts)).build(), statusCallback);
@@ -63,17 +82,28 @@ public class HttpServerPartsTestCase extends AbstractHttpServerTestCase {
                                        statusCallback);
       }
     });
+    server.addRequestHandler(UTF, (requestContext, responseCallback) -> {
+      try {
+        Collection<HttpPart> parts = requestContext.getRequest().getEntity().getParts();
+        responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(parts))
+            .addHeader(CONTENT_TYPE, requestContext.getRequest().getHeaderValue(CONTENT_TYPE))
+            .build(), statusCallback);
+      } catch (IOException e) {
+        responseCallback.responseReady(HttpResponse.builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build(),
+                                       statusCallback);
+      }
+    });
     server.addRequestHandler(NO_HEADER, (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(createPart())).build(),
-                                     new IgnoreResponseStatusCallback());
+                                     statusCallback);
     });
     server.addRequestHandler(PARTIAL_HEADER, (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(createPart()))
-          .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA).build(), new IgnoreResponseStatusCallback());
+          .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA).build(), statusCallback);
     });
     server.addRequestHandler(FULL_HEADER, (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().entity(new MultipartHttpEntity(createPart()))
-          .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA + BOUNDARY_PART).build(), new IgnoreResponseStatusCallback());
+          .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA + BOUNDARY_PART).build(), statusCallback);
     });
   }
 
@@ -90,6 +120,43 @@ public class HttpServerPartsTestCase extends AbstractHttpServerTestCase {
       try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
         assertThat(countMatches(IOUtils.toString(response.getEntity().getContent()), CONTENT_TYPE), is(1));
       }
+    }
+  }
+
+  @Test
+  public void utf8InHeaders() throws Exception {
+    // The system property is read to a static field, so it will be set before this test executes
+    Optional<Field> utf8Property = getMailProperty();
+    Boolean previousValue = null;
+    if (utf8Property.isPresent()) {
+      utf8Property.get().setAccessible(true);
+      previousValue = utf8Property.get().getBoolean(null);
+    }
+
+    try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+      if (utf8Property.isPresent()) {
+        // Mimic the behavior of the property having been present at load time
+        utf8Property.get().setBoolean(null, getBoolean(MIME_UTF_PROPERTY));
+      }
+      HttpPost httpPost = new HttpPost(getUri(UTF));
+      httpPost.setEntity(new ByteArrayEntity(MIXED_CONTENT.getBytes(), ContentType.create(
+                                                                                          "multipart/mixed", ISO_8859_1)
+          .withParameters(new BasicNameValuePair("boundary", "the-boundary"))));
+      try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+        assertThat(IOUtils.toString(response.getEntity().getContent()), is(MIXED_CONTENT));
+      }
+    } finally {
+      if (previousValue != null) {
+        utf8Property.get().setBoolean(null, previousValue);
+      }
+    }
+  }
+
+  private Optional<Field> getMailProperty() {
+    try {
+      return of(LineInputStream.class.getDeclaredField(MIME_PROPERTY_READ_FIELD_NAME));
+    } catch (NoSuchFieldException e) {
+      return empty();
     }
   }
 
