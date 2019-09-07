@@ -6,8 +6,12 @@
  */
 package org.mule.service.http.impl.functional.server;
 
+import static java.lang.Boolean.getBoolean;
 import static java.util.Collections.singletonList;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import static org.apache.commons.lang3.StringUtils.countMatches;
+import static org.apache.http.Consts.ISO_8859_1;
 import static org.apache.http.entity.ContentType.TEXT_PLAIN;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
@@ -21,6 +25,7 @@ import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.tck.junit4.rule.SystemProperty;
 
 import com.sun.mail.util.LineInputStream;
 
@@ -33,10 +38,14 @@ import io.qameta.allure.Story;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 @Story(MULTIPART)
