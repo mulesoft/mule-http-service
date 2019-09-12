@@ -8,13 +8,18 @@ package org.mule.service.http.impl.service;
 
 import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
 import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
+import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.scheduler.SchedulerConfig.config;
+import static org.mule.runtime.core.api.config.MuleProperties.APP_NAME_PROPERTY;
+import static org.mule.runtime.core.api.config.MuleProperties.DOMAIN_NAME_PROPERTY;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_MULE_CONTEXT;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_SCHEDULER_BASE_CONFIG;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.disposeIfNeeded;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
 import static org.slf4j.LoggerFactory.getLogger;
+import org.mule.runtime.api.artifact.Registry;
 import org.mule.runtime.api.exception.MuleException;
+import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.lifecycle.Startable;
 import org.mule.runtime.api.lifecycle.Stoppable;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -30,6 +35,8 @@ import org.mule.service.http.impl.service.client.HttpClientConnectionManager;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
 import org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistryBuilder;
+
+import java.util.Optional;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -70,8 +77,17 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
   }
 
   @Inject
-  public HttpServerFactory getServerFactory(@Named(OBJECT_MULE_CONTEXT) MuleContext muleContext) {
-    return new ContextHttpServerFactoryAdapter(muleContext.getId(), listenerConnectionManager);
+  public HttpServerFactory getServerFactory(Registry registry) {
+    Optional<String> appName = registry.lookupByName(APP_NAME_PROPERTY);
+    Optional<String> domainName = registry.lookupByName(DOMAIN_NAME_PROPERTY);
+    if (domainName.isPresent() && appName.isPresent()) {
+      return new ContextHttpServerFactoryAdapter(appName.get(), domainName.get(), listenerConnectionManager);
+    }
+    return domainName
+        .map(d -> new ContextHttpServerFactoryAdapter(d, listenerConnectionManager))
+        .orElseGet(() -> appName.map(a -> new ContextHttpServerFactoryAdapter(a, listenerConnectionManager))
+            .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("Could not create server factory because neither "
+                + APP_NAME_PROPERTY + " nor " + DOMAIN_NAME_PROPERTY + " is defined"))));
   }
 
   @Override
