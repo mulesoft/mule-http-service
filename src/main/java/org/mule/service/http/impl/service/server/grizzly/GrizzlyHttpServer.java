@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.String.format;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.http.api.HttpConstants.Protocol;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -21,11 +22,15 @@ import java.util.function.Supplier;
 
 import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Grizzly based implementation of an {@link HttpServer}.
  */
 public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> {
+
+  protected static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpServer.class);
 
   private final TCPNIOTransport transport;
   private final ServerAddress serverAddress;
@@ -52,6 +57,11 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   public synchronized HttpServer start() throws IOException {
     this.scheduler = schedulerSource != null ? schedulerSource.get() : null;
     serverConnection = transport.bind(serverAddress.getIp(), serverAddress.getPort());
+
+    if (logger.isDebugEnabled()) {
+      logger.debug(format("Listening for connections on '%s'", listenerUrl()));
+    }
+
     serverConnection.addCloseListener((closeable, type) -> {
       try {
         scheduler.stop();
@@ -69,6 +79,11 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
     stopping = true;
     try {
       transport.unbind(serverConnection);
+
+      if (logger.isDebugEnabled()) {
+        logger.debug(format("Stopped listener on '%s'", listenerUrl()));
+      }
+
       return this;
     } finally {
       stopping = false;
@@ -118,5 +133,9 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   @Override
   public ExecutorService get() {
     return scheduler;
+  }
+
+  private String listenerUrl() {
+    return format("%s://%s:%d", getProtocol().getScheme(), serverAddress.getIp(), serverAddress.getPort());
   }
 }
