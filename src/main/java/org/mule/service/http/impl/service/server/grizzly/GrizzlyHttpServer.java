@@ -70,7 +70,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
     serverConnection = transport.bind(serverAddress.getIp(), serverAddress.getPort());
 
     if (logger.isDebugEnabled()) {
-      logger.debug(format("Listening for connections on %s", listenerUrl()));
+      logger.debug(format("Listening for connections on '%s'", listenerUrl()));
     }
 
     serverConnection.addCloseListener((closeable, type) -> {
@@ -92,7 +92,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       transport.unbind(serverConnection);
 
       if (logger.isDebugEnabled()) {
-        logger.debug(format("Stopped listener on %s", listenerUrl()));
+        logger.debug(format("Stopped listener on '%s'", listenerUrl()));
       }
 
       return this;
