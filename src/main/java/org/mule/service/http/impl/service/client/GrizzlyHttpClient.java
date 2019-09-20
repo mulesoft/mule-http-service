@@ -10,6 +10,7 @@ import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
 import static com.ning.http.util.UTF8UrlEncoder.encodeQueryElement;
+import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
@@ -17,6 +18,8 @@ import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static java.lang.System.getProperties;
+import static java.lang.System.getProperty;
+import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
@@ -101,6 +104,8 @@ public class GrizzlyHttpClient implements HttpClient {
       SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.bufferSize";
   private static int requestStreamingBufferSize =
       getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, DEFAULT_REQUEST_STREAMING_BUFFER_SIZE);
+
+  public static final String CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE = SYSTEM_PROPERTY_PREFIX + "http.client.headerSectionSize";
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
@@ -252,6 +257,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
     providerConfig.addProperty(TRANSPORT_CUSTOMIZER, compositeTransportCustomizer);
     providerConfig.addProperty(DECOMPRESS_RESPONSE, this.decompressionEnabled);
+    providerConfig.addProperty(MAX_HTTP_PACKET_HEADER_SIZE, retrieveMaximumHeaderSectionSize());
     builder.setAsyncHttpClientProviderConfig(providerConfig);
   }
 
@@ -533,5 +539,17 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private static boolean isRequestStreamingEnabled() {
     return requestStreamingEnabled;
+  }
+
+  private int retrieveMaximumHeaderSectionSize() {
+    try {
+      return Integer
+          .valueOf(getProperty(CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE, String.valueOf(DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE)));
+    } catch (NumberFormatException e) {
+      throw new MuleRuntimeException(createStaticMessage(String.format("Invalid value %s for %s configuration.",
+                                                                       getProperty(CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE),
+                                                                       CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE)),
+                                     e);
+    }
   }
 }
