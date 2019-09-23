@@ -12,8 +12,10 @@ import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.scheduler.SchedulerConfig.config;
 import static org.mule.runtime.core.api.config.MuleProperties.APP_NAME_PROPERTY;
 import static org.mule.runtime.core.api.config.MuleProperties.DOMAIN_NAME_PROPERTY;
-import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_MULE_CONTEXT;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_SCHEDULER_BASE_CONFIG;
+import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.APP;
+import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.DOMAIN;
+import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.POLICY;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.disposeIfNeeded;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -25,6 +27,7 @@ import org.mule.runtime.api.lifecycle.Stoppable;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.core.api.MuleContext;
+import org.mule.runtime.core.api.config.bootstrap.ArtifactType;
 import org.mule.runtime.http.api.HttpService;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientFactory;
@@ -77,17 +80,54 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
   }
 
   @Inject
-  public HttpServerFactory getServerFactory(Registry registry) {
+  public HttpServerFactory getServerFactory(Registry registry, MuleContext muleContext) {
+    ArtifactType artifactType = muleContext.getArtifactType();
     Optional<String> appName = registry.lookupByName(APP_NAME_PROPERTY);
     Optional<String> domainName = registry.lookupByName(DOMAIN_NAME_PROPERTY);
-    if (domainName.isPresent() && appName.isPresent()) {
-      return new ContextHttpServerFactoryAdapter(appName.get(), domainName.get(), listenerConnectionManager);
+
+    switch (artifactType) {
+
+      case POLICY:
+        //If this is a policy, then it's name will be set in the appName field.
+        //Policies should not have the same name as applications, just in case, we will add a prefix to it's name.
+        return appName
+            .map(
+                 name -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(name, POLICY), listenerConnectionManager))
+            .orElseThrow(
+                         () -> new MuleRuntimeException(createStaticMessage("Could not create server factory for policy, "
+                             + APP_NAME_PROPERTY + " not set")));
+
+      case DOMAIN:
+        //In case of a domain, use the populated domainName to create the context.
+        return domainName
+            .map(d -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(d, DOMAIN), listenerConnectionManager))
+            .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("Could not create server factory for domain, "
+                + DOMAIN_NAME_PROPERTY + " not set")));
+
+      case APP:
+        //In case of an app, we should consider the case where it belongs to a domain and use it's name as parent context
+        if (domainName.isPresent() && appName.isPresent()) {
+          return new ContextHttpServerFactoryAdapter(buildArtifactServerName(appName.get(), APP),
+                                                     buildArtifactServerName(domainName.get(), DOMAIN),
+                                                     listenerConnectionManager);
+        }
+        return appName
+            .map(a -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(a, APP), listenerConnectionManager))
+            .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("Could not create server factory for application, "
+                + APP_NAME_PROPERTY + " not set")));
+
+      default:
+        break;
     }
-    return domainName
-        .map(d -> new ContextHttpServerFactoryAdapter(d, listenerConnectionManager))
-        .orElseGet(() -> appName.map(a -> new ContextHttpServerFactoryAdapter(a, listenerConnectionManager))
-            .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("Could not create server factory because neither "
-                + APP_NAME_PROPERTY + " nor " + DOMAIN_NAME_PROPERTY + " is defined"))));
+
+    //We should never get to this point. In case we do, fail.
+    throw new MuleRuntimeException(createStaticMessage("Unable to create HttpServerFactory for artifact with type: %s, with properties: %s : %s, %s : %s",
+                                                       artifactType, APP_NAME_PROPERTY, appName, DOMAIN_NAME_PROPERTY,
+                                                       domainName));
+  }
+
+  private String buildArtifactServerName(String name, ArtifactType artifactType) {
+    return name + "-" + artifactType.getAsString();
   }
 
   @Override
