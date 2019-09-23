@@ -544,11 +544,11 @@ public class GrizzlyHttpClient implements HttpClient {
   private int retrieveMaximumHeaderSectionSize() {
     try {
       return Integer
-          .valueOf(getProperty(CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE, String.valueOf(DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE)));
+          .valueOf(getProperty(CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE, valueOf(DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE)));
     } catch (NumberFormatException e) {
-      throw new MuleRuntimeException(createStaticMessage(String.format("Invalid value %s for %s configuration.",
-                                                                       getProperty(CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE),
-                                                                       CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE)),
+      throw new MuleRuntimeException(createStaticMessage(format("Invalid value '%s' for '%s' configuration.",
+                                                                getProperty(CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE),
+                                                                CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE)),
                                      e);
     }
   }
