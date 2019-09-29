@@ -6,6 +6,8 @@
  */
 package org.mule.service.http.impl.service;
 
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
 import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
@@ -35,11 +37,13 @@ import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 import org.mule.service.http.impl.service.client.HttpClientConnectionManager;
+import org.mule.service.http.impl.service.server.ContextHttpServerFactory;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
 import org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistryBuilder;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -76,7 +80,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   @Override
   public HttpServerFactory getServerFactory() {
-    return new ContextHttpServerFactoryAdapter(CONTAINER_CONTEXT, listenerConnectionManager);
+    return new ContextHttpServerFactoryAdapter(CONTAINER_CONTEXT, empty(), listenerConnectionManager);
   }
 
   @Inject
@@ -90,31 +94,18 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
       case POLICY:
         //If this is a policy, then it's name will be set in the appName field.
         //Policies should not have the same name as applications, just in case, we will add a prefix to it's name.
-        return appName
-            .map(
-                 name -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(name, POLICY), listenerConnectionManager))
-            .orElseThrow(
-                         () -> new MuleRuntimeException(createStaticMessage("Could not create server factory for policy, "
-                             + APP_NAME_PROPERTY + " not set")));
+        return buildServerFactory(appName, APP_NAME_PROPERTY, POLICY, empty(), null, listenerConnectionManager);
 
       case DOMAIN:
         //In case of a domain, use the populated domainName to create the context.
-        return domainName
-            .map(d -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(d, DOMAIN), listenerConnectionManager))
-            .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("Could not create server factory for domain, "
-                + DOMAIN_NAME_PROPERTY + " not set")));
+        return buildServerFactory(domainName, DOMAIN_NAME_PROPERTY, DOMAIN, empty(), null, listenerConnectionManager);
 
       case APP:
         //In case of an app, we should consider the case where it belongs to a domain and use it's name as parent context
         if (domainName.isPresent() && appName.isPresent()) {
-          return new ContextHttpServerFactoryAdapter(buildArtifactServerName(appName.get(), APP),
-                                                     buildArtifactServerName(domainName.get(), DOMAIN),
-                                                     listenerConnectionManager);
+          return buildServerFactory(appName, APP_NAME_PROPERTY, APP, domainName, DOMAIN, listenerConnectionManager);
         }
-        return appName
-            .map(a -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(a, APP), listenerConnectionManager))
-            .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("Could not create server factory for application, "
-                + APP_NAME_PROPERTY + " not set")));
+        return buildServerFactory(appName, APP_NAME_PROPERTY, APP, empty(), null, listenerConnectionManager);
 
       default:
         break;
@@ -124,6 +115,23 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
     throw new MuleRuntimeException(createStaticMessage("Unable to create HttpServerFactory for artifact with type: %s, with properties: %s : %s, %s : %s",
                                                        artifactType, APP_NAME_PROPERTY, appName, DOMAIN_NAME_PROPERTY,
                                                        domainName));
+  }
+
+  private HttpServerFactory buildServerFactory(Optional<String> context,
+                                               String namePropertyKey,
+                                               ArtifactType contextType,
+                                               Optional<String> parentContext,
+                                               ArtifactType parentType,
+                                               ContextHttpServerFactory delegate) {
+    return context.map(
+                       c -> parentContext
+                           .map(pc -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(c, contextType),
+                                                                          of(buildArtifactServerName(pc, parentType)), delegate))
+                           .orElse(new ContextHttpServerFactoryAdapter(buildArtifactServerName(c, contextType), empty(),
+                                                                       delegate)))
+        .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("Could not create server factory for "
+            + contextType.getAsString()
+            + ", " + namePropertyKey + " not set")));
   }
 
   private String buildArtifactServerName(String name, ArtifactType artifactType) {

@@ -62,7 +62,7 @@ public class HttpServiceImplementationServerFactoryTestCase {
   @Test
   public void failureWhenServerForAPPWithNoName() {
     expectedException.expect(MuleRuntimeException.class);
-    expectedException.expectMessage("Could not create server factory for application");
+    expectedException.expectMessage("Could not create server factory for app");
     newServerFactory(empty(), empty(), APP);
   }
 
