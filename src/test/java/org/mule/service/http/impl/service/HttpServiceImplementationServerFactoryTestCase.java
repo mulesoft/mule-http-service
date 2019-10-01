@@ -8,6 +8,9 @@ package org.mule.service.http.impl.service;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.rules.ExpectedException.none;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -24,16 +27,15 @@ import org.mule.runtime.core.api.config.bootstrap.ArtifactType;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
-import org.mule.tck.SimpleUnitTestSupportSchedulerService;
+import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 
 import java.util.Optional;
 
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-public class HttpServiceImplementationServerFactoryTestCase {
+public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttpServiceTestCase {
 
   private static final HttpServerConfiguration serverConfiguration = new HttpServerConfiguration.Builder()
       .setName("CONFIG_NAME")
@@ -41,12 +43,8 @@ public class HttpServiceImplementationServerFactoryTestCase {
       .setPort(8081)
       .build();
 
-  private HttpServiceImplementation httpService;
-
-  @Before
-  public void setUp() throws Exception {
-    httpService = new HttpServiceImplementation(new SimpleUnitTestSupportSchedulerService());
-    httpService.start();
+  public HttpServiceImplementationServerFactoryTestCase(String serviceToLoad) {
+    super(serviceToLoad);
   }
 
   @Rule
@@ -60,21 +58,21 @@ public class HttpServiceImplementationServerFactoryTestCase {
   }
 
   @Test
-  public void failureWhenServerForAPPWithNoName() {
+  public void failureWhenServerForAppWithNoName() {
     expectedException.expect(MuleRuntimeException.class);
     expectedException.expectMessage("Could not create server factory for app");
     newServerFactory(empty(), empty(), APP);
   }
 
   @Test
-  public void failureWhenServerForDOMAINWithNoName() {
+  public void failureWhenServerForDomainWithNoName() {
     expectedException.expect(MuleRuntimeException.class);
     expectedException.expectMessage("Could not create server factory for domain");
     newServerFactory(empty(), empty(), DOMAIN);
   }
 
   @Test
-  public void failureWhenServerForPOLICYWithNoName() {
+  public void failureWhenServerForPolicyWithNoName() {
     expectedException.expect(MuleRuntimeException.class);
     expectedException.expectMessage("Could not create server factory for policy");
     newServerFactory(empty(), empty(), POLICY);
@@ -86,8 +84,8 @@ public class HttpServiceImplementationServerFactoryTestCase {
     HttpServerFactory factory = newAppServerFactory(app, empty());
 
     //No failure means OK. Can't compare servers because they are different implementations
-    factory.create(serverConfiguration);
-    factory.lookup(serverConfiguration.getName());
+    assertThat(factory.create(serverConfiguration), is(notNullValue()));
+    assertThat(factory.lookup(serverConfiguration.getName()), is(notNullValue()));
   }
 
   @Test
@@ -96,8 +94,8 @@ public class HttpServiceImplementationServerFactoryTestCase {
     HttpServerFactory factory = newDomainServerFactory(domain);
 
     //No failure means OK. Can't compare servers because they are different implementations
-    factory.create(serverConfiguration);
-    factory.lookup(serverConfiguration.getName());
+    assertThat(factory.create(serverConfiguration), is(notNullValue()));
+    assertThat(factory.lookup(serverConfiguration.getName()), is(notNullValue()));
   }
 
   @Test
@@ -106,8 +104,8 @@ public class HttpServiceImplementationServerFactoryTestCase {
     HttpServerFactory factory = newPolicyServerFactory(policy);
 
     //No failure means OK. Can't compare servers because they are different implementations
-    factory.create(serverConfiguration);
-    factory.lookup(serverConfiguration.getName());
+    assertThat(factory.create(serverConfiguration), is(notNullValue()));
+    assertThat(factory.lookup(serverConfiguration.getName()), is(notNullValue()));
   }
 
   @Test
@@ -121,9 +119,9 @@ public class HttpServiceImplementationServerFactoryTestCase {
     HttpServerFactory domainFactory = newDomainServerFactory(domain);
 
     //No failure means OK. Can't compare servers because they are different implementations
-    domainFactory.create(serverConfiguration);
-    appFactory1.lookup(serverConfiguration.getName());
-    appFactory2.lookup(serverConfiguration.getName());
+    assertThat(domainFactory.create(serverConfiguration), is(notNullValue()));
+    assertThat(appFactory1.lookup(serverConfiguration.getName()), is(notNullValue()));
+    assertThat(appFactory2.lookup(serverConfiguration.getName()), is(notNullValue()));
   }
 
   @Test
@@ -134,7 +132,7 @@ public class HttpServiceImplementationServerFactoryTestCase {
     HttpServerFactory appFactory = newAppServerFactory(app, empty());
     HttpServerFactory policyFactory = newPolicyServerFactory(policy);
 
-    appFactory.create(serverConfiguration);
+    assertThat(appFactory.create(serverConfiguration), is(notNullValue()));
 
     expectedException.expect(ServerNotFoundException.class);
     policyFactory.lookup(serverConfiguration.getName());
@@ -147,7 +145,7 @@ public class HttpServiceImplementationServerFactoryTestCase {
     HttpServerFactory appFactory = newAppServerFactory(name, empty());
     HttpServerFactory policyFactory = newPolicyServerFactory(name);
 
-    appFactory.create(serverConfiguration);
+    assertThat(appFactory.create(serverConfiguration), is(notNullValue()));
 
     expectedException.expect(ServerNotFoundException.class);
     policyFactory.lookup(serverConfiguration.getName());
@@ -160,7 +158,7 @@ public class HttpServiceImplementationServerFactoryTestCase {
     HttpServerFactory appFactory = newAppServerFactory(name, empty());
     HttpServerFactory domainFactory = newDomainServerFactory(name);
 
-    domainFactory.create(serverConfiguration);
+    assertThat(domainFactory.create(serverConfiguration), is(notNullValue()));
 
     expectedException.expect(ServerNotFoundException.class);
     appFactory.lookup(serverConfiguration.getName());
@@ -173,7 +171,7 @@ public class HttpServiceImplementationServerFactoryTestCase {
     HttpServerFactory factory1 = newAppServerFactory(app1, empty());
     HttpServerFactory factory2 = newAppServerFactory(app2, empty());
 
-    factory1.create(serverConfiguration);
+    assertThat(factory1.create(serverConfiguration), is(notNullValue()));
     expectedException.expect(ServerNotFoundException.class);
     factory2.lookup(serverConfiguration.getName());
   }
@@ -202,7 +200,7 @@ public class HttpServiceImplementationServerFactoryTestCase {
     when(registry.<String>lookupByName(APP_NAME_PROPERTY)).thenReturn(artifactName);
     when(registry.<String>lookupByName(DOMAIN_NAME_PROPERTY)).thenReturn(domainName);
 
-    return httpService.getServerFactory(registry, muleContext);
+    return service.getServerFactory(registry, muleContext);
   }
 
 }
