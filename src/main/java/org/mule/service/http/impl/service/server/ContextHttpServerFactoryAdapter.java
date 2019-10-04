@@ -12,6 +12,8 @@ import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 
+import java.util.Optional;
+
 /**
  * Adapts a {@link ContextHttpServerFactory} to a {@link HttpServerFactory}.
  *
@@ -19,11 +21,13 @@ import org.mule.runtime.http.api.server.ServerNotFoundException;
  */
 public class ContextHttpServerFactoryAdapter implements HttpServerFactory {
 
+  private final Optional<String> parentContext;
   private final String context;
   private final ContextHttpServerFactory delegate;
 
-  public ContextHttpServerFactoryAdapter(String context, ContextHttpServerFactory delegate) {
+  public ContextHttpServerFactoryAdapter(String context, Optional<String> parentContext, ContextHttpServerFactory delegate) {
     this.context = context;
+    this.parentContext = parentContext;
     this.delegate = delegate;
   }
 
@@ -34,6 +38,13 @@ public class ContextHttpServerFactoryAdapter implements HttpServerFactory {
 
   @Override
   public HttpServer lookup(String name) throws ServerNotFoundException {
-    return delegate.lookup(new ServerIdentifier(context, name));
+    try {
+      return delegate.lookup(new ServerIdentifier(context, name));
+    } catch (ServerNotFoundException e) {
+      if (parentContext.isPresent()) {
+        return delegate.lookup(new ServerIdentifier(parentContext.get(), name));
+      }
+      throw e;
+    }
   }
 }
