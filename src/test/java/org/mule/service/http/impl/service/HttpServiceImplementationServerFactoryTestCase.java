@@ -21,14 +21,15 @@ import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.DOMAIN;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.PLUGIN;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.POLICY;
 import org.mule.runtime.api.artifact.Registry;
-import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.config.bootstrap.ArtifactType;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
+import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 
+import java.lang.reflect.Field;
 import java.util.Optional;
 
 import org.junit.Rule;
@@ -43,6 +44,23 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
       .setPort(8081)
       .build();
 
+  private static final String MULE_CONTEXT_ID = "muleContextId";
+
+  private static final Field serverFactoryContextField;
+  private static final Field serverFactoryParentContextField;
+
+  static {
+    try {
+      serverFactoryContextField = ContextHttpServerFactoryAdapter.class.getDeclaredField("context");
+      serverFactoryContextField.setAccessible(true);
+
+      serverFactoryParentContextField = ContextHttpServerFactoryAdapter.class.getDeclaredField("parentContext");
+      serverFactoryParentContextField.setAccessible(true);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public HttpServiceImplementationServerFactoryTestCase(String serviceToLoad) {
     super(serviceToLoad);
   }
@@ -51,31 +69,31 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
   public ExpectedException expectedException = none();
 
   @Test
-  public void failureWhenServerForUnknownArtifactType() {
-    expectedException.expect(MuleRuntimeException.class);
-    expectedException.expectMessage("Unable to create HttpServerFactory for artifact with type: PLUGIN, with properties");
-    newServerFactory(empty(), empty(), PLUGIN);
+  public void unknownArtifactTypeFallbackToOldBehaviour() throws Exception {
+    HttpServerFactory httpServerFactory = newServerFactory(empty(), empty(), PLUGIN);
+    assertServerFactory(httpServerFactory, MULE_CONTEXT_ID, empty());
+    assertThat(httpServerFactory.create(serverConfiguration), is(notNullValue()));
   }
 
   @Test
-  public void failureWhenServerForAppWithNoName() {
-    expectedException.expect(MuleRuntimeException.class);
-    expectedException.expectMessage("Could not create server factory for app");
-    newServerFactory(empty(), empty(), APP);
+  public void appWithNoNameFallbackToOldBehaviour() throws Exception {
+    HttpServerFactory httpServerFactory = newServerFactory(empty(), empty(), APP);
+    assertServerFactory(httpServerFactory, MULE_CONTEXT_ID, empty());
+    assertThat(httpServerFactory.create(serverConfiguration), is(notNullValue()));
   }
 
   @Test
-  public void failureWhenServerForDomainWithNoName() {
-    expectedException.expect(MuleRuntimeException.class);
-    expectedException.expectMessage("Could not create server factory for domain");
-    newServerFactory(empty(), empty(), DOMAIN);
+  public void domainWithNoNameFallbackToOldBehaviour() throws Exception {
+    HttpServerFactory httpServerFactory = newServerFactory(empty(), empty(), DOMAIN);
+    assertServerFactory(httpServerFactory, MULE_CONTEXT_ID, empty());
+    assertThat(httpServerFactory.create(serverConfiguration), is(notNullValue()));
   }
 
   @Test
-  public void failureWhenServerForPolicyWithNoName() {
-    expectedException.expect(MuleRuntimeException.class);
-    expectedException.expectMessage("Could not create server factory for policy");
-    newServerFactory(empty(), empty(), POLICY);
+  public void policyWithNoNameFallbackToOldBehaviour() throws Exception {
+    HttpServerFactory httpServerFactory = newServerFactory(empty(), empty(), POLICY);
+    assertServerFactory(httpServerFactory, MULE_CONTEXT_ID, empty());
+    assertThat(httpServerFactory.create(serverConfiguration), is(notNullValue()));
   }
 
   @Test
@@ -190,10 +208,13 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
   }
 
   //Use this to test invalid configurations. For valid configurations use the specific factory methods
-  private HttpServerFactory newServerFactory(Optional<String> artifactName, Optional<String> domainName,
+  private HttpServerFactory newServerFactory(Optional<String> artifactName,
+                                             Optional<String> domainName,
                                              ArtifactType artifactType) {
     MuleContext muleContext = mock(MuleContext.class);
     when(muleContext.getArtifactType()).thenReturn(artifactType);
+
+    when(muleContext.getId()).thenReturn(MULE_CONTEXT_ID);
 
     Registry registry = mock(Registry.class);
 
@@ -202,5 +223,13 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
 
     return service.getServerFactory(registry, muleContext);
   }
+
+  private void assertServerFactory(HttpServerFactory serverFactory, String contextName, Optional<String> parentContext)
+      throws Exception {
+    assertThat(serverFactoryContextField.get(serverFactory), is(contextName));
+    assertThat(serverFactoryParentContextField.get(serverFactory), is(parentContext));
+  }
+
+
 
 }

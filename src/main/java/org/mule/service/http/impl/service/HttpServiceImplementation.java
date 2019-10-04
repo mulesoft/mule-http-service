@@ -23,7 +23,6 @@ import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNee
 import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.api.artifact.Registry;
 import org.mule.runtime.api.exception.MuleException;
-import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.lifecycle.Startable;
 import org.mule.runtime.api.lifecycle.Stoppable;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -43,7 +42,6 @@ import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
 import org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistryBuilder;
 
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -89,32 +87,33 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
     Optional<String> appName = registry.lookupByName(APP_NAME_PROPERTY);
     Optional<String> domainName = registry.lookupByName(DOMAIN_NAME_PROPERTY);
 
-    switch (artifactType) {
+    try {
+      switch (artifactType) {
 
-      case POLICY:
-        //If this is a policy, then it's name will be set in the appName field.
-        //Policies should not have the same name as applications, just in case, we will add a prefix to it's name.
-        return buildServerFactory(appName, APP_NAME_PROPERTY, POLICY, empty(), null, listenerConnectionManager);
+        case POLICY:
+          //If this is a policy, then it's name will be set in the appName field.
+          //Policies should not have the same name as applications, just in case, we will add a prefix to it's name.
+          return buildServerFactory(appName, APP_NAME_PROPERTY, POLICY, empty(), null, listenerConnectionManager);
 
-      case DOMAIN:
-        //In case of a domain, use the populated domainName to create the context.
-        return buildServerFactory(domainName, DOMAIN_NAME_PROPERTY, DOMAIN, empty(), null, listenerConnectionManager);
+        case DOMAIN:
+          //In case of a domain, use the populated domainName to create the context.
+          return buildServerFactory(domainName, DOMAIN_NAME_PROPERTY, DOMAIN, empty(), null, listenerConnectionManager);
 
-      case APP:
-        //In case of an app, we should consider the case where it belongs to a domain and use it's name as parent context
-        if (domainName.isPresent() && appName.isPresent()) {
-          return buildServerFactory(appName, APP_NAME_PROPERTY, APP, domainName, DOMAIN, listenerConnectionManager);
-        }
-        return buildServerFactory(appName, APP_NAME_PROPERTY, APP, empty(), null, listenerConnectionManager);
+        case APP:
+          //In case of an app, we should consider the case where it belongs to a domain and use it's name as parent context
+          if (domainName.isPresent() && appName.isPresent()) {
+            return buildServerFactory(appName, APP_NAME_PROPERTY, APP, domainName, DOMAIN, listenerConnectionManager);
+          }
+          return buildServerFactory(appName, APP_NAME_PROPERTY, APP, empty(), null, listenerConnectionManager);
 
-      default:
-        break;
+        default:
+          break;
+      }
+    } catch (ServerFactoryCreationException e) {
+      logger.warn(e.getMessage() + ". Using muleContext Id as context");
     }
-
-    //We should never get to this point. In case we do, fail.
-    throw new MuleRuntimeException(createStaticMessage("Unable to create HttpServerFactory for artifact with type: %s, with properties: %s : %s, %s : %s",
-                                                       artifactType, APP_NAME_PROPERTY, appName, DOMAIN_NAME_PROPERTY,
-                                                       domainName));
+    //We should never get to this point. In case we do, fallback to old behaviour.
+    return new ContextHttpServerFactoryAdapter(muleContext.getId(), empty(), listenerConnectionManager);
   }
 
   private HttpServerFactory buildServerFactory(Optional<String> context,
@@ -122,14 +121,15 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
                                                ArtifactType contextType,
                                                Optional<String> parentContext,
                                                ArtifactType parentType,
-                                               ContextHttpServerFactory delegate) {
+                                               ContextHttpServerFactory delegate)
+      throws ServerFactoryCreationException {
     return context.map(
                        c -> parentContext
                            .map(pc -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(c, contextType),
                                                                           of(buildArtifactServerName(pc, parentType)), delegate))
                            .orElse(new ContextHttpServerFactoryAdapter(buildArtifactServerName(c, contextType), empty(),
                                                                        delegate)))
-        .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("Could not create server factory for "
+        .orElseThrow(() -> new ServerFactoryCreationException(createStaticMessage("Could not create server factory for "
             + contextType.getAsString()
             + ", " + namePropertyKey + " not set")));
   }
