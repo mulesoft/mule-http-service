@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.server;
 
 import static org.mule.runtime.core.api.util.concurrent.FunctionalReadWriteLock.readWriteLock;
 import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.core.api.util.concurrent.FunctionalReadWriteLock;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -77,13 +78,13 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
 
   @Override
   public boolean hasHandlerFor(ServerAddress serverAddress) {
-    return lock.withReadLock(r -> serverAddressToServerMap.get(serverAddress) != null);
+    return lock.withReadLock(() -> serverAddressToServerMap.get(serverAddress) != null);
   }
 
   @Override
   public RequestHandler getRequestHandler(ServerAddress serverAddress, final HttpRequest request) {
     LOGGER.debug("Looking RequestHandler for request: {}", request.getPath());
-    return lock.withReadLock(r -> {
+    return lock.withReadLock(() -> {
       final HttpServer server = serverAddressToServerMap.get(serverAddress);
       if (server != null && !server.isStopping() && !server.isStopped()) {
         final RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
