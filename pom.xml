@@ -7,7 +7,7 @@
         <artifactId>mule-core-services-parent</artifactId>
         <version>1.3.0-SNAPSHOT</version>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion> 
 
     <name>HTTP Service Implementation</name>
     <description>Grizzly based implementation of the HTTP Service</description>
