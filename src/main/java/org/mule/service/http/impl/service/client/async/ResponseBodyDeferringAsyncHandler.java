@@ -32,6 +32,7 @@ import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
@@ -40,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * Non blocking async handler which uses a {@link PipedOutputStream} to populate the HTTP response as it arrives, propagating an
@@ -66,6 +68,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
   private final HttpResponseCreator httpResponseCreator = new HttpResponseCreator();
   private final AtomicBoolean handled = new AtomicBoolean(false);
+  private final Map<String, String> mdc;
 
   static {
     try {
@@ -79,53 +82,69 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize) throws IOException {
     this.future = future;
     this.bufferSize = userDefinedBufferSize;
+    this.mdc = MDC.getCopyOfContextMap();
   }
 
   @Override
   public void onThrowable(Throwable t) {
     try {
-      closeOut();
-    } catch (IOException e) {
-      LOGGER.debug("Error closing HTTP response stream", e);
-    }
-    if (!handled.getAndSet(true)) {
-      Exception exception;
-      if (t instanceof TimeoutException) {
-        exception = (TimeoutException) t;
-      } else if (t instanceof IOException) {
-        exception = (IOException) t;
-      } else {
-        exception = new IOException(t.getMessage(), t);
+      MDC.setContextMap(mdc);
+      try {
+        closeOut();
+      } catch (IOException e) {
+        LOGGER.debug("Error closing HTTP response stream", e);
       }
-      future.completeExceptionally(exception);
-    } else {
-      if (t.getMessage() != null && t.getMessage().contains("Pipe closed")) {
-        LOGGER.warn("HTTP response stream was closed before being read but response streams must always be consumed.");
+      if (!handled.getAndSet(true)) {
+        Exception exception;
+        if (t instanceof TimeoutException) {
+          exception = (TimeoutException) t;
+        } else if (t instanceof IOException) {
+          exception = (IOException) t;
+        } else {
+          exception = new IOException(t.getMessage(), t);
+        }
+        future.completeExceptionally(exception);
       } else {
-        LOGGER.warn("Error handling HTTP response stream. Set log level to DEBUG for details.");
+        if (t.getMessage() != null && t.getMessage().contains("Pipe closed")) {
+          LOGGER.warn("HTTP response stream was closed before being read but response streams must always be consumed.");
+        } else {
+          LOGGER.warn("Error handling HTTP response stream. Set log level to DEBUG for details.");
+        }
+        LOGGER.debug("HTTP response stream error was ", t);
       }
-      LOGGER.debug("HTTP response stream error was ", t);
+    } finally {
+      MDC.clear();
     }
   }
 
   @Override
   public STATE onStatusReceived(HttpResponseStatus responseStatus) throws Exception {
-    responseBuilder.reset();
-    responseBuilder.accumulate(responseStatus);
-    return CONTINUE;
+    try {
+      MDC.setContextMap(mdc);
+      responseBuilder.reset();
+      responseBuilder.accumulate(responseStatus);
+      return CONTINUE;
+    } finally {
+      MDC.clear();
+    }
   }
 
   @Override
   public STATE onHeadersReceived(HttpResponseHeaders headers) throws Exception {
-    responseBuilder.accumulate(headers);
-    if (bufferSize < 0) {
-      // If user hasn't configured a buffer size (default) then calculate it.
-      LOGGER.debug("onHeadersReceived. No configured buffer size, resolving buffer size dynamically.");
-      calculateBufferSize(headers);
-    } else {
-      LOGGER.debug("onHeadersReceived. Using user configured buffer size of '{} bytes'.", bufferSize);
+    try {
+      MDC.setContextMap(mdc);
+      responseBuilder.accumulate(headers);
+      if (bufferSize < 0) {
+        // If user hasn't configured a buffer size (default) then calculate it.
+        LOGGER.debug("onHeadersReceived. No configured buffer size, resolving buffer size dynamically.");
+        calculateBufferSize(headers);
+      } else {
+        LOGGER.debug("onHeadersReceived. Using user configured buffer size of '{} bytes'.", bufferSize);
+      }
+      return CONTINUE;
+    } finally {
+      MDC.clear();
     }
-    return CONTINUE;
   }
 
   /**
@@ -160,39 +179,44 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   @Override
   public STATE onBodyPartReceived(HttpResponseBodyPart bodyPart) throws Exception {
-    // body arrived, can handle the partial response
-    if (!input.isPresent()) {
-      if (bodyPart.isLast()) {
-        // no need to stream response, we already have it all
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Single part (size = {}bytes).", bodyPart.getBodyByteBuffer().remaining());
-        }
-        responseBuilder.accumulate(bodyPart);
-        handleIfNecessary();
-        return CONTINUE;
-      } else {
-        output = new PipedOutputStream();
-        input = of(new PipedInputStream(output, bufferSize));
-      }
-    }
-    if (LOGGER.isDebugEnabled()) {
-      int bodyLength = bodyPart.getBodyByteBuffer().remaining();
-      LOGGER.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).", bodyLength, bufferSize);
-      if (bufferSize - input.get().available() < bodyLength) {
-        //TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
-        LOGGER
-            .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
-                   LOGGER, input.get().available());
-      }
-    }
-    handleIfNecessary();
     try {
-      bodyPart.writeTo(output);
-    } catch (IOException e) {
-      this.onThrowable(e);
-      return ABORT;
+      MDC.setContextMap(mdc);
+      // body arrived, can handle the partial response
+      if (!input.isPresent()) {
+        if (bodyPart.isLast()) {
+          // no need to stream response, we already have it all
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Single part (size = {}bytes).", bodyPart.getBodyByteBuffer().remaining());
+          }
+          responseBuilder.accumulate(bodyPart);
+          handleIfNecessary();
+          return CONTINUE;
+        } else {
+          output = new PipedOutputStream();
+          input = of(new PipedInputStream(output, bufferSize));
+        }
+      }
+      if (LOGGER.isDebugEnabled()) {
+        int bodyLength = bodyPart.getBodyByteBuffer().remaining();
+        LOGGER.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).", bodyLength, bufferSize);
+        if (bufferSize - input.get().available() < bodyLength) {
+          //TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
+          LOGGER
+              .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
+                     LOGGER, input.get().available());
+        }
+      }
+      handleIfNecessary();
+      try {
+        bodyPart.writeTo(output);
+      } catch (IOException e) {
+        this.onThrowable(e);
+        return ABORT;
+      }
+      return CONTINUE;
+    } finally {
+      MDC.clear();
     }
-    return CONTINUE;
   }
 
   protected void closeOut() throws IOException {
@@ -207,10 +231,15 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   @Override
   public Response onCompleted() throws IOException {
-    // there may have been no body, handle partial response
-    handleIfNecessary();
-    closeOut();
-    return null;
+    try {
+      MDC.setContextMap(mdc);
+      // there may have been no body, handle partial response
+      handleIfNecessary();
+      closeOut();
+      return null;
+    } finally {
+      MDC.clear();
+    }
   }
 
   private void handleIfNecessary() {
