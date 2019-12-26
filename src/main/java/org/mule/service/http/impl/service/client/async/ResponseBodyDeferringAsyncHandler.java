@@ -179,9 +179,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   @Override
   public STATE onBodyPartReceived(HttpResponseBodyPart bodyPart) throws Exception {
+    // body arrived, can handle the partial response
     try {
       MDC.setContextMap(mdc);
-      // body arrived, can handle the partial response
       if (!input.isPresent()) {
         if (bodyPart.isLast()) {
           // no need to stream response, we already have it all
