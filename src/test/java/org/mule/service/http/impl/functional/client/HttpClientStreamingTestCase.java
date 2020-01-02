@@ -6,7 +6,6 @@
  */
 package org.mule.service.http.impl.functional.client;
 
-import com.google.common.collect.Maps;
 import io.qameta.allure.Description;
 import io.qameta.allure.Story;
 import io.qameta.allure.junit4.DisplayName;
@@ -17,7 +16,6 @@ import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.api.util.concurrent.Latch;
 import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.core.api.util.UUID;
-import org.mule.runtime.core.api.util.func.CheckedSupplier;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
@@ -27,22 +25,23 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.functional.FillAndWaitStream;
 import org.mule.service.http.impl.functional.ResponseReceivedProbe;
 import org.mule.tck.probe.PollingProber;
-import org.mule.tck.probe.Probe;
-import org.mule.tck.probe.Prober;
 import org.slf4j.MDC;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
+import static java.lang.Thread.currentThread;
+import static java.lang.Thread.sleep;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.isA;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import static org.mule.service.http.impl.functional.FillAndWaitStream.RESPONSE_SIZE;
@@ -179,7 +178,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
   private void verifyNotStreamed(Reference<HttpResponse> responseReference) throws Exception {
     // Allow the request/response process to start
-    Thread.sleep(1000);
+    sleep(1000);
     assertThat(responseReference.get(), is(nullValue()));
     latch.release();
     pollingProber.check(new ResponseReceivedProbe(responseReference));
@@ -205,10 +204,6 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   }
 
   private void testMdcPropagation(boolean shouldStream, boolean shouldThrowException) throws IOException {
-    String transactionId = UUID.getUUID();
-    Map<String, Object> capture = Maps.newHashMap();
-    MDC.put("transactionId", transactionId);
-    MDC.put("currentThread", Thread.currentThread().getName());
     HttpClient client =
         service.getClientFactory(SchedulerConfig.config().withName("test-scheduler").withMaxConcurrentTasks(5))
             .create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(shouldStream).build());
@@ -218,13 +213,18 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
       // Release the lock on the streaming payload in order to finish without throwing an exception.
       latch.release();
     }
+    String transactionId = UUID.getUUID();
+    Map<String, Object> capture = new HashMap<>();
+    MDC.put("transactionId", transactionId);
+    MDC.put("currentThread", currentThread().getName());
     try {
       client.sendAsync(shouldThrowException ? getRequest("http://localhost:9999") : getRequest(),
                        getDefaultOptions(RESPONSE_TIMEOUT))
           .whenComplete(
                         (response, exception) -> {
                           if (shouldThrowException) {
-                            responseReference.set(HttpResponse.builder().statusCode(500).build());
+                            responseReference
+                                .set(HttpResponse.builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build());
                           } else {
                             responseReference.set(response);
                           }
@@ -232,15 +232,15 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
                           capture.put("exception", exception);
                           capture.put("transactionId",
                                       MDC.get("transactionId"));
-                          capture.put("currentThread", Thread
-                              .currentThread().getName());
+                          capture.put("currentThread", currentThread().getName());
                         });
 
       pollingProber.check(new ResponseReceivedProbe(responseReference));
       assertThat(capture.get("exception"), shouldThrowException ? notNullValue() : nullValue());
       assertThat(MDC.get("transactionId"), is(capture.get("transactionId")));
       assertThat(MDC.get("currentThread"), is(not(capture.get("currentThread"))));
-      assertThat(responseReference.get().getStatusCode(), shouldThrowException ? is(500) : is(200));
+      assertThat(responseReference.get().getStatusCode(),
+                 shouldThrowException ? is(INTERNAL_SERVER_ERROR.getStatusCode()) : is(OK.getStatusCode()));
     } finally {
       client.stop();
     }
