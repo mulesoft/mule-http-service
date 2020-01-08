@@ -21,6 +21,8 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 
 import java.io.IOException;
+import java.nio.channels.SelectableChannel;
+import java.nio.channels.SocketChannel;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
@@ -29,6 +31,8 @@ import org.glassfish.grizzly.Closeable;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.ConnectionProbe;
 import org.glassfish.grizzly.ICloseType;
+import org.glassfish.grizzly.IOEvent;
+import org.glassfish.grizzly.nio.transport.TCPNIOConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.ssl.SSLFilter;
@@ -181,10 +185,29 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   private static class CloseAcceptedConnectionOnServerClose implements org.glassfish.grizzly.CloseListener {
 
-    private Connection acceptedConnection;
+    private SocketChannel acceptedChannel;
 
     private CloseAcceptedConnectionOnServerClose(Connection acceptedConnection) {
-      this.acceptedConnection = acceptedConnection;
+      this.acceptedChannel = getSocketChannel(acceptedConnection);
+    }
+
+    private static SocketChannel getSocketChannel(Connection acceptedConnection) {
+      if (!(acceptedConnection instanceof TCPNIOConnection)) {
+        if (logger.isWarnEnabled()) {
+          logger.warn("The accepted connection is not an instance of TCPNIOConnection");
+        }
+        return null;
+      }
+
+      SelectableChannel selectableChannel = ((TCPNIOConnection) acceptedConnection).getChannel();
+      if (!(selectableChannel instanceof SocketChannel)) {
+        if (logger.isWarnEnabled()) {
+          logger.warn("The accepted connection doesn't hold a SocketChannel");
+        }
+        return null;
+      }
+
+      return (SocketChannel) selectableChannel;
     }
 
     /**
@@ -192,7 +215,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
      */
     @Override
     public void onClosed(Closeable closeable, ICloseType type) throws IOException {
-      acceptedConnection.closeSilently();
+      acceptedChannel.shutdownInput();
     }
 
   }
