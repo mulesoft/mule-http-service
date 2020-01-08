@@ -27,10 +27,10 @@ import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
-import org.glassfish.grizzly.Closeable;
+import org.glassfish.grizzly.CloseListener;
+import org.glassfish.grizzly.CloseType;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.ConnectionProbe;
-import org.glassfish.grizzly.ICloseType;
 import org.glassfish.grizzly.nio.transport.TCPNIOConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
@@ -182,7 +182,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
     }
   }
 
-  private static class CloseAcceptedConnectionOnServerClose implements org.glassfish.grizzly.CloseListener {
+  private static class CloseAcceptedConnectionOnServerClose implements CloseListener<TCPNIOServerConnection, CloseType> {
 
     private SocketChannel acceptedChannel;
 
@@ -213,15 +213,14 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
      * {@inheritDoc}
      */
     @Override
-    public void onClosed(Closeable closeable, ICloseType type) throws IOException {
+    public void onClosed(TCPNIOServerConnection closeable, CloseType type) throws IOException {
       if (acceptedChannel != null) {
         acceptedChannel.shutdownInput();
       }
     }
-
   }
 
-  private static class RemoveCloseListenerOnClientClosed implements org.glassfish.grizzly.CloseListener {
+  private static class RemoveCloseListenerOnClientClosed implements CloseListener<TCPNIOConnection, CloseType> {
 
     private CloseAcceptedConnectionOnServerClose callbackToRemove;
     private Connection serverConnection;
@@ -236,7 +235,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
      * {@inheritDoc}
      */
     @Override
-    public void onClosed(Closeable closeable, ICloseType type) throws IOException {
+    public void onClosed(TCPNIOConnection closeable, CloseType type) throws IOException {
       if (serverConnection.isOpen()) {
         serverConnection.removeCloseListener(callbackToRemove);
       }
