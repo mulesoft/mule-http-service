@@ -31,7 +31,6 @@ import org.glassfish.grizzly.Closeable;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.ConnectionProbe;
 import org.glassfish.grizzly.ICloseType;
-import org.glassfish.grizzly.IOEvent;
 import org.glassfish.grizzly.nio.transport.TCPNIOConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
@@ -215,7 +214,9 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
      */
     @Override
     public void onClosed(Closeable closeable, ICloseType type) throws IOException {
-      acceptedChannel.shutdownInput();
+      if (acceptedChannel != null) {
+        acceptedChannel.shutdownInput();
+      }
     }
 
   }
