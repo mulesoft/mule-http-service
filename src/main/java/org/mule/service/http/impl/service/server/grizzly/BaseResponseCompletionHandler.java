@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Boolean.TRUE;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
@@ -133,6 +134,7 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
     try {
       if (onErrorSendingResponse == null) {
         onErrorSendingResponse = responseStatusCallback.getClass().getMethod("onErrorSendingResponse", Throwable.class);
+        onErrorSendingResponse.setAccessible(TRUE);
       }
       onErrorSendingResponse.invoke(responseStatusCallback, throwable);
     } catch (Exception e) {
