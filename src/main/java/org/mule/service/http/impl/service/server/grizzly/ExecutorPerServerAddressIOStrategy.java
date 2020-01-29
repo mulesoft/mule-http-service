@@ -70,8 +70,9 @@ public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
   @Override
   public Executor getThreadPoolFor(Connection connection, IOEvent ioEvent) {
     if (WORKER_THREAD_EVENT_SET.contains(ioEvent)) {
-      final InetAddress address = ((InetSocketAddress) connection.getLocalAddress()).getAddress();
-      final int port = ((InetSocketAddress) connection.getLocalAddress()).getPort();
+      final InetSocketAddress socketAddress = (InetSocketAddress) connection.getLocalAddress();
+      final InetAddress address = socketAddress.getAddress();
+      final int port = socketAddress.getPort();
       return executorProvider.getExecutor(new DefaultServerAddress(address, port));
     } else {
       // Run other types of IOEvent in selector thread.
