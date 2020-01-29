@@ -15,11 +15,12 @@ import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
-import static org.mule.runtime.core.api.config.MuleProperties.SYSTEM_PROPERTY_PREFIX;
+import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
@@ -82,9 +83,9 @@ public class GrizzlyServerManager implements HttpServerManager {
   protected final HttpListenerRegistry httpListenerRegistry;
   protected final WorkManagerSourceExecutorProvider executorProvider;
   private final ExecutorService idleTimeoutExecutorService;
-  private Map<ServerAddress, HttpServer> servers = new ConcurrentHashMap<>();
-  private Map<ServerIdentifier, HttpServer> serversByIdentifier = new ConcurrentHashMap<>();
-  private Map<ServerAddress, IdleExecutor> idleExecutorPerServerAddressMap = new ConcurrentHashMap<>();
+  private final Map<ServerAddress, HttpServer> servers = new ConcurrentHashMap<>();
+  private final Map<ServerIdentifier, HttpServer> serversByIdentifier = new ConcurrentHashMap<>();
+  private final Map<ServerAddress, IdleExecutor> idleExecutorPerServerAddressMap = new ConcurrentHashMap<>();
 
   private boolean transportStarted;
   private int serverTimeout;
