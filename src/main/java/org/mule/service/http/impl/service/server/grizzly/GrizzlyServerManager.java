@@ -218,11 +218,43 @@ public class GrizzlyServerManager implements HttpServerManager {
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor,
                                                     identifier));
 
-    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(schedulerSupplier, serverAddress, identifier);
-    executorProvider.addExecutor(serverAddress, (Supplier<ExecutorService>) grizzlyServer.getDelegate());
+    SchedulerSupplier wrappedSupplier = new SchedulerSupplier(schedulerSupplier, serverAddress, executorProvider);
+    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(wrappedSupplier, serverAddress, identifier);
+    wrappedSupplier.setServer(grizzlyServer);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
     return grizzlyServer;
+  }
+
+  private static class SchedulerSupplier implements Supplier<Scheduler> {
+
+    private final Supplier<Scheduler> original;
+    private final ServerAddress serverAddress;
+    private final WorkManagerSourceExecutorProvider executorProvider;
+
+    private ManagedGrizzlyHttpServer grizzlyServer;
+
+    SchedulerSupplier(final Supplier<Scheduler> original, final ServerAddress serverAddress,
+                      final WorkManagerSourceExecutorProvider executorProvider) {
+      this.original = original;
+      this.serverAddress = serverAddress;
+      this.executorProvider = executorProvider;
+    }
+
+    public void setServer(ManagedGrizzlyHttpServer grizzlyServer) {
+      this.grizzlyServer = grizzlyServer;
+    }
+
+    @Override
+    public Scheduler get() {
+      executorProvider.addExecutor(serverAddress, (Supplier<ExecutorService>) grizzlyServer.getDelegate());
+
+      if (original == null) {
+        return null;
+      }
+
+      return original.get();
+    }
   }
 
   protected ManagedGrizzlyHttpServer createManagedServer(Supplier<Scheduler> schedulerSupplier,
@@ -253,8 +285,9 @@ public class GrizzlyServerManager implements HttpServerManager {
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor,
                                                     identifier));
 
-    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(schedulerSupplier, serverAddress, identifier);
-    executorProvider.addExecutor(serverAddress, (Supplier<ExecutorService>) grizzlyServer.getDelegate());
+    SchedulerSupplier wrappedSupplier = new SchedulerSupplier(schedulerSupplier, serverAddress, executorProvider);
+    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(wrappedSupplier, serverAddress, identifier);
+    wrappedSupplier.setServer(grizzlyServer);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
     return grizzlyServer;

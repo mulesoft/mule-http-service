@@ -40,11 +40,6 @@ public class WorkManagerSourceExecutorProvider implements ExecutorProvider {
 
   @Override
   public Executor getExecutor(ServerAddress serverAddress) {
-    Supplier<ExecutorService> executorServiceSupplier = executorPerServerAddress.get(serverAddress);
-    if (executorServiceSupplier == null) {
-      return null;
-    } else {
-      return executorServiceSupplier.get();
-    }
+    return executorPerServerAddress.get(serverAddress).get();
   }
 }
