@@ -114,7 +114,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     serverFilterChainBuilder.add(requestHandlerFilter);
 
     // Initialize Transport
-    executorProvider = new WorkManagerSourceExecutorProvider();
+    executorProvider = createExecutorProvider();
     TCPNIOTransportBuilder transportBuilder = TCPNIOTransportBuilder.newInstance().setOptimizedForMultiplexing(true)
         .setIOStrategy(new ExecutorPerServerAddressIOStrategy(executorProvider));
 
@@ -135,6 +135,10 @@ public class GrizzlyServerManager implements HttpServerManager {
     transport.setProcessor(serverFilterChainBuilder.build());
 
     this.idleTimeoutExecutorService = idleTimeoutExecutorService;
+  }
+
+  protected WorkManagerSourceExecutorProvider createExecutorProvider() {
+    return new WorkManagerSourceExecutorProvider();
   }
 
   private void configureServerSocketProperties(TCPNIOTransportBuilder transportBuilder,
