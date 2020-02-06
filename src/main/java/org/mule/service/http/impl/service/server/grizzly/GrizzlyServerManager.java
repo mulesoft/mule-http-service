@@ -77,7 +77,7 @@ public class GrizzlyServerManager implements HttpServerManager {
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
 
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
-  private final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
+  protected final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
   protected final GrizzlyAddressDelegateFilter<WebSocketFilter> webSocketFilter;
   private final GrizzlyAddressDelegateFilter<HttpServerFilter> httpServerFilterDelegate;
   protected final TCPNIOTransport transport;
@@ -85,9 +85,9 @@ public class GrizzlyServerManager implements HttpServerManager {
   protected final HttpListenerRegistry httpListenerRegistry;
   protected final WorkManagerSourceExecutorProvider executorProvider;
   private final ExecutorService idleTimeoutExecutorService;
-  private Map<ServerAddress, HttpServer> servers = new ConcurrentHashMap<>();
-  private Map<ServerIdentifier, HttpServer> serversByIdentifier = new ConcurrentHashMap<>();
-  private Map<ServerAddress, IdleExecutor> idleExecutorPerServerAddressMap = new ConcurrentHashMap<>();
+  private final Map<ServerAddress, HttpServer> servers = new ConcurrentHashMap<>();
+  private final Map<ServerIdentifier, HttpServer> serversByIdentifier = new ConcurrentHashMap<>();
+  private final Map<ServerAddress, IdleExecutor> idleExecutorPerServerAddressMap = new ConcurrentHashMap<>();
 
   private boolean transportStarted;
   private int serverTimeout;
@@ -116,7 +116,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     serverFilterChainBuilder.add(requestHandlerFilter);
 
     // Initialize Transport
-    executorProvider = new WorkManagerSourceExecutorProvider();
+    executorProvider = createExecutorProvider();
     TCPNIOTransportBuilder transportBuilder = TCPNIOTransportBuilder.newInstance().setOptimizedForMultiplexing(true)
         .setIOStrategy(new ExecutorPerServerAddressIOStrategy(executorProvider));
 
@@ -137,6 +137,10 @@ public class GrizzlyServerManager implements HttpServerManager {
     transport.setProcessor(serverFilterChainBuilder.build());
 
     this.idleTimeoutExecutorService = idleTimeoutExecutorService;
+  }
+
+  protected WorkManagerSourceExecutorProvider createExecutorProvider() {
+    return new WorkManagerSourceExecutorProvider();
   }
 
   private void configureServerSocketProperties(TCPNIOTransportBuilder transportBuilder,
@@ -219,8 +223,8 @@ public class GrizzlyServerManager implements HttpServerManager {
         .addFilterForAddress(serverAddress,
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor,
                                                     identifier));
-    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(schedulerSupplier, serverAddress, identifier, HTTPS);
-    executorProvider.addExecutor(serverAddress, (Supplier<ExecutorService>) grizzlyServer.getDelegate());
+    final ManagedGrizzlyHttpServer grizzlyServer =
+        getManagedServerAndWrapSupplier(serverAddress, schedulerSupplier, identifier, HTTPS);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
     return grizzlyServer;
@@ -254,10 +258,20 @@ public class GrizzlyServerManager implements HttpServerManager {
         .addFilterForAddress(serverAddress,
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor,
                                                     identifier));
-    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(schedulerSupplier, serverAddress, identifier, HTTP);
-    executorProvider.addExecutor(serverAddress, (Supplier<ExecutorService>) grizzlyServer.getDelegate());
+    final ManagedGrizzlyHttpServer grizzlyServer =
+        getManagedServerAndWrapSupplier(serverAddress, schedulerSupplier, identifier, HTTP);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
+    return grizzlyServer;
+  }
+
+  private ManagedGrizzlyHttpServer getManagedServerAndWrapSupplier(ServerAddress serverAddress,
+                                                                   Supplier<Scheduler> schedulerSupplier,
+                                                                   ServerIdentifier identifier,
+                                                                   Protocol protocol) {
+    SchedulerSupplier wrappedSupplier = new SchedulerSupplier(schedulerSupplier, serverAddress, executorProvider);
+    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(wrappedSupplier, serverAddress, identifier, protocol);
+    wrappedSupplier.setServer(grizzlyServer);
     return grizzlyServer;
   }
 
@@ -407,6 +421,37 @@ public class GrizzlyServerManager implements HttpServerManager {
       timeoutFilterDelegate.removeFilterForAddress(serverAddress);
       idleExecutorPerServerAddressMap.get(serverAddress).dispose();
       idleExecutorPerServerAddressMap.remove(serverAddress);
+    }
+  }
+
+  private static class SchedulerSupplier implements Supplier<Scheduler> {
+
+    private final Supplier<Scheduler> original;
+    private final ServerAddress serverAddress;
+    private final WorkManagerSourceExecutorProvider executorProvider;
+
+    private ManagedGrizzlyHttpServer grizzlyServer;
+
+    SchedulerSupplier(final Supplier<Scheduler> original, final ServerAddress serverAddress,
+                      final WorkManagerSourceExecutorProvider executorProvider) {
+      this.original = original;
+      this.serverAddress = serverAddress;
+      this.executorProvider = executorProvider;
+    }
+
+    public void setServer(ManagedGrizzlyHttpServer grizzlyServer) {
+      this.grizzlyServer = grizzlyServer;
+    }
+
+    @Override
+    public Scheduler get() {
+      executorProvider.addExecutor(serverAddress, (Supplier<ExecutorService>) grizzlyServer.getDelegate());
+
+      if (original == null) {
+        return null;
+      }
+
+      return original.get();
     }
   }
 

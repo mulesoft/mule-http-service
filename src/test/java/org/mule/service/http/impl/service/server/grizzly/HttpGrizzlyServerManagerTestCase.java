@@ -6,9 +6,14 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Runtime.getRuntime;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
@@ -17,8 +22,13 @@ import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.S
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerCreationException;
+import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
+import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 
 import org.junit.Test;
 
@@ -46,4 +56,60 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
     }
   }
 
+  @Test
+  public void symmetricUsageOfWorkManagerSourceExecutorProviderOnStartAndStop() throws ServerCreationException, IOException {
+    final HttpServer createdServer = getServer(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
+                                               new ServerIdentifier("context", "name"));
+
+    int adds = 0, removes = 0;
+    assertProviderUsage(adds, removes);
+
+    for (int i = 0; i < 3; ++i) {
+      createdServer.start();
+      adds += 1;
+      assertProviderUsage(adds, removes);
+
+      createdServer.stop();
+      removes += 1;
+      assertProviderUsage(adds, removes);
+    }
+
+    createdServer.dispose();
+    assertProviderUsage(adds, removes);
+  }
+
+  private void assertProviderUsage(int adds, int removes) {
+    verify(((HttpGrizzlyServerManagerTestDecorator) serverManager).getSpiedExecutorProvider(),
+           times(adds)).addExecutor(any(), any());
+    verify(((HttpGrizzlyServerManagerTestDecorator) serverManager).getSpiedExecutorProvider(),
+           times(removes)).removeExecutor(any());
+  }
+
+  @Override
+  protected HttpGrizzlyServerManagerTestDecorator createServerManager(HttpListenerRegistry registry,
+                                                                      DefaultTcpServerSocketProperties socketProperties) {
+    return new HttpGrizzlyServerManagerTestDecorator(selectorPool, workerPool, idleTimeoutExecutorService, registry,
+                                                     socketProperties, getRuntime().availableProcessors());
+  }
+
+  private static class HttpGrizzlyServerManagerTestDecorator extends GrizzlyServerManager {
+
+    WorkManagerSourceExecutorProvider spiedExecutorProvider;
+
+    HttpGrizzlyServerManagerTestDecorator(ExecutorService selectorPool, ExecutorService workerPool,
+                                          ExecutorService idleTimeoutExecutorService, HttpListenerRegistry httpListenerRegistry,
+                                          TcpServerSocketProperties serverSocketProperties, int selectorCount) {
+      super(selectorPool, workerPool, idleTimeoutExecutorService, httpListenerRegistry, serverSocketProperties, selectorCount);
+    }
+
+    @Override
+    protected WorkManagerSourceExecutorProvider createExecutorProvider() {
+      spiedExecutorProvider = spy(new WorkManagerSourceExecutorProvider());
+      return spiedExecutorProvider;
+    }
+
+    WorkManagerSourceExecutorProvider getSpiedExecutorProvider() {
+      return spiedExecutorProvider;
+    }
+  }
 }
