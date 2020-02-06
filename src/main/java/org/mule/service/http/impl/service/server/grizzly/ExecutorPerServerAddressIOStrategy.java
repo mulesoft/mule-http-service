@@ -31,7 +31,7 @@ import java.util.logging.Logger;
  */
 public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
 
-  private final static EnumSet<IOEvent> WORKER_THREAD_EVENT_SET = EnumSet.of(IOEvent.READ, IOEvent.CLOSED);
+  private final static EnumSet<IOEvent> WORKER_THREAD_EVENT_SET = EnumSet.of(IOEvent.READ, IOEvent.WRITE, IOEvent.CLOSED);
 
   private static final Logger logger = Grizzly.logger(ExecutorPerServerAddressIOStrategy.class);
   private final ExecutorProvider executorProvider;
@@ -80,9 +80,7 @@ public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
   }
 
   private static void run0(final Connection connection, final IOEvent ioEvent, final IOEventLifeCycleListener lifeCycleListener) {
-
     fireIOEvent(connection, ioEvent, lifeCycleListener, logger);
-
   }
 
   private static final class WorkerThreadRunnable implements Runnable {

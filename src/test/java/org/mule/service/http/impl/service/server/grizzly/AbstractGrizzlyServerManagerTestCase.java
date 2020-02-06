@@ -56,9 +56,9 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
 
-  private ExecutorService selectorPool;
-  private ExecutorService workerPool;
-  private ExecutorService idleTimeoutExecutorService;
+  protected ExecutorService selectorPool;
+  protected ExecutorService workerPool;
+  protected ExecutorService idleTimeoutExecutorService;
 
   protected GrizzlyServerManager serverManager;
 
@@ -75,8 +75,13 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     idleTimeoutExecutorService = newCachedThreadPool();
     HttpListenerRegistry registry = new HttpListenerRegistry();
     DefaultTcpServerSocketProperties socketProperties = new DefaultTcpServerSocketProperties();
-    serverManager = new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, registry,
-                                             socketProperties, getRuntime().availableProcessors());
+    serverManager = createServerManager(registry, socketProperties);
+  }
+
+  protected GrizzlyServerManager createServerManager(HttpListenerRegistry registry,
+                                                     DefaultTcpServerSocketProperties socketProperties) {
+    return new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, registry,
+                                    socketProperties, getRuntime().availableProcessors());
   }
 
   @After
@@ -92,8 +97,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   @Test
   public void managerDisposeClosesServerOpenConnections() throws Exception {
     final GrizzlyServerManager serverManager =
-        new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, new HttpListenerRegistry(),
-                                 new DefaultTcpServerSocketProperties(), getRuntime().availableProcessors());
+        createServerManager(new HttpListenerRegistry(), new DefaultTcpServerSocketProperties());
 
     final HttpServer server =
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
@@ -274,7 +278,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     assertThat(serverManager.containsServerFor(serverAddress, identifier), is(false));
   }
 
-  private class DefaultTcpServerSocketProperties implements TcpServerSocketProperties {
+  protected class DefaultTcpServerSocketProperties implements TcpServerSocketProperties {
 
     @Override
     public Integer getSendBufferSize() {
