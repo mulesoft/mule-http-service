@@ -63,6 +63,11 @@ public class ExecutorPerServerAddressIOStrategyTestCase extends AbstractMuleTest
   }
 
   @Test
+  public void writeIOEventUsesExecutor() {
+    assertThat(ioStrategy.getThreadPoolFor(connection, IOEvent.WRITE), is(equalTo(executor)));
+  }
+
+  @Test
   public void closeIOEventUsesExecutor() {
     assertThat(ioStrategy.getThreadPoolFor(connection, IOEvent.CLOSED), is(equalTo(executor)));
   }
