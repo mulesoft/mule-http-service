@@ -19,6 +19,8 @@ import org.mule.runtime.http.api.server.ServerNotFoundException;
  */
 public class ContextHttpServerFactoryAdapter implements HttpServerFactory {
 
+  public static final boolean USE_IO_SCHEDULER = true;
+
   private final String context;
   private final ContextHttpServerFactory delegate;
 
