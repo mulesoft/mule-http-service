@@ -70,8 +70,6 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
   private final HttpListenerConnectionManager listenerConnectionManager;
   private final HttpClientConnectionManager clientConnectionManager;
 
-  public static final boolean USE_IO_SCHEDULER = true;
-
   public HttpServiceImplementation(SchedulerService schedulerService) {
     this.schedulerService = schedulerService;
     listenerConnectionManager = createListenerConnectionManager(schedulerService);

@@ -21,6 +21,8 @@ import java.util.Optional;
  */
 public class ContextHttpServerFactoryAdapter implements HttpServerFactory {
 
+  public static final boolean USE_IO_SCHEDULER = true;
+
   private final Optional<String> parentContext;
   private final String context;
   private final ContextHttpServerFactory delegate;
