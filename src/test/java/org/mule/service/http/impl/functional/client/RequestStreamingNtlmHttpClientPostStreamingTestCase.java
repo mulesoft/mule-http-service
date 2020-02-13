@@ -8,11 +8,8 @@ package org.mule.service.http.impl.functional.client;
 
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
-import java.lang.reflect.Field;
-
 import org.junit.After;
 import org.junit.Before;
-import org.mule.service.http.impl.service.client.GrizzlyHttpClient;
 
 import io.qameta.allure.Story;
 import io.qameta.allure.junit4.DisplayName;
@@ -24,9 +21,7 @@ public class RequestStreamingNtlmHttpClientPostStreamingTestCase extends CursorN
 
   @Before
   public void before() throws Exception {
-    Field requestStreamingEnabledField = GrizzlyHttpClient.class.getDeclaredField("requestStreamingEnabled");
-    requestStreamingEnabledField.setAccessible(true);
-    requestStreamingEnabledField.setBoolean(null, true);
+    setRequestStreaming(true);
   }
 
   public RequestStreamingNtlmHttpClientPostStreamingTestCase(String serviceToLoad) {
@@ -37,6 +32,5 @@ public class RequestStreamingNtlmHttpClientPostStreamingTestCase extends CursorN
   public void after() throws Exception {
     setRequestStreaming(false);
   }
-
 
 }

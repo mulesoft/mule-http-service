@@ -36,15 +36,11 @@ public class CursorNonBlockingInputStreamFeeder extends NonBlockingInputStreamFe
       try {
         ((CursorStream) content).seek(0);
       } catch (IOException e) {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Unable to perform seek(0) on cursor stream", e);
-        }
+        LOGGER.warn("Unable to perform seek(0) on cursor stream", e);
       }
     }
 
     super.reset();
   }
-
-
 
 }
