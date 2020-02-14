@@ -18,7 +18,7 @@ import com.ning.http.client.providers.grizzly.NonBlockingInputStreamFeeder;
 /**
  * Inputstream feeder used so that we guarantee that a cursor inputstream is properly reset.
  * 
- * @since 4.3.0
+ * @since 1.5.0
  *
  */
 public class CursorNonBlockingInputStreamFeeder extends NonBlockingInputStreamFeeder {

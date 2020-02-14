@@ -18,7 +18,7 @@ import com.ning.http.client.generators.InputStreamBodyGenerator;
 /**
  * Input Stream Body Generator which properly resets input streams
  * 
- * @since 4.3.0
+ * @since 1.5.0
  *
  */
 public class CursorInputStreamBodyGenerator extends InputStreamBodyGenerator {
