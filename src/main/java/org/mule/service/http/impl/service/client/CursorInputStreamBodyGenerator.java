@@ -9,6 +9,8 @@ package org.mule.service.http.impl.service.client;
 import java.io.IOException;
 
 import org.mule.runtime.api.streaming.bytes.CursorStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.Body;
 import com.ning.http.client.generators.InputStreamBodyGenerator;
@@ -21,6 +23,8 @@ import com.ning.http.client.generators.InputStreamBodyGenerator;
  */
 public class CursorInputStreamBodyGenerator extends InputStreamBodyGenerator {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(CursorNonBlockingInputStreamFeeder.class);
+
   public CursorInputStreamBodyGenerator(CursorStream inputStream) {
     super(inputStream);
   }
@@ -28,7 +32,11 @@ public class CursorInputStreamBodyGenerator extends InputStreamBodyGenerator {
   @Override
   public Body createBody() throws IOException {
     if (!inputStream.markSupported()) {
-      ((CursorStream) inputStream).seek(0);
+      try {
+        ((CursorStream) inputStream).seek(0);
+      } catch (IOException e) {
+        LOGGER.warn("Unable to perform seek(0) on input stream", e);
+      }
     }
     return super.createBody();
   }

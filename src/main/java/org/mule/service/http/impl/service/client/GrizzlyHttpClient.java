@@ -573,7 +573,7 @@ public class GrizzlyHttpClient implements HttpClient {
         return new CursorNonBlockingInputStreamFeeder(feedableBodyGenerator, (CursorStream) content, internalBufferSize);
       }
 
-      return new NonBlockingInputStreamFeeder(feedableBodyGenerator, (CursorStream) content, internalBufferSize);
+      return new NonBlockingInputStreamFeeder(feedableBodyGenerator, content, internalBufferSize);
     }
   }
 

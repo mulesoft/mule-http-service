@@ -16,7 +16,7 @@ import io.qameta.allure.junit4.DisplayName;
 
 @Story(STREAMING)
 @DisplayName("Validates that the POST cursor body is preserved on NTLM authentication with streaming on request")
-public class RequestStreamingNtlmHttpClientPostStreamingTestCase extends CursorNtlmHttpClientPostStreamingTestCase {
+public class RequestStreamingNtlmHttpClientPostStreamingTestCase extends NtlmHttpClientPostStreamingTestCase {
 
 
   @Before

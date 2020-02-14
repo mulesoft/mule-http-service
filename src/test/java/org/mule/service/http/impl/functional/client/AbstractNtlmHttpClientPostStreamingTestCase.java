@@ -26,6 +26,17 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
  */
 public abstract class AbstractNtlmHttpClientPostStreamingTestCase extends HttpClientPostStreamingTestCase {
 
+  private static final String HEADER_AUTHORIZATION_NAME = "authorization";
+  private static final String USERNAME = "Zaphod";
+  private static final String PASSWORD = "Beeblebrox";
+  private static final String DOMAIN = "Ursa-Minor";
+  private static final String NTLM_HEADER = "NTLM";
+  private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
+  private static final String NTLM_CORRECT_CHALLENGE_RESPONSE =
+      "NTLM TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAABQAFAB4AAAADAAMAIwAAAAaABoAmAAAAAAAAACyAAAAAYIAAgUBKAoAAAAPrYfKbe/jRoW5xDxHeoxC1gBmfWiS5+iX4OAN4xBKG/IFPwfH3agtPEia6YnhsADTVQBSAFMAQQAtAE0ASQBOAE8AUgBaAGEAcABoAG8AZABCAEEALQBGAEcATwBOAFoAQQAtAE8AUwBYAA==";
+  private static final String NTLM_CHALLENGE = "NTLM TlRMTVNTUAACAAAAAAAAACgAAAABggAAU3J2Tm9uY2UAAAAAAAAAAA==";
+  private static final String NTLM_MSG1 = "NTLM TlRMTVNTUAABAAAAAYIIogAAAAAoAAAAAAAAACgAAAAFASgKAAAADw==";
+
   public AbstractNtlmHttpClientPostStreamingTestCase(String serviceToLoad) {
     super(serviceToLoad);
   }
@@ -33,17 +44,17 @@ public abstract class AbstractNtlmHttpClientPostStreamingTestCase extends HttpCl
   @Override
   public HttpResponse doSetUpHttpResponse(HttpRequest request) {
     HttpResponseBuilder response = HttpResponse.builder();
-    String authorization = request.getHeaderValue("authorization");
+    String authorization = request.getHeaderValue(HEADER_AUTHORIZATION_NAME);
     if (authorization == null) {
       response.statusCode(UNAUTHORIZED.getStatusCode());
-      response.addHeader("WWW-Authenticate", "NTLM");
+      response.addHeader(WWW_AUTHENTICATE, NTLM_HEADER);
 
-    } else if (authorization.equals("NTLM TlRMTVNTUAABAAAAAYIIogAAAAAoAAAAAAAAACgAAAAFASgKAAAADw==")) {
+    } else if (authorization.equals(NTLM_MSG1)) {
       response.statusCode(UNAUTHORIZED.getStatusCode());
-      response.addHeader("WWW-Authenticate", "NTLM TlRMTVNTUAACAAAAAAAAACgAAAABggAAU3J2Tm9uY2UAAAAAAAAAAA==");
+      response.addHeader(WWW_AUTHENTICATE, NTLM_CHALLENGE);
 
     } else if (authorization
-        .equals("NTLM TlRMTVNTUAADAAAAGAAYAEgAAAAYABgAYAAAABQAFAB4AAAADAAMAIwAAAAaABoAmAAAAAAAAACyAAAAAYIAAgUBKAoAAAAPrYfKbe/jRoW5xDxHeoxC1gBmfWiS5+iX4OAN4xBKG/IFPwfH3agtPEia6YnhsADTVQBSAFMAQQAtAE0ASQBOAE8AUgBaAGEAcABoAG8AZABCAEEALQBGAEcATwBOAFoAQQAtAE8AUwBYAA==")) {
+        .equals(NTLM_CORRECT_CHALLENGE_RESPONSE)) {
       extractPayload(request);
       response.statusCode(OK.getStatusCode());
     } else {
@@ -58,7 +69,7 @@ public abstract class AbstractNtlmHttpClientPostStreamingTestCase extends HttpCl
   @Override
   public HttpRequestOptions getOptions() {
     HttpAuthentication authentication =
-        HttpNtlmAuthentication.builder().username("Zaphod").password("Beeblebrox").domain("Ursa-Minor").build();
+        HttpNtlmAuthentication.builder().username(USERNAME).password(PASSWORD).domain(DOMAIN).build();
     return HttpRequestOptions.builder().responseTimeout(RESPONSE_TIMEOUT).authentication(authentication).build();
   }
 
