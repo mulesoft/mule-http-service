@@ -8,9 +8,9 @@ package org.mule.service.http.impl.service.client;
 
 import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
+import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
 import static com.ning.http.util.UTF8UrlEncoder.encodeQueryElement;
-import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
@@ -30,10 +30,26 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+
+import javax.net.ssl.SSLContext;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
+import org.mule.runtime.api.streaming.bytes.CursorStream;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
 import org.mule.runtime.core.api.util.IOUtils;
@@ -50,6 +66,8 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -65,26 +83,10 @@ import com.ning.http.client.filter.FilterException;
 import com.ning.http.client.generators.InputStreamBodyGenerator;
 import com.ning.http.client.multipart.ByteArrayPart;
 import com.ning.http.client.providers.grizzly.FeedableBodyGenerator;
-import com.ning.http.client.providers.grizzly.NonBlockingInputStreamFeeder;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
+import com.ning.http.client.providers.grizzly.NonBlockingInputStreamFeeder;
 import com.ning.http.client.uri.Uri;
-
-import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
-import javax.net.ssl.SSLContext;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
@@ -442,12 +444,11 @@ public class GrizzlyHttpClient implements HttpClient {
   private void setStreamingBodyToRequestBuilder(HttpRequest request, RequestBuilder builder) throws IOException {
     if (isRequestStreamingEnabled()) {
       FeedableBodyGenerator bodyGenerator = new FeedableBodyGenerator();
-      FeedableBodyGenerator.Feeder nonBlockingFeeder =
-          new NonBlockingInputStreamFeeder(bodyGenerator, request.getEntity().getContent(), requestStreamingBufferSize);
-      bodyGenerator.setFeeder(nonBlockingFeeder);
+      bodyGenerator.setFeeder(new InputStreamFeederFactory(bodyGenerator, request.getEntity().getContent(),
+                                                           requestStreamingBufferSize).getInputStreamFeeder());
       builder.setBody(bodyGenerator);
     } else {
-      builder.setBody(new InputStreamBodyGenerator(request.getEntity().getContent()));
+      builder.setBody(new InputStreamBodyGeneratorFactory(request.getEntity().getContent()).getInputStreamBodyGenerator());
     }
   }
 
@@ -550,6 +551,46 @@ public class GrizzlyHttpClient implements HttpClient {
                                                                 getProperty(CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE),
                                                                 CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE)),
                                      e);
+    }
+  }
+
+  private static class InputStreamFeederFactory {
+
+    private FeedableBodyGenerator feedableBodyGenerator;
+    private InputStream content;
+    private int internalBufferSize;
+
+    public InputStreamFeederFactory(FeedableBodyGenerator feedableBodyGenerator, InputStream content,
+                                    int internalBufferSize) {
+
+      this.feedableBodyGenerator = feedableBodyGenerator;
+      this.content = content;
+      this.internalBufferSize = internalBufferSize;
+    }
+
+    public NonBlockingInputStreamFeeder getInputStreamFeeder() {
+      if (content instanceof CursorStream) {
+        return new CursorNonBlockingInputStreamFeeder(feedableBodyGenerator, (CursorStream) content, internalBufferSize);
+      }
+
+      return new NonBlockingInputStreamFeeder(feedableBodyGenerator, content, internalBufferSize);
+    }
+  }
+
+  private static class InputStreamBodyGeneratorFactory {
+
+    private InputStream inputStream;
+
+    public InputStreamBodyGeneratorFactory(InputStream inputStream) {
+      this.inputStream = inputStream;
+    }
+
+    public InputStreamBodyGenerator getInputStreamBodyGenerator() {
+      if (inputStream instanceof CursorStream) {
+        return new CursorInputStreamBodyGenerator((CursorStream) inputStream);
+      }
+
+      return new InputStreamBodyGenerator(inputStream);
     }
   }
 }
