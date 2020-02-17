@@ -11,6 +11,7 @@ import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.S
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 
 import org.junit.Test;
 import org.mule.runtime.api.util.Reference;
@@ -20,6 +21,7 @@ import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.functional.ResponseReceivedProbe;
+import org.mule.service.http.impl.service.client.GrizzlyHttpClient;
 import org.mule.tck.probe.PollingProber;
 import org.mule.tck.probe.Probe;
 import org.slf4j.Logger;
@@ -100,6 +102,12 @@ public abstract class HttpClientPostStreamingTestCase extends AbstractHttpClient
     } catch (IOException e) {
       LOGGER.debug("Could not extract payload.");
     }
+  }
+
+  public static void setRequestStreaming(boolean requestStreaming) throws Exception {
+    Field requestStreamingEnabledField = GrizzlyHttpClient.class.getDeclaredField("requestStreamingEnabled");
+    requestStreamingEnabledField.setAccessible(true);
+    requestStreamingEnabledField.setBoolean(null, requestStreaming);
   }
 
 }
