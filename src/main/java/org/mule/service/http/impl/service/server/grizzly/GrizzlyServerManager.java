@@ -17,7 +17,6 @@ import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
-import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -25,7 +24,6 @@ import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
-import org.mule.runtime.core.api.util.ClassUtils;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
@@ -189,10 +187,8 @@ public class GrizzlyServerManager implements HttpServerManager {
         transportStarted = true;
         transport.start();
       }
-    } catch (ServerCreationException e) {
-      throw e;
     } catch (Exception e) {
-      throw new ServerCreationException("Transport failed at startup.", e);throw
+      throw new ServerCreationException("Transport failed at startup.", e);
     } finally {
       setContextClassLoader(thread, contextClassLoader, currentClassLoader);
     }
