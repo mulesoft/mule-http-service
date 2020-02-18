@@ -8,8 +8,9 @@ package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
+import static java.lang.Thread.currentThread;
 import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
-import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
+import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.runtime.core.api.util.UUID.getUUID;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -21,14 +22,14 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
+import java.util.OptionalLong;
+
 import org.glassfish.grizzly.EmptyCompletionHandler;
 import org.glassfish.grizzly.WriteResult;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.http.Protocol;
 import org.slf4j.Logger;
-
-import java.util.OptionalLong;
 
 public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandler<WriteResult> {
 
@@ -107,18 +108,29 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
 
   @Override
   public void cancelled() {
-    withContextClassLoader(getCtxClassLoader(), () -> {
+    Thread currentThread = currentThread();
+    ClassLoader originalClassLoader = currentThread.getContextClassLoader();
+    currentThread.setContextClassLoader(getCtxClassLoader());
+    try {
       LOGGER.warn("HTTP response sending task was cancelled");
-    });
+    } finally {
+      currentThread.setContextClassLoader(originalClassLoader);
+    }
   }
 
   @Override
   public void failed(Throwable throwable) {
-    withContextClassLoader(getCtxClassLoader(), () -> {
+    Thread currentThread = currentThread();
+    ClassLoader originalClassLoader = currentThread.getContextClassLoader();
+    ClassLoader ctxClassLoader = getCtxClassLoader();
+    setContextClassLoader(currentThread, originalClassLoader, ctxClassLoader);
+    try {
       if (LOGGER.isWarnEnabled()) {
         LOGGER.warn(format("HTTP response sending task failed with error: %s", throwable.getMessage()));
       }
-    });
+    } finally {
+      setContextClassLoader(currentThread, ctxClassLoader, originalClassLoader);
+    }
   }
 
   protected abstract ClassLoader getCtxClassLoader();

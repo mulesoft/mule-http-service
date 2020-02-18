@@ -6,7 +6,8 @@
  */
 package org.mule.service.http.impl.service;
 
-import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
+import static java.lang.Thread.currentThread;
+import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
@@ -44,11 +45,15 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
   }
 
   private void logBuffer(Buffer buffer) {
-    withContextClassLoader(classLoader, () -> {
+    Thread currentThread = currentThread();
+    ClassLoader originalClassLoader = currentThread.getContextClassLoader();
+    setContextClassLoader(currentThread, originalClassLoader, classLoader);
+    try {
       if (logger.isDebugEnabled()) {
         logger.debug(loggerType.name() + "\n" + buffer.toStringContent());
       }
-    });
+    } finally {
+      setContextClassLoader(currentThread, classLoader, originalClassLoader);
+    }
   }
-
 }
