@@ -12,10 +12,11 @@ import static java.lang.Math.min;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
-import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
+import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -51,7 +52,8 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
 
   private volatile boolean isDone;
 
-  public ResponseStreamingCompletionHandler(final FilterChainContext ctx, ClassLoader ctxClassLoader,
+  public ResponseStreamingCompletionHandler(final FilterChainContext ctx,
+                                            ClassLoader ctxClassLoader,
                                             final HttpRequestPacket request,
                                             final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
     checkArgument((httpResponse.getEntity().isStreaming()), "HTTP response entity must be stream based");
@@ -60,7 +62,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
     inputStream = httpResponse.getEntity().getContent();
     memoryManager = ctx.getConnection().getTransport().getMemoryManager();
-    bufferSize = withContextClassLoader(ctxClassLoader, () -> calculateBufferSize(ctx));
+    bufferSize = calculateBufferSize(ctx, ctxClassLoader);
     this.responseStatusCallback = responseStatusCallback;
   }
 
@@ -71,25 +73,32 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    * @param ctx the current context
    * @return the size to use for buffers
    */
-  private int calculateBufferSize(FilterChainContext ctx) {
-    int bufferSize = KB.toBytes(8);
-    String contentLengthHeader = httpResponsePacket.getHeader(CONTENT_LENGTH);
-    int contentLength;
-    if (!isEmpty(contentLengthHeader)) {
-      contentLength = valueOf(contentLengthHeader);
-    } else {
-      contentLength = -1;
+  private int calculateBufferSize(FilterChainContext ctx, ClassLoader ctxClassLoader) {
+    Thread thread = Thread.currentThread();
+    ClassLoader currentClassLoader = thread.getContextClassLoader();
+    setContextClassLoader(thread, currentClassLoader, ctxClassLoader);
+    try {
+      int bufferSize = KB.toBytes(8);
+      String contentLengthHeader = httpResponsePacket.getHeader(CONTENT_LENGTH);
+      int contentLength;
+      if (!isEmpty(contentLengthHeader)) {
+        contentLength = valueOf(contentLengthHeader);
+      } else {
+        contentLength = -1;
+      }
+      if (contentLength > 0) {
+        LOGGER.debug("Content length header present, calculating maximal buffer size.");
+        bufferSize = min(MAX_SEND_BUFFER_SIZE, min(ctx.getConnection().getWriteBufferSize(), contentLength));
+      } else {
+        LOGGER.debug("Transfer encoding header present, using fixed buffer size.");
+      }
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Response streaming chunk calculated buffer size = {} bytes.", bufferSize);
+      }
+      return bufferSize;
+    } finally {
+      setContextClassLoader(thread, ctxClassLoader, currentClassLoader);
     }
-    if (contentLength > 0) {
-      LOGGER.debug("Content length header present, calculating maximal buffer size.");
-      bufferSize = min(MAX_SEND_BUFFER_SIZE, min(ctx.getConnection().getWriteBufferSize(), contentLength));
-    } else {
-      LOGGER.debug("Transfer encoding header present, using fixed buffer size.");
-    }
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Response streaming chunk calculated buffer size = {} bytes.", bufferSize);
-    }
-    return bufferSize;
   }
 
   public void start() throws IOException {
