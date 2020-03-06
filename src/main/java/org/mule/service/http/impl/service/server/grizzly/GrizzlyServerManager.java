@@ -16,7 +16,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
-import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
+import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -178,15 +178,20 @@ public class GrizzlyServerManager implements HttpServerManager {
    * (otherwise there will be Grizzly threads even if there is no HTTP usage in any app).
    */
   private void startTransportIfNotStarted() throws ServerCreationException {
-    withContextClassLoader(this.getClass().getClassLoader(), () -> {
+    Thread thread = Thread.currentThread();
+    ClassLoader currentClassLoader = thread.getContextClassLoader();
+    ClassLoader contextClassLoader = this.getClass().getClassLoader();
+    setContextClassLoader(thread, currentClassLoader, contextClassLoader);
+    try {
       if (!transportStarted) {
         transportStarted = true;
         transport.start();
       }
-      return null;
-    }, ServerCreationException.class, e -> {
+    } catch (Exception e) {
       throw new ServerCreationException("Transport failed at startup.", e);
-    });
+    } finally {
+      setContextClassLoader(thread, contextClassLoader, currentClassLoader);
+    }
   }
 
   @Override
