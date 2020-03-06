@@ -58,8 +58,8 @@ public class ExecutorPerServerAddressIOStrategyTestCase extends AbstractMuleTest
   }
 
   @Test
-  public void readIOEventUsesExecutor() {
-    assertThat(ioStrategy.getThreadPoolFor(connection, IOEvent.READ), is(equalTo(executor)));
+  public void readIOEventDoesNotUseExecutor() {
+    assertThat(ioStrategy.getThreadPoolFor(connection, IOEvent.READ), is(nullValue()));
   }
 
   @Test
@@ -68,8 +68,8 @@ public class ExecutorPerServerAddressIOStrategyTestCase extends AbstractMuleTest
   }
 
   @Test
-  public void closeIOEventUsesExecutor() {
-    assertThat(ioStrategy.getThreadPoolFor(connection, IOEvent.CLOSED), is(equalTo(executor)));
+  public void closeIOEventDoesNotUseExecutor() {
+    assertThat(ioStrategy.getThreadPoolFor(connection, IOEvent.CLOSED), is(nullValue()));
   }
 
 }
