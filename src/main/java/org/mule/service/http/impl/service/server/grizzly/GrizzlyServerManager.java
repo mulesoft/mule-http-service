@@ -368,7 +368,7 @@ public class GrizzlyServerManager implements HttpServerManager {
       ServerAddress serverAddress = this.getServerAddress();
       servers.remove(serverAddress);
       serversByIdentifier.remove(identifier);
-      httpListenerRegistry.removeHandlersFor(this);
+      httpListenerRegistry.removeHandlersFor(this.getDelegate());
 
       long startTime = currentTimeMillis();
       while (requestHandlerFilter.activeRequestsFor(serverAddress) > 0) {
