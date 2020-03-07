@@ -17,12 +17,16 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.tck.probe.PollingProber.DEFAULT_POLLING_INTERVAL;
 
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.runtime.http.api.domain.request.HttpRequestContext;
 import org.mule.runtime.http.api.server.HttpServer;
+import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
+import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
@@ -30,6 +34,18 @@ import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
 import org.mule.tck.junit4.AbstractMuleContextTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
+import org.mule.tck.probe.JUnitLambdaProbe;
+import org.mule.tck.probe.PollingProber;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.ReferenceQueue;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.concurrent.ExecutorService;
 
 import org.junit.After;
 import org.junit.Before;
@@ -38,15 +54,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.concurrent.ExecutorService;
-
 public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
+
+  private static final int GC_POLLING_TIMEOUT = 10000;
 
   private static InetAddress SOME_HOST_ADDRESS;
   private static InetAddress OTHER_HOST_ADDRESS;
@@ -61,6 +71,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
   protected ExecutorService idleTimeoutExecutorService;
 
   protected GrizzlyServerManager serverManager;
+  protected HttpListenerRegistry registry;
 
   @BeforeClass
   public static void resolveAddresses() throws UnknownHostException {
@@ -73,7 +84,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     selectorPool = newCachedThreadPool();
     workerPool = newCachedThreadPool();
     idleTimeoutExecutorService = newCachedThreadPool();
-    HttpListenerRegistry registry = new HttpListenerRegistry();
+    registry = new HttpListenerRegistry();
     DefaultTcpServerSocketProperties socketProperties = new DefaultTcpServerSocketProperties();
     serverManager = createServerManager(registry, socketProperties);
   }
@@ -201,11 +212,32 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     DefaultServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
     HttpServer server = getServer(serverAddress, identifier);
     server.start();
+
+    RequestHandler requestHandler = new DummyRequestHandler();
+    PhantomReference<RequestHandler> requestHandlerRef = new PhantomReference<>(requestHandler, new ReferenceQueue<>());
+
+    server.addRequestHandler("/path", requestHandler);
     server.stop();
     server.dispose();
+
+    requestHandler = null;
+    new PollingProber(GC_POLLING_TIMEOUT, DEFAULT_POLLING_INTERVAL).check(new JUnitLambdaProbe(() -> {
+      System.gc();
+      assertThat(requestHandlerRef.isEnqueued(), is(true));
+      return true;
+    }, "A hard reference is being mantained to the requestHandler."));
+
     expectedException.expect(ServerNotFoundException.class);
     expectedException.expectMessage(is("Server 'name' could not be found."));
     serverManager.lookupServer(identifier);
+  }
+
+  private static final class DummyRequestHandler implements RequestHandler {
+
+    @Override
+    public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
+      // Nothing to do
+    }
   }
 
   @Test
