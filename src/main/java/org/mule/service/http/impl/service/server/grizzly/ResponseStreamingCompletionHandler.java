@@ -20,6 +20,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.runtime.http.api.exception.ConnectionAlreadyClosedException;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
@@ -178,7 +179,8 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   public void failed(Throwable throwable) {
     super.failed(throwable);
     close();
-    responseStatusCallback.onErrorSendingResponse(throwable);
+    responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
+        : new ConnectionAlreadyClosedException(throwable));
     resume();
   }
 
