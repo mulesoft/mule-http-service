@@ -14,6 +14,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.runtime.http.api.exception.ConnectionAlreadyClosedException;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
@@ -155,7 +156,8 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   @Override
   public void failed(Throwable throwable) {
     super.failed(throwable);
-    responseStatusCallback.onErrorSendingResponse(throwable);
+    responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
+        : new ConnectionAlreadyClosedException(throwable));
     resume();
   }
 
