@@ -158,7 +158,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   public void failed(Throwable throwable) {
     super.failed(throwable);
     responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
-        : new ConnectionException(throwable));
+        : new ConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
     resume();
   }
 

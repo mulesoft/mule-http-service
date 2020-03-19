@@ -180,7 +180,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     super.failed(throwable);
     close();
     responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
-        : new ConnectionException("Client connection was closed", throwable));
+        : new ConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
     resume();
   }
 
