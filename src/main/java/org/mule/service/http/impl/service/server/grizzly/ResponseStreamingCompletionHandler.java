@@ -17,10 +17,10 @@ import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.slf4j.LoggerFactory.getLogger;
 
+import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.exception.ConnectionAlreadyClosedException;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
@@ -180,7 +180,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     super.failed(throwable);
     close();
     responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
-        : new ConnectionAlreadyClosedException(throwable));
+        : new ConnectionException("Client connection was closed", throwable));
     resume();
   }
 

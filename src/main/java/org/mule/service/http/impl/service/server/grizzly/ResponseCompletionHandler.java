@@ -11,10 +11,11 @@ import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+
+import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.exception.ConnectionAlreadyClosedException;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
@@ -157,7 +158,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   public void failed(Throwable throwable) {
     super.failed(throwable);
     responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
-        : new ConnectionAlreadyClosedException(throwable));
+        : new ConnectionException(throwable));
     resume();
   }
 
