@@ -16,6 +16,8 @@ import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.slf4j.LoggerFactory.getLogger;
+
+import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -168,7 +170,8 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   public void failed(Throwable throwable) {
     super.failed(throwable);
     close();
-    callOnErrorSendingResponseIfPossible(throwable);
+    callOnErrorSendingResponseIfPossible(ctx.getConnection().isOpen() ? throwable
+        : new ConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
     resume();
   }
 
