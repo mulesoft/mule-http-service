@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 
 public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandler<WriteResult> {
 
+  public static final String CLIENT_CONNECTION_CLOSED_MESSAGE = "Client connection was closed";
+
   private static final Logger LOGGER = getLogger(BaseResponseCompletionHandler.class);
   private static final String MULTIPART_CONTENT_TYPE_FORMAT = "%s; %s=\"%s\"";
 
