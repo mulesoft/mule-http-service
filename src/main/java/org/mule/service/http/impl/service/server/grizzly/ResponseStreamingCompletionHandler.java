@@ -17,6 +17,7 @@ import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFE
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
+import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.service.http.impl.service.server.grizzly.ExecutorPerServerAddressIOStrategy.DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR;
@@ -30,7 +31,6 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.TimeUnit;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -114,7 +114,10 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   public void start() throws IOException {
-    sendInputStreamChunk();
+    withContextClassLoader(getCtxClassLoader(), () -> {
+      sendInputStreamChunk();
+      return null;
+    });
   }
 
   public void sendInputStreamChunk() throws IOException {
@@ -160,21 +163,24 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    */
   @Override
   public void completed(WriteResult result) {
-    try {
-      if (!isDone) {
-        sendInputStreamChunk();
-        // In HTTP 1.0 (no chunk supported) there is no more data sent to the client after the input stream is completed.
-        // As there is no more data to be sent (in HTTP 1.1 a last chunk with '0' is sent) the #completed method is not called
-        // So, we have to call it manually here
-        if (isDone && !httpResponsePacket.isChunked()) {
+    withContextClassLoader(getCtxClassLoader(), () -> {
+      try {
+        if (!isDone) {
+          sendInputStreamChunk();
+          // In HTTP 1.0 (no chunk supported) there is no more data sent to the client after the input stream is completed.
+          // As there is no more data to be sent (in HTTP 1.1 a last chunk with '0' is sent) the #completed method is not called
+          // So, we have to call it manually here
+          if (isDone && !httpResponsePacket.isChunked()) {
+            doComplete();
+          }
+        } else {
           doComplete();
         }
-      } else {
-        doComplete();
+      } catch (IOException e) {
+        failed(e);
       }
-    } catch (IOException e) {
-      failed(e);
-    }
+      return null;
+    });
   }
 
   private void doComplete() {
