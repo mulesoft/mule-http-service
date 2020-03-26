@@ -6,12 +6,14 @@
  */
 package org.mule.service.http.impl.functional.client;
 
+import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpHeaders.Names.ACCEPT_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.GZIP;
 import static org.mule.service.http.impl.service.client.GrizzlyHttpClient.refreshSystemProperties;
+
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -85,7 +87,10 @@ public class HttpClientPropertyDecompressionTestCase extends AbstractHttpClientT
   private void validateResponse(HttpRequestBuilder builder, byte[] expectedResponse) throws IOException, TimeoutException {
     HttpResponse response = client.send(builder.uri(getUri()).build(), 30000, true, null);
 
-    assertThat(response.getEntity().getBytes(), is(expectedResponse));
+    // InputStreamHttpEntity#getBytes didn't work until it was fixed by MULE-14729, using
+    // org.apache.commons.io.IOUtils#toByteArray instead.
+    // The bug was that IOUtils.readFully(this.inputStream, -1, true) throws an IOException because of "-1" parameter.
+    assertThat(toByteArray(response.getEntity().getContent()), is(expectedResponse));
   }
 
   private ByteArrayOutputStream getCompressedData() throws IOException {

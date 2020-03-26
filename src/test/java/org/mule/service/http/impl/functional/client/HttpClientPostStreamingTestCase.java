@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.functional.client;
 
+import static org.apache.commons.io.IOUtils.toByteArray;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -104,7 +105,10 @@ public abstract class HttpClientPostStreamingTestCase extends AbstractHttpClient
 
   protected void extractPayload(HttpRequest request) {
     try {
-      payloadAfterDancing = new String(request.getEntity().getBytes());
+      // InputStreamHttpEntity#getBytes didn't work until it was fixed by MULE-14729, using
+      // org.apache.commons.io.IOUtils#toByteArray instead.
+      // The bug was that IOUtils.readFully(this.inputStream, -1, true) throws an IOException because of "-1" parameter.
+      payloadAfterDancing = new String(toByteArray(request.getEntity().getContent()));
     } catch (IOException e) {
       LOGGER.debug("Could not extract payload.");
     }
