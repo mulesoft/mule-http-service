@@ -87,6 +87,9 @@ public class HttpClientPropertyDecompressionTestCase extends AbstractHttpClientT
   private void validateResponse(HttpRequestBuilder builder, byte[] expectedResponse) throws IOException, TimeoutException {
     HttpResponse response = client.send(builder.uri(getUri()).build(), 30000, true, null);
 
+    // InputStreamHttpEntity#getBytes didn't work until it was fixed by MULE-14729, using
+    // org.apache.commons.io.IOUtils#toByteArray instead.
+    // The bug was that IOUtils.readFully(this.inputStream, -1, true) throws an IOException because of "-1" parameter.
     assertThat(toByteArray(response.getEntity().getContent()), is(expectedResponse));
   }
 
