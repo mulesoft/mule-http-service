@@ -72,25 +72,25 @@ public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
 
   @Override
   public Executor getThreadPoolFor(Connection connection, IOEvent ioEvent) {
-    if (useSelectorThread(connection, ioEvent)) {
-      return null;
-    } else {
+    if (mustSwitchThread(connection, ioEvent)) {
       final InetSocketAddress socketAddress = (InetSocketAddress) connection.getLocalAddress();
       final InetAddress address = socketAddress.getAddress();
       final int port = socketAddress.getPort();
       return executorProvider.getExecutor(new DefaultServerAddress(address, port));
+    } else {
+      return null;
     }
   }
 
-  private boolean useSelectorThread(Connection connection, IOEvent ioEvent) {
+  private boolean mustSwitchThread(Connection connection, IOEvent ioEvent) {
     Object delegateToConfigured = connection.getAttributes().getAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
     if (!(delegateToConfigured instanceof Boolean)) {
-      return true;
+      return false;
     }
     if (!(Boolean) delegateToConfigured) {
-      return true;
+      return false;
     }
-    return !WORKER_THREAD_EVENT_SET.contains(ioEvent);
+    return WORKER_THREAD_EVENT_SET.contains(ioEvent);
   }
 
   private static void run0(final Connection connection, final IOEvent ioEvent, final IOEventLifeCycleListener lifeCycleListener) {

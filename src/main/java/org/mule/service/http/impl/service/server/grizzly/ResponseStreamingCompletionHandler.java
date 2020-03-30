@@ -9,8 +9,8 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Integer.valueOf;
 import static java.lang.Math.min;
-import static java.lang.System.currentTimeMillis;
 import static java.lang.System.getProperty;
+import static java.lang.System.nanoTime;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
@@ -54,10 +54,10 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private final InputStream inputStream;
   private final ResponseStatusCallback responseStatusCallback;
   private final int bufferSize;
-  private final long startTimeMillis;
+  private final long startTimeNanos;
 
-  private static final String SELECTOR_TIMEOUT = SYSTEM_PROPERTY_PREFIX + "timeoutToUseSelectorWhileStreamingResponse";
-  private final long selectorTimeout = Long.valueOf(getProperty(SELECTOR_TIMEOUT, "50"));
+  private static final String SELECTOR_TIMEOUT = SYSTEM_PROPERTY_PREFIX + "timeoutToUseSelectorWhileStreamingResponseMillis";
+  private final long selectorTimeoutNanos = Long.valueOf(getProperty(SELECTOR_TIMEOUT, "50")) * 1000000;
 
   private volatile boolean isDone;
 
@@ -73,7 +73,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     memoryManager = ctx.getConnection().getTransport().getMemoryManager();
     bufferSize = calculateBufferSize(ctx, ctxClassLoader);
     this.responseStatusCallback = responseStatusCallback;
-    this.startTimeMillis = currentTimeMillis();
+    this.startTimeNanos = nanoTime();
   }
 
   /**
@@ -139,8 +139,8 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   private boolean isSelectorTimeout() {
-    long elapsedTimeMillis = currentTimeMillis() - startTimeMillis;
-    return elapsedTimeMillis > selectorTimeout;
+    long elapsedTimeNanos = nanoTime() - startTimeNanos;
+    return elapsedTimeNanos > selectorTimeoutNanos;
   }
 
   private void markConnectionToDelegateWritesInConfiguredExecutor(boolean value) {
