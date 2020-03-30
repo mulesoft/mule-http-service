@@ -6,6 +6,8 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.util.EnumSet.of;
+import static org.glassfish.grizzly.IOEvent.WRITE;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 
@@ -30,7 +32,8 @@ import org.glassfish.grizzly.strategies.AbstractIOStrategy;
  */
 public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
 
-  private final static EnumSet<IOEvent> WORKER_THREAD_EVENT_SET = EnumSet.of(IOEvent.WRITE);
+  private final static EnumSet<IOEvent> WORKER_THREAD_EVENT_SET = of(WRITE);
+  public static final String DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR = "__WRITES_TO_IO__";
 
   private static final Logger logger = Grizzly.logger(ExecutorPerServerAddressIOStrategy.class);
   private final ExecutorProvider executorProvider;
@@ -68,14 +71,19 @@ public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
 
   @Override
   public Executor getThreadPoolFor(Connection connection, IOEvent ioEvent) {
-    if (WORKER_THREAD_EVENT_SET.contains(ioEvent)) {
+    if (mustSwitchThread(connection, ioEvent)) {
       final String ip = ((InetSocketAddress) connection.getLocalAddress()).getAddress().getHostAddress();
       final int port = ((InetSocketAddress) connection.getLocalAddress()).getPort();
       return executorProvider.getExecutor(new DefaultServerAddress(ip, port));
     } else {
-      // Run other types of IOEvent in selector thread.
       return null;
     }
+  }
+
+  private boolean mustSwitchThread(Connection connection, IOEvent ioEvent) {
+    Object delegateToConfigured = connection.getAttributes().getAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
+    return (delegateToConfigured instanceof Boolean) && ((Boolean) delegateToConfigured)
+        && WORKER_THREAD_EVENT_SET.contains(ioEvent);
   }
 
   private static void run0(final Connection connection, final IOEvent ioEvent, final IOEventLifeCycleListener lifeCycleListener) {

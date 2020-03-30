@@ -9,12 +9,16 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Integer.valueOf;
 import static java.lang.Math.min;
+import static java.lang.System.getProperty;
+import static java.lang.System.nanoTime;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
+import static org.mule.service.http.impl.service.server.grizzly.ExecutorPerServerAddressIOStrategy.DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR;
 import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
@@ -46,6 +50,10 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private final HttpResponsePacket httpResponsePacket;
   private final InputStream inputStream;
   private final int bufferSize;
+  private final long startTimeNanos;
+
+  private static final String SELECTOR_TIMEOUT = "mule.timeoutToUseSelectorWhileStreamingResponseMillis";
+  private final long selectorTimeoutNanos = MILLISECONDS.toNanos(Long.valueOf(getProperty(SELECTOR_TIMEOUT, "50")));
 
   private volatile boolean isDone;
 
@@ -58,6 +66,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     inputStream = httpResponse.getEntity().getContent();
     memoryManager = ctx.getConnection().getTransport().getMemoryManager();
     bufferSize = calculateBufferSize(ctx);
+    this.startTimeNanos = nanoTime();
   }
 
   /**
@@ -108,7 +117,22 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       content = httpResponsePacket.httpContentBuilder().content(buffer).build();
     }
 
+    markConnectionToDelegateWritesInConfiguredExecutor(isSelectorTimeout());
+
     ctx.write(content, this);
+  }
+
+  private boolean isSelectorTimeout() {
+    long elapsedTimeNanos = nanoTime() - startTimeNanos;
+    return elapsedTimeNanos > selectorTimeoutNanos;
+  }
+
+  private void markConnectionToDelegateWritesInConfiguredExecutor(boolean value) {
+    if (value) {
+      ctx.getConnection().getAttributes().setAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR, true);
+    } else {
+      ctx.getConnection().getAttributes().removeAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
+    }
   }
 
   /**
@@ -136,6 +160,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   private void doComplete() {
+    markConnectionToDelegateWritesInConfiguredExecutor(false);
     close();
     responseStatusCallback.responseSendSuccessfully();
     ctx.notifyDownstream(RESPONSE_COMPLETE_EVENT);
@@ -148,6 +173,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   @Override
   public void cancelled() {
     super.cancelled();
+    markConnectionToDelegateWritesInConfiguredExecutor(false);
     close();
     responseStatusCallback.responseSendFailure(new DefaultMuleException(CoreMessages
         .createStaticMessage("Http response sending task was cancelled")));
@@ -162,6 +188,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   @Override
   public void failed(Throwable throwable) {
     super.failed(throwable);
+    markConnectionToDelegateWritesInConfiguredExecutor(false);
     close();
     callOnErrorSendingResponseIfPossible(throwable);
     resume();
