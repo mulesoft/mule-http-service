@@ -11,6 +11,7 @@ import static java.lang.Integer.valueOf;
 import static java.lang.Math.min;
 import static java.lang.System.getProperty;
 import static java.lang.System.nanoTime;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
@@ -29,6 +30,7 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.TimeUnit;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -57,7 +59,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private final long startTimeNanos;
 
   private static final String SELECTOR_TIMEOUT = SYSTEM_PROPERTY_PREFIX + "timeoutToUseSelectorWhileStreamingResponseMillis";
-  private final long selectorTimeoutNanos = Long.valueOf(getProperty(SELECTOR_TIMEOUT, "50")) * 1000000;
+  private final long selectorTimeoutNanos = MILLISECONDS.toNanos(Long.valueOf(getProperty(SELECTOR_TIMEOUT, "50")));
 
   private volatile boolean isDone;
 

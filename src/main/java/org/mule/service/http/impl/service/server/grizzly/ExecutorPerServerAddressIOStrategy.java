@@ -84,13 +84,8 @@ public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
 
   private boolean mustSwitchThread(Connection connection, IOEvent ioEvent) {
     Object delegateToConfigured = connection.getAttributes().getAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
-    if (!(delegateToConfigured instanceof Boolean)) {
-      return false;
-    }
-    if (!(Boolean) delegateToConfigured) {
-      return false;
-    }
-    return WORKER_THREAD_EVENT_SET.contains(ioEvent);
+    return (delegateToConfigured instanceof Boolean) && ((Boolean) delegateToConfigured)
+        && WORKER_THREAD_EVENT_SET.contains(ioEvent);
   }
 
   private static void run0(final Connection connection, final IOEvent ioEvent, final IOEventLifeCycleListener lifeCycleListener) {
