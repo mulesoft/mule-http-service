@@ -9,8 +9,11 @@ package org.mule.service.http.impl.functional.client;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.runtime.http.api.domain.request.HttpRequestContext;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
+import org.mule.runtime.http.api.server.RequestHandler;
+import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
 
@@ -38,10 +41,7 @@ public abstract class AbstractHttpClientTestCase extends AbstractHttpServiceTest
   public void setUp() throws Exception {
     server = service.getServerFactory().create(getServerConfigurationBuilder().build());
     server.start();
-    server.addRequestHandler("/*",
-                             (requestContext, responseCallback) -> responseCallback
-                                 .responseReady(setUpHttpResponse(requestContext.getRequest()),
-                                                new IgnoreResponseStatusCallback()));
+    server.addRequestHandler("/*", getRequestHandler());
   }
 
   /**
@@ -74,6 +74,12 @@ public abstract class AbstractHttpClientTestCase extends AbstractHttpServiceTest
 
   protected HttpRequestOptions getDefaultOptions(int responseTimeout) {
     return HttpRequestOptions.builder().responseTimeout(responseTimeout).build();
+  }
+
+  protected RequestHandler getRequestHandler() {
+    return (requestContext, responseCallback) -> responseCallback
+        .responseReady(setUpHttpResponse(requestContext.getRequest()),
+                       new IgnoreResponseStatusCallback());
   }
 
 }

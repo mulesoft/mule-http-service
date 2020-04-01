@@ -12,10 +12,12 @@ import static java.lang.Math.min;
 import static java.lang.System.getProperty;
 import static java.lang.System.nanoTime;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.lang.Thread.currentThread;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
+import static org.mule.runtime.api.util.MuleSystemProperties.MULE_LOG_SEPARATION_DISABLED;
 import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -30,7 +32,6 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.TimeUnit;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -48,6 +49,7 @@ import org.slf4j.Logger;
 public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHandler {
 
   private static final Logger LOGGER = getLogger(ResponseStreamingCompletionHandler.class);
+  private static boolean REPLACE_CONTEXT_CLASSLOADER = getProperty(MULE_LOG_SEPARATION_DISABLED) == null;
 
   private final MemoryManager memoryManager;
   private final FilterChainContext ctx;
@@ -86,7 +88,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    * @return the size to use for buffers
    */
   private int calculateBufferSize(FilterChainContext ctx, ClassLoader ctxClassLoader) {
-    Thread thread = Thread.currentThread();
+    Thread thread = currentThread();
     ClassLoader currentClassLoader = thread.getContextClassLoader();
     setContextClassLoader(thread, currentClassLoader, ctxClassLoader);
     try {
@@ -114,7 +116,22 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   public void start() throws IOException {
-    sendInputStreamChunk();
+    Thread thread = null;
+    ClassLoader currentClassLoader = null;
+    ClassLoader newClassLoader = null;
+    if (REPLACE_CONTEXT_CLASSLOADER) {
+      thread = currentThread();
+      currentClassLoader = thread.getContextClassLoader();
+      newClassLoader = getCtxClassLoader();
+      setContextClassLoader(thread, currentClassLoader, newClassLoader);
+    }
+    try {
+      sendInputStreamChunk();
+    } finally {
+      if (REPLACE_CONTEXT_CLASSLOADER) {
+        setContextClassLoader(thread, newClassLoader, currentClassLoader);
+      }
+    }
   }
 
   public void sendInputStreamChunk() throws IOException {
@@ -160,6 +177,15 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    */
   @Override
   public void completed(WriteResult result) {
+    Thread thread = null;
+    ClassLoader currentClassLoader = null;
+    ClassLoader newClassLoader = null;
+    if (REPLACE_CONTEXT_CLASSLOADER) {
+      thread = currentThread();
+      currentClassLoader = thread.getContextClassLoader();
+      newClassLoader = getCtxClassLoader();
+      setContextClassLoader(thread, currentClassLoader, newClassLoader);
+    }
     try {
       if (!isDone) {
         sendInputStreamChunk();
@@ -174,6 +200,10 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       }
     } catch (IOException e) {
       failed(e);
+    } finally {
+      if (REPLACE_CONTEXT_CLASSLOADER) {
+        setContextClassLoader(thread, newClassLoader, currentClassLoader);
+      }
     }
   }
 
@@ -190,12 +220,27 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    */
   @Override
   public void cancelled() {
-    super.cancelled();
-    markConnectionToDelegateWritesInConfiguredExecutor(false);
-    close();
-    responseStatusCallback.responseSendFailure(new DefaultMuleException(CoreMessages
-        .createStaticMessage("Http response sending task was cancelled")));
-    resume();
+    Thread thread = null;
+    ClassLoader currentClassLoader = null;
+    ClassLoader newClassLoader = null;
+    if (REPLACE_CONTEXT_CLASSLOADER) {
+      thread = currentThread();
+      currentClassLoader = thread.getContextClassLoader();
+      newClassLoader = getCtxClassLoader();
+      setContextClassLoader(thread, currentClassLoader, newClassLoader);
+    }
+    try {
+      super.cancelled();
+      markConnectionToDelegateWritesInConfiguredExecutor(false);
+      close();
+      responseStatusCallback.responseSendFailure(new DefaultMuleException(CoreMessages
+          .createStaticMessage("Http response sending task was cancelled")));
+      resume();
+    } finally {
+      if (REPLACE_CONTEXT_CLASSLOADER) {
+        setContextClassLoader(thread, newClassLoader, currentClassLoader);
+      }
+    }
   }
 
   /**
@@ -205,12 +250,28 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    */
   @Override
   public void failed(Throwable throwable) {
-    super.failed(throwable);
-    markConnectionToDelegateWritesInConfiguredExecutor(false);
-    close();
-    responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
-        : new ConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
-    resume();
+    Thread thread = null;
+    ClassLoader currentClassLoader = null;
+    ClassLoader newClassLoader = null;
+    if (REPLACE_CONTEXT_CLASSLOADER) {
+      thread = currentThread();
+      currentClassLoader = thread.getContextClassLoader();
+      newClassLoader = getCtxClassLoader();
+      setContextClassLoader(thread, currentClassLoader, newClassLoader);
+    }
+    try {
+      super.failed(throwable);
+      markConnectionToDelegateWritesInConfiguredExecutor(false);
+      close();
+      responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
+          : new ConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
+      resume();
+
+    } finally {
+      if (REPLACE_CONTEXT_CLASSLOADER) {
+        setContextClassLoader(thread, newClassLoader, currentClassLoader);
+      }
+    }
   }
 
   /**
@@ -234,5 +295,15 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   @Override
   protected ClassLoader getCtxClassLoader() {
     return ctxClassLoader;
+  }
+
+  /**
+   *
+   * @param replaceContextClassloader
+   *
+   * @deprecated Used only for testing
+   */
+  public static void setReplaceCtxClassloader(boolean replaceContextClassloader) {
+    REPLACE_CONTEXT_CLASSLOADER = replaceContextClassloader;
   }
 }
