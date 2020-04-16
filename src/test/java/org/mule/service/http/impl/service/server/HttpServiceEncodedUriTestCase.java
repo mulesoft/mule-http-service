@@ -19,9 +19,12 @@ import org.mule.service.http.impl.functional.server.AbstractHttpServerTestCase;
 import org.mule.tck.junit4.rule.SystemProperty;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
@@ -72,49 +75,63 @@ public class HttpServiceEncodedUriTestCase extends AbstractHttpServerTestCase {
   }
 
   @Test
-  public void test1() throws Exception {
-    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT, PAYLOAD1);
+  public void simpleTest() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT, of(PAYLOAD1));
   }
 
   @Test
-  public void test2() throws Exception {
-    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/zaraza", PAYLOAD4);
+  public void withParametersWithoutEncoding() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/zaraza", of(PAYLOAD4));
   }
 
   @Test
-  public void test3() throws Exception {
-    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/test3", PAYLOAD2);
+  public void withParametersWithEncodedSlash() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/%2Fzaraza%20%2F", of(PAYLOAD4));
   }
 
   @Test
-  public void test4() throws Exception {
-    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "%2Ftest3", PAYLOAD2, false);
+  public void twoNamesUri() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/test3", of(PAYLOAD2));
   }
 
   @Test
-  public void test5() throws Exception {
-    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/%2Ftest2/test2", PAYLOAD3);
+  public void encodedSlashesDontWorkAsSeparators() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "%2Ftest3");
   }
 
   @Test
-  public void test6() throws Exception {
-    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/%2Fte%20st2%2F/test2/", PAYLOAD3);
+  public void innerParameterCorrectlyTaken() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/%2Ftest2/test2", of(PAYLOAD3));
   }
 
-  protected void assertPostRequestGetsOKResponseStatusAndPayload(String endpoint, String payload) throws IOException {
-    assertPostRequestGetsOKResponseStatusAndPayload(endpoint, payload, true);
+  @Test
+  public void innerParameterWithMultipleEncodedSlashesBeginning() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/%2Fte%20st2%2F/test2/", of(PAYLOAD3));
   }
 
-  protected void assertPostRequestGetsOKResponseStatusAndPayload(String endpoint, String payload, boolean okExpected)
-      throws IOException {
+  @Test
+  public void innerParameterWithMultipleEncodedSlashes() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/zaraza%2Fte%20st2%2F/test2/", of(PAYLOAD3));
+  }
+
+  @Test
+  public void encodedSlashesDontSupresefutureSlashes() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/%2Fte%20st2%2F/%2F/");
+  }
+
+  protected void assertPostRequestGetsOKResponseStatusAndPayload(String endpoint) throws IOException {
+    assertPostRequestGetsOKResponseStatusAndPayload(endpoint, empty());
+  }
+
+  protected void assertPostRequestGetsOKResponseStatusAndPayload(String endpoint, Optional<String> payload) throws IOException {
     Request request = Request.Get(format("http://%s:%s/%s", server.getServerAddress().getIp(), port.getValue(), endpoint));
 
     org.apache.http.HttpResponse response = request.execute().returnResponse();
     StatusLine statusLine = response.getStatusLine();
 
-    if (okExpected) {
+    if (payload.isPresent()) {
       assertThat(statusLine.getStatusCode(), is(OK.getStatusCode()));
-      assertThat(IOUtils.toString(response.getEntity().getContent()), is(payload));
+      assertThat(IOUtils.toString(response.getEntity().getContent()), is(payload.get()));
     } else {
       assertThat(statusLine.getStatusCode(), is(NOT_FOUND.getStatusCode()));
     }
