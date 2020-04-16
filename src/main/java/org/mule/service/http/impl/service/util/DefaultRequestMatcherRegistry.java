@@ -15,6 +15,7 @@ import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decod
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.slf4j.LoggerFactory.getLogger;
 
+import org.apache.commons.text.diff.EditScript;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
@@ -45,6 +46,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private static final Logger LOGGER = getLogger(DefaultRequestMatcherRegistry.class);
   private static final String WILDCARD_CHARACTER = "*";
   private static final String SLASH = "/";
+  private static final String ENCODED_SLASH = "%2F";
   static final Supplier NULL_SUPPLIER = () -> null;
 
   private Path serverRequestHandler;
@@ -59,8 +61,8 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private final LoadingCache<String, List<Path>> requestsPathsCache =
       Caffeine.<String, List<Path>>newBuilder().maximumSize(32).build(requestPath -> {
         try {
-          String fullPathName = decodePath(requestPath);
-          checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");
+          checkArgument(requestPath.startsWith(SLASH), "path parameter must start with /");
+          String fullPathName = pathDecodedWithEncodedSlashes(requestPath);
           Stack<Path> found = findPossibleRequestHandlers(fullPathName);
           List<Path> foundAsList = list(found.elements());
           reverse(foundAsList);
@@ -69,6 +71,34 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
           return null;
         }
       });
+
+  private String pathDecodedWithEncodedSlashes(String requestPath) throws DecodingException {
+    String fullPathName = decodePath(requestPath);
+
+    int percentages = 0;
+    ArrayList<Integer> positions = new ArrayList<>();
+
+    Integer pos = -1;
+    while ((pos = requestPath.indexOf("%", pos + 1)) != -1) {
+      if (requestPath.substring(pos, pos + ENCODED_SLASH.length()).equals(ENCODED_SLASH)) {
+        positions.add(pos - 2 * percentages);
+      }
+      percentages++;
+    }
+
+    if (positions.isEmpty()) {
+      return fullPathName;
+    }
+
+    String fullPathNameWithEscapedSlashes = "";
+    int lastPosition = 0;
+    for (Integer slashPos : positions) {
+      fullPathNameWithEscapedSlashes += fullPathName.substring(lastPosition, slashPos) + ENCODED_SLASH;
+      lastPosition = slashPos + 1;
+    }
+    fullPathNameWithEscapedSlashes += fullPathName.substring(lastPosition);
+    return fullPathNameWithEscapedSlashes;
+  }
 
   public DefaultRequestMatcherRegistry() {
     this(NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER);
