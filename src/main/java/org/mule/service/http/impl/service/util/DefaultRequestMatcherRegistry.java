@@ -50,7 +50,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private static final String ENCODED_SLASH = "%2F";
   public static final String HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY = "mule.http.service.encoded.slash.enabled";
   private static final boolean HTTP_SERVICE_ENCODED_SLASH_ENABLED =
-      valueOf(getProperty(HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY, "true"));
+      valueOf(getProperty(HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY, "false"));
   static final Supplier NULL_SUPPLIER = () -> null;
 
   private Path serverRequestHandler;
