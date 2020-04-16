@@ -6,7 +6,9 @@
  */
 package org.mule.service.http.impl.service.util;
 
+import static java.lang.Boolean.valueOf;
 import static java.lang.String.format;
+import static java.lang.System.getProperty;
 import static java.util.Collections.list;
 import static java.util.Collections.reverse;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
@@ -15,7 +17,6 @@ import static org.mule.service.http.impl.service.server.grizzly.HttpParser.decod
 import static org.mule.service.http.impl.service.server.grizzly.HttpParser.normalizePathWithSpacesOrEncodedSpaces;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import org.apache.commons.text.diff.EditScript;
 import org.mule.runtime.core.api.util.StringUtils;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
@@ -47,6 +48,9 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private static final String WILDCARD_CHARACTER = "*";
   private static final String SLASH = "/";
   private static final String ENCODED_SLASH = "%2F";
+  public static final String HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY = "mule.http.service.encoded.slash.enabled";
+  private static final boolean HTTP_SERVICE_ENCODED_SLASH_ENABLED =
+      valueOf(getProperty(HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY, "true"));
   static final Supplier NULL_SUPPLIER = () -> null;
 
   private Path serverRequestHandler;
@@ -61,8 +65,8 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private final LoadingCache<String, List<Path>> requestsPathsCache =
       Caffeine.<String, List<Path>>newBuilder().maximumSize(32).build(requestPath -> {
         try {
-          checkArgument(requestPath.startsWith(SLASH), "path parameter must start with /");
           String fullPathName = pathDecodedWithEncodedSlashes(requestPath);
+          checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");
           Stack<Path> found = findPossibleRequestHandlers(fullPathName);
           List<Path> foundAsList = list(found.elements());
           reverse(foundAsList);
@@ -74,6 +78,9 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
   private String pathDecodedWithEncodedSlashes(String requestPath) throws DecodingException {
     String fullPathName = decodePath(requestPath);
+    if (!HTTP_SERVICE_ENCODED_SLASH_ENABLED) {
+      return fullPathName;
+    }
 
     int percentages = 0;
     ArrayList<Integer> positions = new ArrayList<>();

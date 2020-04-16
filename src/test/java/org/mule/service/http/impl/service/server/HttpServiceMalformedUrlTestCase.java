@@ -22,10 +22,12 @@ import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.BAD_REQUEST;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+import static org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistry.HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY;
 
 import org.apache.http.StatusLine;
 import org.hamcrest.Matchers;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -36,6 +38,7 @@ import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.functional.server.AbstractHttpServerTestCase;
 import org.mule.service.http.impl.service.util.SocketRequester;
+import org.mule.tck.junit4.rule.SystemProperty;
 
 public class HttpServiceMalformedUrlTestCase extends AbstractHttpServerTestCase {
 
@@ -51,6 +54,9 @@ public class HttpServiceMalformedUrlTestCase extends AbstractHttpServerTestCase 
   private static final String TEST_PAYLOAD1 = "test-payload1";
   private static final String TEST_PAYLOAD2 = "test-payload2";
   private static final String TEST_PAYLOAD3 = "test-payload3";
+
+  @Rule
+  public SystemProperty encodedSlashes = new SystemProperty(HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY, "false");
 
   public HttpServiceMalformedUrlTestCase(String serviceToLoad) {
     super(serviceToLoad);
