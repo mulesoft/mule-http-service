@@ -18,7 +18,7 @@
 
     <properties>
         <asyncHttpClientVersion>1.14-MULE-017</asyncHttpClientVersion>
-        <grizzlyVersion>2.3.36-MULE-017</grizzlyVersion>
+        <grizzlyVersion>2.3.36-MULE-018</grizzlyVersion>
         <javax.activation.version>1.1.1</javax.activation.version>
         <sun.mailapi.version>1.6.4</sun.mailapi.version>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
