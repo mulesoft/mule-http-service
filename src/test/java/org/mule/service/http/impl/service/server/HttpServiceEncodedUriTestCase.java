@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.server;
 
 import org.apache.http.StatusLine;
 import org.apache.http.client.fluent.Request;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -22,6 +23,8 @@ import java.io.IOException;
 import java.util.Optional;
 
 import static java.lang.String.format;
+import static java.lang.System.clearProperty;
+import static java.lang.System.setProperty;
 import static java.util.Collections.singletonList;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
@@ -50,6 +53,16 @@ public class HttpServiceEncodedUriTestCase extends AbstractHttpServerTestCase {
 
   public HttpServiceEncodedUriTestCase(String serviceToLoad) {
     super(serviceToLoad);
+  }
+
+  @Before
+  public void setup() {
+    setProperty(HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY, "true");
+  }
+
+  @After
+  public void tearDown() {
+    clearProperty(HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY);
   }
 
   @Override
