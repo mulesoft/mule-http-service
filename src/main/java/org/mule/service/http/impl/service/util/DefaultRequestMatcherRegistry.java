@@ -87,7 +87,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
 
     Integer pos = -1;
     while ((pos = requestPath.indexOf("%", pos + 1)) != -1) {
-      if (requestPath.substring(pos, pos + ENCODED_SLASH.length()).equals(ENCODED_SLASH)) {
+      if (requestPath.regionMatches(pos, ENCODED_SLASH, 0, ENCODED_SLASH.length())) {
         positions.add(pos - 2 * percentages);
       }
       percentages++;
