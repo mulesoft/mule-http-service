@@ -22,12 +22,10 @@ import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.BAD_REQUEST;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
-import static org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistry.HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY;
 
 import org.apache.http.StatusLine;
 import org.hamcrest.Matchers;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;

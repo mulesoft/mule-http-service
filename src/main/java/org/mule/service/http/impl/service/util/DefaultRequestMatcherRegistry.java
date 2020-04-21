@@ -97,14 +97,14 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
       return fullPathName;
     }
 
-    String fullPathNameWithEscapedSlashes = "";
+    StringBuilder fullPathNameWithEscapedSlashes = new StringBuilder();
     int lastPosition = 0;
     for (Integer slashPos : positions) {
-      fullPathNameWithEscapedSlashes += fullPathName.substring(lastPosition, slashPos) + ENCODED_SLASH;
+      fullPathNameWithEscapedSlashes.append(fullPathName.substring(lastPosition, slashPos)).append(ENCODED_SLASH);
       lastPosition = slashPos + 1;
     }
-    fullPathNameWithEscapedSlashes += fullPathName.substring(lastPosition);
-    return fullPathNameWithEscapedSlashes;
+    fullPathNameWithEscapedSlashes.append(fullPathName.substring(lastPosition));
+    return fullPathNameWithEscapedSlashes.toString();
   }
 
   public DefaultRequestMatcherRegistry() {
