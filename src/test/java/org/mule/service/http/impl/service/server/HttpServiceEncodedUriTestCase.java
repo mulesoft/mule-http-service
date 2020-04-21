@@ -113,8 +113,18 @@ public class HttpServiceEncodedUriTestCase extends AbstractHttpServerTestCase {
   }
 
   @Test
+  public void encodedSlashesDontWorkAsSeparatorsEvenEncodingPercentage() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "%252Ftest3");
+  }
+
+  @Test
   public void innerParameterCorrectlyTaken() throws Exception {
     assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/%2Ftest2/test2", of(PAYLOAD3));
+  }
+
+  @Test
+  public void innerParameterCorrectlyTakenWithEncodedPercentage() throws Exception {
+    assertPostRequestGetsOKResponseStatusAndPayload(SIMPLE_ENDPOINT + "/%252Ftest2/test2", of(PAYLOAD3));
   }
 
   @Test
