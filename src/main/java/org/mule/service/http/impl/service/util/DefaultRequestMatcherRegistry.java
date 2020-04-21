@@ -6,7 +6,9 @@
  */
 package org.mule.service.http.impl.service.util;
 
+import static java.lang.Boolean.valueOf;
 import static java.lang.String.format;
+import static java.lang.System.getProperty;
 import static java.util.Collections.list;
 import static java.util.Collections.reverse;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
@@ -45,6 +47,10 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private static final Logger LOGGER = getLogger(DefaultRequestMatcherRegistry.class);
   private static final String WILDCARD_CHARACTER = "*";
   private static final String SLASH = "/";
+  private static final String ENCODED_SLASH = "%2F";
+  public static final String HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY = "mule.http.service.encoded.slash.enabled";
+  private final boolean HTTP_SERVICE_ENCODED_SLASH_ENABLED =
+      valueOf(getProperty(HTTP_SERVICE_ENCODED_SLASH_ENABLED_PROPERTY, "false"));
   static final Supplier NULL_SUPPLIER = () -> null;
 
   private Path serverRequestHandler;
@@ -59,7 +65,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
   private final LoadingCache<String, List<Path>> requestsPathsCache =
       Caffeine.<String, List<Path>>newBuilder().maximumSize(32).build(requestPath -> {
         try {
-          String fullPathName = decodePath(requestPath);
+          String fullPathName = pathDecodedWithEncodedSlashes(requestPath);
           checkArgument(fullPathName.startsWith(SLASH), "path parameter must start with /");
           Stack<Path> found = findPossibleRequestHandlers(fullPathName);
           List<Path> foundAsList = list(found.elements());
@@ -69,6 +75,37 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
           return null;
         }
       });
+
+  private String pathDecodedWithEncodedSlashes(String requestPath) throws DecodingException {
+    String fullPathName = decodePath(requestPath);
+    if (!HTTP_SERVICE_ENCODED_SLASH_ENABLED) {
+      return fullPathName;
+    }
+
+    int percentages = 0;
+    ArrayList<Integer> positions = new ArrayList<>();
+
+    Integer pos = -1;
+    while ((pos = requestPath.indexOf("%", pos + 1)) != -1) {
+      if (requestPath.regionMatches(pos, ENCODED_SLASH, 0, ENCODED_SLASH.length())) {
+        positions.add(pos - 2 * percentages);
+      }
+      percentages++;
+    }
+
+    if (positions.isEmpty()) {
+      return fullPathName;
+    }
+
+    StringBuilder fullPathNameWithEscapedSlashes = new StringBuilder();
+    int lastPosition = 0;
+    for (Integer slashPos : positions) {
+      fullPathNameWithEscapedSlashes.append(fullPathName.substring(lastPosition, slashPos)).append(ENCODED_SLASH);
+      lastPosition = slashPos + 1;
+    }
+    fullPathNameWithEscapedSlashes.append(fullPathName.substring(lastPosition));
+    return fullPathNameWithEscapedSlashes.toString();
+  }
 
   public DefaultRequestMatcherRegistry() {
     this(NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER, NULL_SUPPLIER);
