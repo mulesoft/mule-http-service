@@ -12,7 +12,7 @@ import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 
-import org.mule.runtime.api.connection.ConnectionException;
+import org.mule.runtime.api.connection.SourceRemoteConnectionException;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -158,7 +158,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   public void failed(Throwable throwable) {
     super.failed(throwable);
     responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
-        : new ConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
+        : new SourceRemoteConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
     resume();
   }
 
