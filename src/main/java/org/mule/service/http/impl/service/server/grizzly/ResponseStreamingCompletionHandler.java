@@ -15,6 +15,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.lang.Thread.currentThread;
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
+import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.api.util.MuleSystemProperties.MULE_LOG_SEPARATION_DISABLED;
@@ -264,7 +265,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       markConnectionToDelegateWritesInConfiguredExecutor(false);
       close();
       responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
-          : new SourceConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
+          : new SourceConnectionException(createStaticMessage(CLIENT_CONNECTION_CLOSED_MESSAGE), throwable));
       resume();
 
     } finally {
