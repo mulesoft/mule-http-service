@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.String.format;
+import static java.lang.Thread.currentThread;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
@@ -21,17 +22,13 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 
 import java.io.IOException;
-import java.nio.channels.SelectableChannel;
-import java.nio.channels.SocketChannel;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
 import org.glassfish.grizzly.CloseListener;
-import org.glassfish.grizzly.CloseType;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.ConnectionProbe;
-import org.glassfish.grizzly.nio.transport.TCPNIOConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.ssl.SSLFilter;
@@ -55,30 +52,57 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private Scheduler scheduler;
   private boolean stopped = true;
   private boolean stopping;
+  private Supplier<Long> shutdownTimeoutSupplier;
+
+  private int openConnectionsCounter = 0;
+  private final Object openConnectionsSync = new Object();
 
   public GrizzlyHttpServer(ServerAddress serverAddress,
                            TCPNIOTransport transport,
                            HttpListenerRegistry listenerRegistry,
                            Supplier<Scheduler> schedulerSource,
                            Runnable schedulerDisposer,
-                           GrizzlyAddressFilter<SSLFilter> sslFilter) {
+                           GrizzlyAddressFilter<SSLFilter> sslFilter,
+                           Supplier<Long> shutdownTimeoutSupplier) {
     this.serverAddress = serverAddress;
     this.transport = transport;
     this.listenerRegistry = listenerRegistry;
     this.schedulerSource = schedulerSource;
     this.schedulerDisposer = schedulerDisposer;
     this.sslFilter = sslFilter;
+    this.shutdownTimeoutSupplier = shutdownTimeoutSupplier;
   }
 
   @Override
   public synchronized HttpServer start() throws IOException {
     this.scheduler = schedulerSource != null ? schedulerSource.get() : null;
     serverConnection = transport.bind(serverAddress.getIp(), serverAddress.getPort());
-    serverConnection.getMonitoringConfig().addProbes(new CloseAcceptedConnectionsOnServerCloseProbe());
+    serverConnection.getMonitoringConfig().addProbes(new ConnectionProbe.Adapter() {
+
+      /**
+       * {@inheritDoc}
+       */
+      @Override
+      public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
+        synchronized (openConnectionsSync) {
+          openConnectionsCounter += 1;
+        }
+        clientConnection.addCloseListener((CloseListener) (closeable, iCloseType) -> {
+          synchronized (openConnectionsSync) {
+            openConnectionsCounter -= 1;
+            if (openConnectionsCounter == 0) {
+              openConnectionsSync.notifyAll();
+            }
+          }
+        });
+      }
+    });
 
     if (logger.isDebugEnabled()) {
       logger.debug(format("Listening for connections on '%s'", listenerUrl()));
     }
+
+    openConnectionsCounter = 0;
 
     serverConnection.addCloseListener((closeable, type) -> {
       try {
@@ -94,19 +118,33 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public synchronized HttpServer stop() {
+    if (stopped) {
+      return this;
+    }
+
     stopping = true;
     try {
       transport.unbind(serverConnection);
 
-      if (logger.isDebugEnabled()) {
-        logger.debug(format("Stopped listener on '%s'", listenerUrl()));
+      Long shutdownTimeout = shutdownTimeoutSupplier.get();
+      if (shutdownTimeout != 0) {
+        synchronized (openConnectionsSync) {
+          if (openConnectionsCounter != 0) {
+            logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
+                         openConnectionsCounter, shutdownTimeout);
+            openConnectionsSync.wait(shutdownTimeout);
+          }
+        }
       }
 
-      return this;
+      logger.debug("Stopped listener on '{}'", listenerUrl());
+    } catch (InterruptedException e) {
+      currentThread().interrupt();
     } finally {
-      stopping = false;
       stopped = true;
+      stopping = false;
     }
+    return this;
   }
 
   @Override
@@ -168,78 +206,4 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private String listenerUrl() {
     return format("%s://%s:%d", getProtocol().getScheme(), serverAddress.getIp(), serverAddress.getPort());
   }
-
-  private static class CloseAcceptedConnectionsOnServerCloseProbe extends ConnectionProbe.Adapter {
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
-      final CloseAcceptedConnectionOnServerClose callback = new CloseAcceptedConnectionOnServerClose(clientConnection);
-      serverConnection.addCloseListener(callback);
-      clientConnection.addCloseListener(new RemoveCloseListenerOnClientClosed(serverConnection, callback));
-    }
-  }
-
-  private static class CloseAcceptedConnectionOnServerClose implements CloseListener<TCPNIOServerConnection, CloseType> {
-
-    private SocketChannel acceptedChannel;
-
-    private CloseAcceptedConnectionOnServerClose(Connection acceptedConnection) {
-      this.acceptedChannel = getSocketChannel(acceptedConnection);
-    }
-
-    private static SocketChannel getSocketChannel(Connection acceptedConnection) {
-      if (!(acceptedConnection instanceof TCPNIOConnection)) {
-        if (logger.isWarnEnabled()) {
-          logger.warn("The accepted connection is not an instance of TCPNIOConnection");
-        }
-        return null;
-      }
-
-      SelectableChannel selectableChannel = ((TCPNIOConnection) acceptedConnection).getChannel();
-      if (!(selectableChannel instanceof SocketChannel)) {
-        if (logger.isWarnEnabled()) {
-          logger.warn("The accepted connection doesn't hold a SocketChannel");
-        }
-        return null;
-      }
-
-      return (SocketChannel) selectableChannel;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onClosed(TCPNIOServerConnection closeable, CloseType type) throws IOException {
-      if (acceptedChannel != null) {
-        acceptedChannel.shutdownInput();
-      }
-    }
-  }
-
-  private static class RemoveCloseListenerOnClientClosed implements CloseListener<TCPNIOConnection, CloseType> {
-
-    private CloseAcceptedConnectionOnServerClose callbackToRemove;
-    private Connection serverConnection;
-
-    private RemoveCloseListenerOnClientClosed(Connection serverConnection,
-                                              CloseAcceptedConnectionOnServerClose callbackToRemove) {
-      this.serverConnection = serverConnection;
-      this.callbackToRemove = callbackToRemove;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onClosed(TCPNIOConnection closeable, CloseType type) throws IOException {
-      if (serverConnection.isOpen()) {
-        serverConnection.removeCloseListener(callbackToRemove);
-      }
-    }
-  }
-
 }

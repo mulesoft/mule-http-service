@@ -42,6 +42,7 @@ import org.mule.service.http.impl.service.server.HttpListenerConnectionManager;
 import org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistryBuilder;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -64,6 +65,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   private static final Logger logger = getLogger(HttpServiceImplementation.class);
   private static final String CONTAINER_CONTEXT = "container";
+  private static final long DEFAULT_SHUTDOWN_TIMEOUT = 200;
 
   protected final SchedulerService schedulerService;
 
@@ -78,7 +80,8 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   @Override
   public HttpServerFactory getServerFactory() {
-    return new ContextHttpServerFactoryAdapter(CONTAINER_CONTEXT, empty(), listenerConnectionManager);
+    return new ContextHttpServerFactoryAdapter(CONTAINER_CONTEXT, empty(), listenerConnectionManager,
+                                               () -> DEFAULT_SHUTDOWN_TIMEOUT);
   }
 
   @Inject
@@ -86,6 +89,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
     ArtifactType artifactType = muleContext.getArtifactType();
     Optional<String> appName = registry.lookupByName(APP_NAME_PROPERTY);
     Optional<String> domainName = registry.lookupByName(DOMAIN_NAME_PROPERTY);
+    Supplier<Long> shutdownTimeout = () -> muleContext.getConfiguration().getShutdownTimeout();
 
     try {
       switch (artifactType) {
@@ -93,18 +97,21 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
         case POLICY:
           //If this is a policy, then it's name will be set in the appName field.
           //Policies should not have the same name as applications, just in case, we will add a prefix to it's name.
-          return buildServerFactory(appName, APP_NAME_PROPERTY, POLICY, empty(), null, listenerConnectionManager);
+          return buildServerFactory(appName, APP_NAME_PROPERTY, POLICY, empty(), null, listenerConnectionManager,
+                                    shutdownTimeout);
 
         case DOMAIN:
           //In case of a domain, use the populated domainName to create the context.
-          return buildServerFactory(domainName, DOMAIN_NAME_PROPERTY, DOMAIN, empty(), null, listenerConnectionManager);
+          return buildServerFactory(domainName, DOMAIN_NAME_PROPERTY, DOMAIN, empty(), null, listenerConnectionManager,
+                                    shutdownTimeout);
 
         case APP:
           //In case of an app, we should consider the case where it belongs to a domain and use it's name as parent context
           if (domainName.isPresent() && appName.isPresent()) {
-            return buildServerFactory(appName, APP_NAME_PROPERTY, APP, domainName, DOMAIN, listenerConnectionManager);
+            return buildServerFactory(appName, APP_NAME_PROPERTY, APP, domainName, DOMAIN, listenerConnectionManager,
+                                      shutdownTimeout);
           }
-          return buildServerFactory(appName, APP_NAME_PROPERTY, APP, empty(), null, listenerConnectionManager);
+          return buildServerFactory(appName, APP_NAME_PROPERTY, APP, empty(), null, listenerConnectionManager, shutdownTimeout);
 
         default:
           break;
@@ -113,7 +120,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
       logger.warn(e.getMessage() + ". Using muleContext Id as context");
     }
     //We should never get to this point. In case we do, fallback to old behaviour.
-    return new ContextHttpServerFactoryAdapter(muleContext.getId(), empty(), listenerConnectionManager);
+    return new ContextHttpServerFactoryAdapter(muleContext.getId(), empty(), listenerConnectionManager, shutdownTimeout);
   }
 
   private HttpServerFactory buildServerFactory(Optional<String> context,
@@ -121,14 +128,16 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
                                                ArtifactType contextType,
                                                Optional<String> parentContext,
                                                ArtifactType parentType,
-                                               ContextHttpServerFactory delegate)
+                                               ContextHttpServerFactory delegate,
+                                               Supplier<Long> shutdownTimeout)
       throws ServerFactoryCreationException {
     return context.map(
                        c -> parentContext
                            .map(pc -> new ContextHttpServerFactoryAdapter(buildArtifactServerName(c, contextType),
-                                                                          of(buildArtifactServerName(pc, parentType)), delegate))
+                                                                          of(buildArtifactServerName(pc, parentType)),
+                                                                          delegate, shutdownTimeout))
                            .orElse(new ContextHttpServerFactoryAdapter(buildArtifactServerName(c, contextType), empty(),
-                                                                       delegate)))
+                                                                       delegate, shutdownTimeout)))
         .orElseThrow(() -> new ServerFactoryCreationException(createStaticMessage("Could not create server factory for "
             + contextType.getAsString()
             + ", " + namePropertyKey + " not set")));

@@ -12,6 +12,7 @@ import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 /**
  * Factory object for {@link HttpServer} that partitions them considering a given creation context in which they can be later
@@ -26,10 +27,12 @@ public interface ContextHttpServerFactory {
    *
    * @param configuration a {@link HttpServerConfiguration} specifying the desired server.
    * @param context the context under which this server will be created
+   * @param shutdownTimeout Time to wait for persistent connections to be closed before stop servers.
    * @return a newly built {@link HttpServer} based on the {@code configuration}.
    * @throws ServerCreationException if the server cannot be created based on the configuration.
    */
-  HttpServer create(HttpServerConfiguration configuration, String context) throws ServerCreationException;
+  HttpServer create(HttpServerConfiguration configuration, String context, Supplier<Long> shutdownTimeout)
+      throws ServerCreationException;
 
   /**
    * Allows to retrieve a previously created {@link HttpServer}. This will only be possible if used from the same context.
