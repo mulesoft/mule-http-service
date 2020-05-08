@@ -54,7 +54,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private boolean stopping;
   private Supplier<Long> shutdownTimeoutSupplier;
 
-  private int openConnectionsCounter = 0;
+  private volatile int openConnectionsCounter = 0;
   private final Object openConnectionsSync = new Object();
 
   public GrizzlyHttpServer(ServerAddress serverAddress,
@@ -137,7 +137,9 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
         }
       }
 
-      logger.debug("Stopped listener on '{}'", listenerUrl());
+      if (logger.isDebugEnabled()) {
+        logger.debug("Stopped listener on '{}'", listenerUrl());
+      }
     } catch (InterruptedException e) {
       currentThread().interrupt();
     } finally {

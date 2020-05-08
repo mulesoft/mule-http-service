@@ -27,7 +27,7 @@ public interface ContextHttpServerFactory {
    *
    * @param configuration a {@link HttpServerConfiguration} specifying the desired server.
    * @param context the context under which this server will be created
-   * @param shutdownTimeout Time to wait for persistent connections to be closed before stop servers.
+   * @param shutdownTimeout Time to wait for persistent connections to be closed when server is stopped.
    * @return a newly built {@link HttpServer} based on the {@code configuration}.
    * @throws ServerCreationException if the server cannot be created based on the configuration.
    */
