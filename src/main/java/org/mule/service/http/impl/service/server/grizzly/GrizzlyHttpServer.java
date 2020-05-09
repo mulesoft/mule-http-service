@@ -7,7 +7,9 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.String.format;
+import static java.lang.System.nanoTime;
 import static java.lang.Thread.currentThread;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
@@ -122,17 +124,22 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       return this;
     }
 
+    Long shutdownTimeout = shutdownTimeoutSupplier.get();
+    final long stopNanos = nanoTime() + MILLISECONDS.toNanos(shutdownTimeout);
+
     stopping = true;
     try {
       transport.unbind(serverConnection);
 
-      Long shutdownTimeout = shutdownTimeoutSupplier.get();
       if (shutdownTimeout != 0) {
         synchronized (openConnectionsSync) {
-          if (openConnectionsCounter != 0) {
+          while (openConnectionsCounter != 0 && nanoTime() < stopNanos) {
             logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
                          openConnectionsCounter, shutdownTimeout);
-            openConnectionsSync.wait(shutdownTimeout);
+            openConnectionsSync.wait(50);
+          }
+          if (openConnectionsCounter != 0) {
+            logger.warn("There are still {} open connections on server stop.", openConnectionsCounter);
           }
         }
       }
