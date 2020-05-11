@@ -102,7 +102,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
     readLock.lock();
     try {
       final HttpServer server = serverAddressToServerMap.get(serverAddress);
-      if (server != null && !server.isStopping() && !server.isStopped()) {
+      if (server != null && !server.isStopped()) {
         final RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
             requestHandlerPerServerAddress.get(server);
         if (serverAddressRequestHandlerRegistry != null) {
