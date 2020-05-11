@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service;
 
+import static java.lang.Long.valueOf;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,6 +23,7 @@ import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.PLUGIN;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.POLICY;
 import org.mule.runtime.api.artifact.Registry;
 import org.mule.runtime.core.api.MuleContext;
+import org.mule.runtime.core.api.config.MuleConfiguration;
 import org.mule.runtime.core.api.config.bootstrap.ArtifactType;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
@@ -211,9 +213,12 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
   private HttpServerFactory newServerFactory(Optional<String> artifactName,
                                              Optional<String> domainName,
                                              ArtifactType artifactType) {
+    MuleConfiguration muleConfiguration = mock(MuleConfiguration.class);
+    when(muleConfiguration.getShutdownTimeout()).thenReturn(valueOf(20));
+
     MuleContext muleContext = mock(MuleContext.class);
     when(muleContext.getArtifactType()).thenReturn(artifactType);
-
+    when(muleContext.getConfiguration()).thenReturn(muleConfiguration);
     when(muleContext.getId()).thenReturn(MULE_CONTEXT_ID);
 
     Registry registry = mock(Registry.class);

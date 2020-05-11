@@ -6,7 +6,12 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Math.min;
 import static java.lang.String.format;
+import static java.lang.System.nanoTime;
+import static java.lang.Thread.currentThread;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
@@ -21,11 +26,13 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 
 import java.io.IOException;
-import java.net.BindException;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
+import org.glassfish.grizzly.CloseListener;
+import org.glassfish.grizzly.Connection;
+import org.glassfish.grizzly.ConnectionProbe;
 import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.ssl.SSLFilter;
@@ -49,29 +56,57 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private Scheduler scheduler;
   private boolean stopped = true;
   private boolean stopping;
+  private Supplier<Long> shutdownTimeoutSupplier;
+
+  private volatile int openConnectionsCounter = 0;
+  private final Object openConnectionsSync = new Object();
 
   public GrizzlyHttpServer(ServerAddress serverAddress,
                            TCPNIOTransport transport,
                            HttpListenerRegistry listenerRegistry,
                            Supplier<Scheduler> schedulerSource,
                            Runnable schedulerDisposer,
-                           GrizzlyAddressFilter<SSLFilter> sslFilter) {
+                           GrizzlyAddressFilter<SSLFilter> sslFilter,
+                           Supplier<Long> shutdownTimeoutSupplier) {
     this.serverAddress = serverAddress;
     this.transport = transport;
     this.listenerRegistry = listenerRegistry;
     this.schedulerSource = schedulerSource;
     this.schedulerDisposer = schedulerDisposer;
     this.sslFilter = sslFilter;
+    this.shutdownTimeoutSupplier = shutdownTimeoutSupplier;
   }
 
   @Override
   public synchronized HttpServer start() throws IOException {
     this.scheduler = schedulerSource != null ? schedulerSource.get() : null;
     serverConnection = transport.bind(serverAddress.getIp(), serverAddress.getPort());
+    serverConnection.getMonitoringConfig().addProbes(new ConnectionProbe.Adapter() {
+
+      /**
+       * {@inheritDoc}
+       */
+      @Override
+      public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
+        synchronized (openConnectionsSync) {
+          openConnectionsCounter += 1;
+        }
+        clientConnection.addCloseListener((CloseListener) (closeable, iCloseType) -> {
+          synchronized (openConnectionsSync) {
+            openConnectionsCounter -= 1;
+            if (openConnectionsCounter == 0) {
+              openConnectionsSync.notifyAll();
+            }
+          }
+        });
+      }
+    });
 
     if (logger.isDebugEnabled()) {
       logger.debug(format("Listening for connections on '%s'", listenerUrl()));
     }
+
+    openConnectionsCounter = 0;
 
     serverConnection.addCloseListener((closeable, type) -> {
       try {
@@ -87,19 +122,43 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public synchronized HttpServer stop() {
+    if (stopped) {
+      return this;
+    }
+
+    Long shutdownTimeout = shutdownTimeoutSupplier.get();
+    final long stopNanos = nanoTime() + MILLISECONDS.toNanos(shutdownTimeout);
+
     stopping = true;
     try {
       transport.unbind(serverConnection);
 
-      if (logger.isDebugEnabled()) {
-        logger.debug(format("Stopped listener on '%s'", listenerUrl()));
+      if (shutdownTimeout != 0) {
+        synchronized (openConnectionsSync) {
+          long remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
+          while (openConnectionsCounter != 0 && remainingMillis > 0) {
+            long millisToWait = min(remainingMillis, 50);
+            logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
+                         openConnectionsCounter, millisToWait);
+            openConnectionsSync.wait(millisToWait);
+            remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
+          }
+          if (openConnectionsCounter != 0) {
+            logger.warn("There are still {} open connections on server stop.", openConnectionsCounter);
+          }
+        }
       }
 
-      return this;
+      if (logger.isDebugEnabled()) {
+        logger.debug("Stopped listener on '{}'", listenerUrl());
+      }
+    } catch (InterruptedException e) {
+      currentThread().interrupt();
     } finally {
-      stopping = false;
       stopped = true;
+      stopping = false;
     }
+    return this;
   }
 
   @Override

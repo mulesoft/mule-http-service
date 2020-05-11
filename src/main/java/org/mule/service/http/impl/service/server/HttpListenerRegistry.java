@@ -85,7 +85,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
     LOGGER.debug("Looking RequestHandler for request: {}", request.getPath());
     return lock.withReadLock(r -> {
       final HttpServer server = serverAddressToServerMap.get(serverAddress);
-      if (server != null && !server.isStopping() && !server.isStopped()) {
+      if (server != null && !server.isStopped()) {
         final RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry =
             requestHandlerPerServerAddress.get(server);
         if (serverAddressRequestHandlerRegistry != null) {
