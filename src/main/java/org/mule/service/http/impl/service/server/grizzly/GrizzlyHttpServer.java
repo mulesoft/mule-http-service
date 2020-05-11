@@ -141,6 +141,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
             logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
                          openConnectionsCounter, millisToWait);
             openConnectionsSync.wait(millisToWait);
+            remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
           }
           if (openConnectionsCounter != 0) {
             logger.warn("There are still {} open connections on server stop.", openConnectionsCounter);
