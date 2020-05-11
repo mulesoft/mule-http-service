@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Math.min;
 import static java.lang.String.format;
 import static java.lang.System.nanoTime;
 import static java.lang.Thread.currentThread;
@@ -133,10 +134,11 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
       if (shutdownTimeout != 0) {
         synchronized (openConnectionsSync) {
-          while (openConnectionsCounter != 0 && nanoTime() < stopNanos) {
+          long remainingMillis = stopNanos - nanoTime();
+          while (openConnectionsCounter != 0 && remainingMillis > 0) {
             logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
                          openConnectionsCounter, shutdownTimeout);
-            openConnectionsSync.wait(50);
+            openConnectionsSync.wait(min(remainingMillis, 50));
           }
           if (openConnectionsCounter != 0) {
             logger.warn("There are still {} open connections on server stop.", openConnectionsCounter);
