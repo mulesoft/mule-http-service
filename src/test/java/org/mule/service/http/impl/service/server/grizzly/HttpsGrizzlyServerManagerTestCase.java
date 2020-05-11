@@ -38,7 +38,7 @@ public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerMana
     return serverManager.createSslServerFor(tlsContextFactory, () -> muleContext.getSchedulerService().ioScheduler(), address,
                                             true,
                                             (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                            id);
+                                            id, () -> muleContext.getConfiguration().getShutdownTimeout());
   }
 
   @Test

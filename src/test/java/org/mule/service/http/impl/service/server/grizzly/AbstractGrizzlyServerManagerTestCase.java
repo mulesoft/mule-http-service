@@ -114,7 +114,8 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                      new ServerIdentifier("context", "name"));
+                                      new ServerIdentifier("context", "name"),
+                                      () -> muleContext.getConfiguration().getShutdownTimeout());
     final ResponseStatusCallback responseStatusCallback = mock(ResponseStatusCallback.class);
     server.addRequestHandler("/path", (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().statusCode(OK.getStatusCode()).build(),
@@ -155,7 +156,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                      identifier);
+                                      identifier, () -> muleContext.getConfiguration().getShutdownTimeout());
     final HttpServer foundServer = serverManager.lookupServer(new ServerIdentifier("context", "name"));
     assertThat(createdServer.getServerAddress(), is(equalTo(foundServer.getServerAddress())));
     createdServer.dispose();
@@ -168,7 +169,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     HttpServer server = serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                                      identifier);
+                                                      identifier, () -> muleContext.getConfiguration().getShutdownTimeout());
     try {
       expectedException.expect(ServerNotFoundException.class);
       expectedException.expectMessage(is("Server 'name' could not be found."));

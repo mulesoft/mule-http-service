@@ -8,7 +8,6 @@ package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.Runtime.getRuntime;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.hamcrest.Matchers.any;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,13 +31,11 @@ import org.mule.service.http.impl.service.server.ServerIdentifier;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
-import java.util.function.Supplier;
 
 import org.junit.Test;
 
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
-import org.mockito.ArgumentMatchers;
 
 @Feature(HTTP_SERVICE)
 @Story(SERVER_MANAGEMENT)
@@ -49,7 +46,8 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   @Override
   protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
     return serverManager.createServerFor(address, () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                         (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), id);
+                                         (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), id,
+                                         () -> muleContext.getConfiguration().getShutdownTimeout());
   }
 
   @Test
