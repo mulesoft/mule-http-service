@@ -23,6 +23,7 @@ public interface AllureConstants {
       String TRANSFER_TYPE = "Transfer Type";
       String PROXIES = "Proxies";
       String CLIENT_AUTHENTICATION = "Client Authentication";
+      String TLS = "TLS";
     }
 
   }

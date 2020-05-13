@@ -17,10 +17,11 @@
     <version>1.6.0-SNAPSHOT</version>
 
     <properties>
-        <asyncHttpClientVersion>1.14-MULE-018-SNAPSHOT</asyncHttpClientVersion>
-        <grizzlyVersion>2.3.36-MULE-018</grizzlyVersion>
+        <asyncHttpClientVersion>1.14-MULE-018</asyncHttpClientVersion>
+        <grizzlyVersion>2.3.36-MULE-019</grizzlyVersion>
         <javax.activation.version>1.2.0</javax.activation.version>
         <sun.mailapi.version>1.6.4</sun.mailapi.version>
+        <bouncycastle.version>1.65</bouncycastle.version>
 
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
@@ -182,6 +183,24 @@
             <groupId>com.github.peterwippermann.junit4</groupId>
             <artifactId>parameterized-suite</artifactId>
             <version>1.1.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+            <version>${bouncycastle.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>${bouncycastle.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bctls-jdk15on</artifactId>
+            <version>${bouncycastle.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
