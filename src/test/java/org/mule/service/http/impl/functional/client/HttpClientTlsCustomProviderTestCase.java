@@ -16,14 +16,12 @@ import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.T
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.security.Security.insertProviderAt;
-import static java.security.Security.removeProvider;
 import static java.util.Collections.singletonList;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 
-import io.qameta.allure.Feature;
 import io.qameta.allure.Issue;
 import org.junit.Rule;
 import org.mule.rules.BouncyCastleProviderCleaner;
