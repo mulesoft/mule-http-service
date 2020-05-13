@@ -6,17 +6,28 @@
  */
 package org.mule.service.http.impl.functional.client;
 
-import static java.util.Collections.singletonList;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+import static org.mule.runtime.api.metadata.MediaType.JSON;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.TLS;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.security.Security.insertProviderAt;
+import static java.security.Security.removeProvider;
+import static java.util.Collections.singletonList;
+
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.assertThat;
+
+import org.junit.Rule;
+import org.mule.rules.BouncyCastleProviderCleaner;
 import org.mule.runtime.api.lifecycle.CreateException;
 import org.mule.runtime.api.tls.TlsContextFactory;
+import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -26,37 +37,45 @@ import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
-import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 
-import java.util.Collection;
-
+import io.qameta.allure.Description;
 import io.qameta.allure.Story;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import java.io.IOException;
+import java.util.Collection;
 
-@Story(MULTIPART)
-public class HttpClientOutboundPartsTestCase extends AbstractHttpClientTestCase {
+@Story(TLS)
+public class HttpClientTlsCustomProviderTestCase extends AbstractHttpClientTestCase {
 
   private static final String PASS = "mulepassword";
-  private static final int SEND_BUFFER_SIZE = 128;
-  private static final String TEXT_PLAIN = "text/plain";
 
+  private byte[] dataBytes = "{ \'I am a JSON attachment!\' }".getBytes(UTF_8);
   private HttpClient client;
 
-  public HttpClientOutboundPartsTestCase(String serviceToLoad) {
+  @Rule
+  public BouncyCastleProviderCleaner bouncyCastleProviderCleaner = new BouncyCastleProviderCleaner();
+
+  public HttpClientTlsCustomProviderTestCase(String serviceToLoad) {
     super(serviceToLoad);
+  }
+
+  private void ensureBouncyCastleProviders() {
+    insertProviderAt(new BouncyCastleProvider(), 1);
+    insertProviderAt(new BouncyCastleJsseProvider(), 2);
   }
 
   @Before
   public void createClient() throws CreateException {
+    ensureBouncyCastleProviders();
+
     client = service.getClientFactory().create(new HttpClientConfiguration.Builder()
         .setTlsContextFactory(TlsContextFactory.builder()
             .trustStorePath("tls/trustStore")
             .trustStorePassword(PASS)
-            .build())
-        .setClientSocketProperties(TcpClientSocketProperties.builder()
-            .sendBufferSize(SEND_BUFFER_SIZE)
             .build())
         .setName("multipart-test")
         .build());
@@ -70,20 +89,32 @@ public class HttpClientOutboundPartsTestCase extends AbstractHttpClientTestCase 
     }
   }
 
+  @Override
+  protected HttpResponse setUpHttpResponse(HttpRequest request) {
+    HttpResponseBuilder response = HttpResponse.builder();
+    try {
+      Collection<HttpPart> parts = request.getEntity().getParts();
+      if (parts.size() == 1 && parts.stream().anyMatch(part -> JSON.toRfcString().equals(part.getContentType()))) {
+        return response.statusCode(OK.getStatusCode()).entity(new ByteArrayHttpEntity(OK.getReasonPhrase().getBytes())).build();
+      }
+    } catch (IOException e) {
+      // Move on
+    }
+
+    return response.statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build();
+  }
+
   @Test
-  public void sendingAttachmentBiggerThanAsyncWriteQueueSizeWorksOverHttps() throws Exception {
-    // Grizzly defines the maxAsyncWriteQueueSize as 4 times the sendBufferSize
-    // (org.glassfish.grizzly.nio.transport.TCPNIOConnection).
-    int maxAsyncWriteQueueSize = SEND_BUFFER_SIZE * 4;
-    int size = maxAsyncWriteQueueSize * 2;
-    HttpPart part = new HttpPart("part1", new byte[size], TEXT_PLAIN, size);
-
-    HttpResponse response = client.send(HttpRequest.builder()
+  @Description("Send request using custom TLS provider (BC).")
+  public void sendRequestUsingCustomTlsProvider() throws Exception {
+    HttpPart part = new HttpPart("someJson", dataBytes, JSON.toRfcString(), dataBytes.length);
+    MultipartHttpEntity multipart = new MultipartHttpEntity(singletonList(part));
+    final HttpResponse response = client.send(HttpRequest.builder()
+        .method(POST)
         .uri(getUri())
-        .entity(new MultipartHttpEntity(singletonList(part)))
+        .entity(multipart)
         .build(), getDefaultOptions(TIMEOUT));
-
-    assertThat(response.getStatusCode(), is(OK.getStatusCode()));
+    assertThat(IOUtils.toString(response.getEntity().getContent()), is(equalTo("OK")));
   }
 
   @Override
@@ -98,23 +129,6 @@ public class HttpClientOutboundPartsTestCase extends AbstractHttpClientTestCase 
   @Override
   protected String getUri() {
     return super.getUri().replace(HTTP.getScheme(), HTTPS.getScheme());
-  }
-
-  @Override
-  protected HttpResponse setUpHttpResponse(HttpRequest request) {
-    HttpResponseBuilder response = HttpResponse.builder();
-    try {
-      Collection<HttpPart> parts = request.getEntity().getParts();
-      assertThat(parts, hasSize(1));
-      HttpPart part = parts.iterator().next();
-      assertThat(part.getName(), is("part1"));
-      assertThat(part.getContentType(), is(TEXT_PLAIN));
-      return response.statusCode(OK.getStatusCode()).entity(new ByteArrayHttpEntity(OK.getReasonPhrase().getBytes())).build();
-    } catch (Exception e) {
-      // Move on
-    }
-
-    return response.statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build();
   }
 
 }

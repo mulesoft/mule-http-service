@@ -6,14 +6,10 @@
  */
 package org.mule.rules;
 
-import static java.security.Security.addProvider;
-import static java.security.Security.getProvider;
 import static java.security.Security.removeProvider;
 
-import java.security.Provider;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.junit.rules.ExternalResource;
@@ -22,7 +18,6 @@ public class BouncyCastleProviderCleaner extends ExternalResource {
 
   private boolean initialized;
   private Set<String> providers;
-  private Set<Provider> initialProviders;
 
   public BouncyCastleProviderCleaner() {
     Set<String> providers = new HashSet<>();
@@ -43,14 +38,8 @@ public class BouncyCastleProviderCleaner extends ExternalResource {
   }
 
   protected void cleanUpProviders() {
-    initialProviders = new HashSet<>();
-
     for (String p : providers) {
-      Provider provider = getProvider(p);
-      if (provider != null) {
-        initialProviders.add(provider);
-        removeProvider(p);
-      }
+      removeProvider(p);
     }
   }
 
@@ -59,14 +48,10 @@ public class BouncyCastleProviderCleaner extends ExternalResource {
     if (!initialized) {
       throw new IllegalArgumentException("Bouncy castle provider was not initialized");
     }
-    restoreProviders();
+
+    cleanUpProviders();
 
     initialized = false;
   }
 
-  protected void restoreProviders() {
-    for (Provider provider : initialProviders) {
-      addProvider(provider);
-    }
-  }
 }
