@@ -22,6 +22,7 @@
         <javax.activation.version>1.2.0</javax.activation.version>
         <sun.mailapi.version>1.6.4</sun.mailapi.version>
         <bouncycastle.version>1.65</bouncycastle.version>
+        <muleApiVersion>1.2.4-SNAPSHOT</muleApiVersion>
 
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
@@ -94,7 +95,7 @@
         <dependency>
             <groupId>org.mule.runtime</groupId>
             <artifactId>mule-api</artifactId>
-            <version>1.2.4-SNAPSHOT</version>
+            <version>${muleApiVersion}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
