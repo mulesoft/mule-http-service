@@ -102,9 +102,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       }
     });
 
-    if (logger.isDebugEnabled()) {
-      logger.debug(format("Listening for connections on '%s'", listenerUrl()));
-    }
+    logger.info(format("Listening for connections on '%s'", listenerUrl()));
 
     openConnectionsCounter = 0;
 
@@ -149,9 +147,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
         }
       }
 
-      if (logger.isDebugEnabled()) {
-        logger.debug("Stopped listener on '{}'", listenerUrl());
-      }
+      logger.info("Stopped listener on '{}'", listenerUrl());
+
     } catch (InterruptedException e) {
       currentThread().interrupt();
     } finally {
