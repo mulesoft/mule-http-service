@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.functional.client;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -14,13 +15,12 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 
 import org.junit.Test;
-import org.mule.runtime.api.util.Reference;
+import org.mule.runtime.api.util.concurrent.Latch;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.service.http.impl.functional.ResponseReceivedProbe;
 import org.mule.service.http.impl.service.client.GrizzlyHttpClient;
 import org.mule.tck.probe.PollingProber;
 import org.mule.tck.probe.Probe;
@@ -55,17 +55,15 @@ public abstract class HttpClientPostStreamingTestCase extends AbstractHttpClient
     HttpClient client =
         service.getClientFactory().create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(true).build());
     client.start();
-    final Reference<HttpResponse> responseReference = new Reference<>();
     try {
 
       HttpRequestOptions options = getOptions();
 
       HttpRequest request = getRequest();
 
-      client.sendAsync(request, options).whenComplete(
-                                                      (response, exception) -> responseReference
-                                                          .set(response));
-      pollingProber.check(new ResponseReceivedProbe(responseReference));
+      Latch responseReceivedLatch = new Latch();
+      client.sendAsync(request, options).whenComplete((response, exception) -> responseReceivedLatch.release());
+      responseReceivedLatch.await(RESPONSE_TIMEOUT, MILLISECONDS);
       pollingProber.check(new Probe() {
 
         @Override
