@@ -17,6 +17,7 @@ import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.MULTIPART;
 import org.mule.runtime.api.lifecycle.CreateException;
 import org.mule.runtime.api.tls.TlsContextFactory;
+import org.mule.runtime.http.api.HttpConstants;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -79,6 +80,7 @@ public class HttpClientOutboundPartsTestCase extends AbstractHttpClientTestCase 
     HttpPart part = new HttpPart("part1", new byte[size], TEXT_PLAIN, size);
 
     HttpResponse response = client.send(HttpRequest.builder()
+        .method(HttpConstants.Method.POST)
         .uri(getUri())
         .entity(new MultipartHttpEntity(singletonList(part)))
         .build(), getDefaultOptions(TIMEOUT));
