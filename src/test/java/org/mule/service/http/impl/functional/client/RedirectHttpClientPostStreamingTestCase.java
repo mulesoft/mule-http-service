@@ -7,7 +7,7 @@
 package org.mule.service.http.impl.functional.client;
 
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-import static org.mule.runtime.http.api.HttpConstants.HttpStatus.SEE_OTHER;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.TEMPORARY_REDIRECT;
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
@@ -33,7 +33,7 @@ public class RedirectHttpClientPostStreamingTestCase extends HttpClientPostStrea
   public HttpResponse setUpHttpResponse(HttpRequest request) {
     HttpResponseBuilder response = HttpResponse.builder();
     if (request.getUri().getPath().equals("/first")) {
-      return response.statusCode(SEE_OTHER.getStatusCode()).addHeader("Location", "/bla").build();
+      return response.statusCode(TEMPORARY_REDIRECT.getStatusCode()).addHeader("Location", "/bla").build();
     } else {
       extractPayload(request);
       return response.statusCode(OK.getStatusCode()).build();
@@ -44,7 +44,7 @@ public class RedirectHttpClientPostStreamingTestCase extends HttpClientPostStrea
   public HttpResponse doSetUpHttpResponse(HttpRequest request) {
     HttpResponseBuilder response = HttpResponse.builder();
     if (request.getUri().getPath().equals("/first")) {
-      return response.statusCode(SEE_OTHER.getStatusCode()).addHeader("Location", "/bla").build();
+      return response.statusCode(TEMPORARY_REDIRECT.getStatusCode()).addHeader("Location", "/bla").build();
     } else {
       extractPayload(request);
       return response.statusCode(OK.getStatusCode()).build();
