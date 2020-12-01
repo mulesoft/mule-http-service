@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.service.http.impl.functional;
+package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.Long.valueOf;
 import static java.util.Collections.singletonList;
@@ -14,10 +14,14 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.BAD_REQUEST;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.TRANSFER_TYPE;
+import static org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager.ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS;
 
+import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -30,18 +34,26 @@ import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.service.http.impl.functional.client.AbstractHttpClientTestCase;
+import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
+
+import com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.OptionalLong;
+import java.util.function.Consumer;
 
 import io.qameta.allure.Story;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 @Story(TRANSFER_TYPE)
+@RunWith(Parameterized.class)
 public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
 
   private static final String RESPONSE = "TEST";
@@ -53,8 +65,28 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
 
   private HttpClient client;
 
-  public HttpTransferLengthTestCase(String serviceToLoad) {
+  private boolean isAllowPayloadDefault;
+
+  public HttpTransferLengthTestCase(String serviceToLoad, boolean isAllowPayload) {
     super(serviceToLoad);
+    isAllowPayloadDefault = ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS;
+    ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS = isAllowPayload;
+  }
+
+  @Parameterized.Parameters(name = "{0} {1}")
+  public static Iterable<Object[]> params() {
+    ArrayList<Object[]> parameters = new ArrayList<>();
+    parameters.add(new Object[] {getServiceToLoad(), true});
+    parameters.add(new Object[] {getServiceToLoad(), false});
+    return parameters;
+  }
+
+  private static String getServiceToLoad() {
+    if (ParameterContext.isParameterSet()) {
+      return ParameterContext.getParameter(String.class);
+    } else {
+      return HttpServiceImplementation.class.getName();
+    }
   }
 
   @Before
@@ -65,10 +97,11 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
   }
 
   @After
-  public void closeClient() {
+  public void tearDown() {
     if (client != null) {
       client.stop();
     }
+    ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS = isAllowPayloadDefault;
   }
 
   @Override
@@ -79,10 +112,12 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
     try {
       OptionalLong expectedRequestLength = of(valueOf(REQUEST.length()));
       if (BYTE.equals(path)) {
+        assertThat(request.containsHeader(CONTENT_LENGTH), is(true));
         assertThat(entity, is(instanceOf(InputStreamHttpEntity.class)));
 
         builder.entity(new ByteArrayHttpEntity(RESPONSE.getBytes()));
       } else if (MULTIPART.equals(path)) {
+        assertThat(request.containsHeader(CONTENT_LENGTH), is(true));
         expectedRequestLength = of(142L);
         assertThat(entity, is(instanceOf(StreamedMultipartHttpEntity.class)));
 
@@ -91,15 +126,18 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
             .entity(new MultipartHttpEntity(singletonList(part)))
             .addHeader(CONTENT_TYPE, "multipart/form-data; boundary=\"bounds\"");
       } else if (STREAM.equals(path)) {
+        assertThat(request.containsHeader(CONTENT_LENGTH), is(true));
         assertThat(entity, is(instanceOf(InputStreamHttpEntity.class)));
 
         builder.entity(new InputStreamHttpEntity(new ByteArrayInputStream("TEST".getBytes()), 4L));
       } else if (CHUNKED.equals(path)) {
+        assertThat(request.containsHeader(CONTENT_LENGTH), is(false));
         assertThat(entity, is(instanceOf(InputStreamHttpEntity.class)));
         expectedRequestLength = empty();
 
         builder.entity(new InputStreamHttpEntity(new ByteArrayInputStream("TEST".getBytes())));
-      } else {
+      } else { // empty request
+        assertThat(request.containsHeader(CONTENT_LENGTH), is(false));
         expectedRequestLength = of(0L);
         assertThat(entity, is(instanceOf(EmptyHttpEntity.class)));
       }
@@ -115,10 +153,10 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
     HttpRequest request = HttpRequest.builder()
         .uri(getUri() + BYTE)
         .entity(new ByteArrayHttpEntity(REQUEST.getBytes())).build();
-    HttpResponse response = send(request);
-
-    assertThat(response.getEntity().getBytesLength().getAsLong(), is(equalTo(4L)));
-    assertThat(response.getEntity(), instanceOf(InputStreamHttpEntity.class));
+    send(request, false, response -> {
+      assertThat(response.getEntity().getBytesLength().getAsLong(), is(equalTo(4L)));
+      assertThat(response.getEntity(), instanceOf(InputStreamHttpEntity.class));
+    });
   }
 
   @Test
@@ -129,19 +167,19 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
         .addHeader(CONTENT_TYPE, "multipart/form-data; boundary=\"bounds\"")
         .entity(new MultipartHttpEntity(singletonList(part)))
         .build();
-    HttpResponse response = send(request);
-
-    assertThat(response.getEntity().getBytesLength().getAsLong(), is(equalTo(102L)));
-    assertThat(response.getEntity(), instanceOf(StreamedMultipartHttpEntity.class));
+    send(request, false, response -> {
+      assertThat(response.getEntity().getBytesLength().getAsLong(), is(equalTo(102L)));
+      assertThat(response.getEntity(), instanceOf(StreamedMultipartHttpEntity.class));
+    });
   }
 
   @Test
   public void propagatesLengthWhenEmpty() throws Exception {
     HttpRequest request = HttpRequest.builder().uri(getUri() + "/empty").build();
-    HttpResponse response = send(request);
-
-    assertThat(response.getEntity().getBytesLength().getAsLong(), is(equalTo(0L)));
-    assertThat(response.getEntity(), instanceOf(EmptyHttpEntity.class));
+    send(request, true, response -> {
+      assertThat(response.getEntity().getBytesLength().getAsLong(), is(equalTo(0L)));
+      assertThat(response.getEntity(), instanceOf(EmptyHttpEntity.class));
+    });
   }
 
   @Test
@@ -150,10 +188,10 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
         .uri(getUri() + STREAM)
         .entity(new InputStreamHttpEntity(new ByteArrayInputStream(REQUEST.getBytes()), 5L))
         .build();
-    HttpResponse response = send(request);
-
-    assertThat(response.getEntity().getBytesLength().getAsLong(), is(equalTo(4L)));
-    assertThat(response.getEntity(), instanceOf(InputStreamHttpEntity.class));
+    send(request, false, response -> {
+      assertThat(response.getEntity().getBytesLength().getAsLong(), is(equalTo(4L)));
+      assertThat(response.getEntity(), instanceOf(InputStreamHttpEntity.class));
+    });
   }
 
   @Test
@@ -163,17 +201,21 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
         .entity(new InputStreamHttpEntity(new ByteArrayInputStream(REQUEST.getBytes())))
         .build();
 
-    HttpResponse response = send(request);
-
-    assertThat(response.getEntity().getBytesLength(), is(OptionalLong.empty()));
-    assertThat(response.getEntity(), instanceOf(InputStreamHttpEntity.class));
+    send(request, false, response -> {
+      assertThat(response.getEntity().getBytesLength(), is(OptionalLong.empty()));
+      assertThat(response.getEntity(), instanceOf(InputStreamHttpEntity.class));
+    });
   }
 
-  private HttpResponse send(HttpRequest request) throws Exception {
+  private void send(HttpRequest request, boolean hasEmptyPayload, Consumer<HttpResponse> onSuccessResponse) throws Exception {
     HttpResponse response = client.send(request, getDefaultOptions(TIMEOUT));
 
-    assertThat(response.getStatusCode(), is(OK.getStatusCode()));
-    return response;
+    if (ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS || hasEmptyPayload) {
+      assertThat(response.getStatusCode(), is(OK.getStatusCode()));
+      onSuccessResponse.accept(response);
+    } else {
+      assertThat(response.getStatusCode(), is(BAD_REQUEST.getStatusCode()));
+    }
   }
 
 }
