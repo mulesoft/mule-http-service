@@ -40,6 +40,7 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
   private static final String MULTIPART_CONTENT_TYPE_FORMAT = "%s; %s=\"%s\"";
 
   protected boolean hasContentLength = false;
+  protected HttpResponsePacket httpResponsePacket = null;
 
   protected HttpResponsePacket buildHttpResponsePacket(HttpRequestPacket sourceRequest, HttpResponse httpResponse) {
     final HttpResponsePacket.Builder responsePacketBuilder = HttpResponsePacket.builder(sourceRequest)
@@ -105,7 +106,7 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
       httpResponsePacket.setChunked(true);
     }
 
-    if (hasConnection && connectionHeaderValue != null && CLOSE.equalsIgnoreCase(connectionHeaderValue)) {
+    if (hasConnection && CLOSE.equalsIgnoreCase(connectionHeaderValue)) {
       httpResponsePacket.getProcessingState().setKeepAlive(false);
     }
     return httpResponsePacket;
@@ -140,4 +141,8 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
 
   protected abstract ClassLoader getCtxClassLoader();
 
+
+  public HttpResponsePacket getHttpResponsePacket() {
+    return httpResponsePacket;
+  }
 }
