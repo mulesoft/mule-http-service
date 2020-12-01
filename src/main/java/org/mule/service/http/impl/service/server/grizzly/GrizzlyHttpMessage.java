@@ -53,7 +53,7 @@ public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements Http
     isTransferEncodingChunked = requestPacket.isChunked();
     this.baseUri = getBaseProtocol() + "://" + localAddress.getHostString() + ":" + localAddress.getPort();
 
-    long contentLengthAsLong = -1L;
+    long contentLengthAsLong = isTransferEncodingChunked ? -1L : 0L;
     String contentLengthAsString = requestPacket.getHeader(CONTENT_LENGTH);
     if (contentLengthAsString != null) {
       contentLengthAsLong = parseLong(contentLengthAsString);

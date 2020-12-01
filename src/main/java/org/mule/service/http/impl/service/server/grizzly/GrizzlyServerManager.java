@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Boolean.parseBoolean;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.valueOf;
 import static java.lang.String.format;
@@ -70,6 +71,11 @@ public class GrizzlyServerManager implements HttpServerManager {
   // ensures the minimum ratio is 1:3.
   private static final int MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR =
       getInteger(GrizzlyServerManager.class.getName() + ".MIN_SELECTORS_FOR_DEDICATED_ACCEPTOR", 4);
+
+  private static final String ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS_PROPERTY =
+      SYSTEM_PROPERTY_PREFIX + "http.allowPayloadForUndefinedMethods";
+  static boolean ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS =
+      parseBoolean(getProperty(ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS_PROPERTY, "true"));
 
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
 
@@ -321,7 +327,7 @@ public class GrizzlyServerManager implements HttpServerManager {
         new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), ka, delayedExecutor);
     httpServerFilter.getMonitoringConfig()
         .addProbes(new HttpMessageLogger(LISTENER, identifier.getName(), currentThread().getContextClassLoader()));
-    httpServerFilter.setAllowPayloadForUndefinedHttpMethods(true);
+    httpServerFilter.setAllowPayloadForUndefinedHttpMethods(ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS);
     return httpServerFilter;
   }
 
