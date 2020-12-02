@@ -37,7 +37,6 @@ import org.glassfish.grizzly.WriteResult;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
-import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
 import org.slf4j.Logger;
 
@@ -51,7 +50,6 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private final MemoryManager memoryManager;
   private final FilterChainContext ctx;
   private final ClassLoader ctxClassLoader;
-  private final HttpResponsePacket httpResponsePacket;
   private final InputStream inputStream;
   private final ResponseStatusCallback responseStatusCallback;
   private final int bufferSize;

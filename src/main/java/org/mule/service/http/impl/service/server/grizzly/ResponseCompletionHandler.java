@@ -25,7 +25,6 @@ import org.glassfish.grizzly.WriteResult;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
-import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.http.HttpServerFilter;
 import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.memory.Buffers;
@@ -37,7 +36,6 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
 
   private final FilterChainContext ctx;
   private final ClassLoader ctxClassLoader;
-  private final HttpResponsePacket httpResponsePacket;
   private final HttpContent httpResponseContent;
   private final ResponseStatusCallback responseStatusCallback;
   private final Protocol protocol;
@@ -51,7 +49,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
     this.protocol = httpRequestPacket.getProtocol();
-    this.httpResponsePacket = buildHttpResponsePacket(httpRequestPacket, httpResponse);
+    httpResponsePacket = buildHttpResponsePacket(httpRequestPacket, httpResponse);
     this.httpResponseContent = buildResponseContent(httpResponse);
     this.responseStatusCallback = responseStatusCallback;
   }
