@@ -17,6 +17,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.BOUNDARY;
+import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -39,12 +40,14 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
   private static final String MULTIPART_CONTENT_TYPE_FORMAT = "%s; %s=\"%s\"";
 
   protected boolean hasContentLength = false;
+  protected HttpResponsePacket httpResponsePacket = null;
 
   protected HttpResponsePacket buildHttpResponsePacket(HttpRequestPacket sourceRequest, HttpResponse httpResponse) {
     final HttpResponsePacket.Builder responsePacketBuilder = HttpResponsePacket.builder(sourceRequest)
         .status(httpResponse.getStatusCode()).reasonPhrase(httpResponse.getReasonPhrase());
 
     String contentType = null;
+    String connectionHeaderValue = null;
     boolean hasTransferEncoding = false;
     boolean hasConnection = false;
 
@@ -65,7 +68,8 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
       if (!hasConnection && headerName.equalsIgnoreCase(CONNECTION)) {
         hasConnection = true;
         specialHeader = true;
-        responsePacketBuilder.header(CONNECTION, httpResponse.getHeaderValue(headerName));
+        connectionHeaderValue = httpResponse.getHeaderValue(headerName);
+        responsePacketBuilder.header(CONNECTION, connectionHeaderValue);
       }
       if (!hasContentLength && headerName.equalsIgnoreCase(CONTENT_LENGTH)) {
         hasContentLength = true;
@@ -102,7 +106,7 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
       httpResponsePacket.setChunked(true);
     }
 
-    if (hasConnection) {
+    if (hasConnection && CLOSE.equalsIgnoreCase(connectionHeaderValue)) {
       httpResponsePacket.getProcessingState().setKeepAlive(false);
     }
     return httpResponsePacket;
@@ -137,4 +141,8 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
 
   protected abstract ClassLoader getCtxClassLoader();
 
+
+  public HttpResponsePacket getHttpResponsePacket() {
+    return httpResponsePacket;
+  }
 }

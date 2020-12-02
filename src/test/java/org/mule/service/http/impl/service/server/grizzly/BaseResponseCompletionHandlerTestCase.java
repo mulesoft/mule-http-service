@@ -14,6 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
@@ -31,6 +32,9 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
   protected Connection connection = mock(Connection.class, RETURNS_DEEP_STUBS);
   protected HttpRequestPacket request = mock(HttpRequestPacket.class);
   protected ResponseStatusCallback callback = spy(ResponseStatusCallback.class);
+  protected HttpResponse responseMock;
+  protected static final String KEEP_ALIVE = "Keep-Alive";
+  protected static final String CLOSE = "close";
 
   protected abstract BaseResponseCompletionHandler getHandler();
 

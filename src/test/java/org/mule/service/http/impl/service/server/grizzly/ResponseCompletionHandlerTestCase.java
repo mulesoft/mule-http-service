@@ -7,12 +7,18 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.Thread.currentThread;
+import static java.util.Collections.singletonList;
 import static org.glassfish.grizzly.http.Protocol.HTTP_1_1;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
 
+import org.glassfish.grizzly.http.ProcessingState;
+import org.junit.Test;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -22,11 +28,11 @@ import org.junit.Before;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 
+import java.util.Collection;
+
 @Feature(HTTP_SERVICE)
 @Story(RESPONSES)
 public class ResponseCompletionHandlerTestCase extends BaseResponseCompletionHandlerTestCase {
-
-  HttpResponse responseMock;
 
   @Before
   public void setUp() {
@@ -42,6 +48,23 @@ public class ResponseCompletionHandlerTestCase extends BaseResponseCompletionHan
   @Override
   protected BaseResponseCompletionHandler getHandler() {
     return new ResponseCompletionHandler(ctx, currentThread().getContextClassLoader(), request, responseMock, callback);
+  }
+
+  @Test
+  public void keepAliveConnection() {
+    final Collection<String> headerName = singletonList(CONNECTION);
+    when(responseMock.getHeaderNames()).thenReturn(headerName);
+    when(responseMock.getHeaderValue(CONNECTION)).thenReturn(KEEP_ALIVE);
+    assertThat(getHandler().getHttpResponsePacket().getHeader(CONNECTION), equalTo(KEEP_ALIVE));
+  }
+
+  @Test
+  public void cLoseConnection() {
+    final Collection<String> headerName = singletonList(CONNECTION);
+    when(responseMock.getHeaderNames()).thenReturn(headerName);
+    when(responseMock.getHeaderValue(CONNECTION)).thenReturn(CLOSE);
+    when(request.getProcessingState()).thenReturn(new ProcessingState());
+    assertThat(getHandler().getHttpResponsePacket().getHeader(CONNECTION), equalTo(CLOSE));
   }
 
 }
