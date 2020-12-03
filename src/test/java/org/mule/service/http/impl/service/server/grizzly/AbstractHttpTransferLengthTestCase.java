@@ -54,7 +54,7 @@ import org.junit.runners.Parameterized;
 
 @Story(TRANSFER_TYPE)
 @RunWith(Parameterized.class)
-public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
+public abstract class AbstractHttpTransferLengthTestCase extends AbstractHttpClientTestCase {
 
   private static final String RESPONSE = "TEST";
   private static final String REQUEST = "tests";
@@ -67,26 +67,10 @@ public class HttpTransferLengthTestCase extends AbstractHttpClientTestCase {
 
   private boolean isAllowPayloadDefault;
 
-  public HttpTransferLengthTestCase(String serviceToLoad, boolean isAllowPayload) {
+  protected AbstractHttpTransferLengthTestCase(String serviceToLoad, boolean isAllowPayload) {
     super(serviceToLoad);
     isAllowPayloadDefault = ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS;
     ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS = isAllowPayload;
-  }
-
-  @Parameterized.Parameters(name = "{0} {1}")
-  public static Iterable<Object[]> params() {
-    ArrayList<Object[]> parameters = new ArrayList<>();
-    parameters.add(new Object[] {getServiceToLoad(), true});
-    parameters.add(new Object[] {getServiceToLoad(), false});
-    return parameters;
-  }
-
-  private static String getServiceToLoad() {
-    if (ParameterContext.isParameterSet()) {
-      return ParameterContext.getParameter(String.class);
-    } else {
-      return HttpServiceImplementation.class.getName();
-    }
   }
 
   @Before
