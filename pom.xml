@@ -20,7 +20,7 @@
         <asyncHttpClientVersion>1.14-MULE-019</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-021</grizzlyVersion>
         <javax.activation.version>1.2.0</javax.activation.version>
-        <sun.mailapi.version>1.6.5</sun.mailapi.version>
+        <sun.mailapi.version>1.6.5-atlassian-2</sun.mailapi.version>
         <bouncycastle.version>1.67</bouncycastle.version>
 
         <formatterConfigPath>formatter.xml</formatterConfigPath>
