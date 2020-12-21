@@ -107,6 +107,13 @@ public class GrizzlyHttpClient implements HttpClient {
   private static int requestStreamingBufferSize =
       getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, DEFAULT_REQUEST_STREAMING_BUFFER_SIZE);
 
+  // Stream responses properties
+  private static final String USE_IO_TO_READ_STREAM_RESPONSES_PROPERTY_NAME = "http.responseStreaming.useIOScheduler";
+  private static boolean useIoSchedulerToStreamResponses =
+      getProperties().containsKey(USE_IO_TO_READ_STREAM_RESPONSES_PROPERTY_NAME);
+  private static final String MAX_STREAMING_WORKERS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.responseStreaming.maxWorkers";
+  private static int maxStreamingWorkers = Integer.parseInt(getProperty(MAX_STREAMING_WORKERS_PROPERTY_NAME, "-1"));
+
   public static final String CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE = SYSTEM_PROPERTY_PREFIX + "http.client.headerSectionSize";
 
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
@@ -161,7 +168,7 @@ public class GrizzlyHttpClient implements HttpClient {
         .withDirectRunCpuLightWhenTargetBusy(true)
         .withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
         .withName(name), 0);
-    workerScheduler = schedulerService.ioScheduler(schedulersConfig);
+    workerScheduler = getWorkerScheduler(schedulersConfig.withName(name + ".requester.workers"));
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
     builder.setAllowPoolingConnections(true);
@@ -173,6 +180,18 @@ public class GrizzlyHttpClient implements HttpClient {
 
     AsyncHttpClientConfig config = builder.build();
     asyncHttpClient = new AsyncHttpClient(new GrizzlyAsyncHttpProvider(config), config);
+  }
+
+  private Scheduler getWorkerScheduler(SchedulerConfig config) {
+    if (useIoSchedulerToStreamResponses) {
+      return schedulerService.ioScheduler(config);
+    } else {
+      return schedulerService.customScheduler(config.withMaxConcurrentTasks(getMaxStreamingWorkers()));
+    }
+  }
+
+  private int getMaxStreamingWorkers() {
+    return maxStreamingWorkers > 0 ? maxStreamingWorkers : DEFAULT_SELECTOR_THREAD_COUNT * 4;
   }
 
   private void configureTlsContext(AsyncHttpClientConfig.Builder builder) {

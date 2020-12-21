@@ -203,7 +203,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
           //TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
           LOGGER
               .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
-                     LOGGER, input.get().available());
+                     bodyLength, input.get().available());
         }
       }
       handleIfNecessary();
