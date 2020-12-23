@@ -6,8 +6,10 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Thread.currentThread;
 import static java.util.EnumSet.of;
 import static org.glassfish.grizzly.IOEvent.WRITE;
+import org.mule.runtime.api.scheduler.SchedulerBusyException;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 
@@ -33,7 +35,7 @@ import java.util.logging.Logger;
  */
 public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
 
-  private final static EnumSet<IOEvent> WORKER_THREAD_EVENT_SET = of(WRITE);
+  private static final EnumSet<IOEvent> WORKER_THREAD_EVENT_SET = of(WRITE);
   public static final String DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR = "__WRITES_TO_IO__";
 
   private static final Logger logger = Grizzly.logger(ExecutorPerServerAddressIOStrategy.class);
@@ -62,7 +64,12 @@ public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
 
     final Executor threadPool = getThreadPoolFor(connection, ioEvent);
     if (threadPool != null) {
-      threadPool.execute(new WorkerThreadRunnable(connection, ioEvent, listener));
+      try {
+        threadPool.execute(new WorkerThreadRunnable(connection, ioEvent, listener));
+      } catch (SchedulerBusyException ex) {
+        // If the thread pool isn't available, handle the event in the current thread.
+        run0(connection, ioEvent, listener);
+      }
     } else {
       run0(connection, ioEvent, listener);
     }
@@ -96,17 +103,25 @@ public class ExecutorPerServerAddressIOStrategy extends AbstractIOStrategy {
     final Connection connection;
     final IOEvent ioEvent;
     final IOEventLifeCycleListener lifeCycleListener;
+    final ClassLoader classLoader;
 
     private WorkerThreadRunnable(final Connection connection, final IOEvent ioEvent,
                                  final IOEventLifeCycleListener lifeCycleListener) {
       this.connection = connection;
       this.ioEvent = ioEvent;
       this.lifeCycleListener = lifeCycleListener;
+      this.classLoader = currentThread().getContextClassLoader();
     }
 
     @Override
     public void run() {
-      run0(connection, ioEvent, lifeCycleListener);
+      ClassLoader oldClassLoader = currentThread().getContextClassLoader();
+      currentThread().setContextClassLoader(classLoader);
+      try {
+        run0(connection, ioEvent, lifeCycleListener);
+      } finally {
+        currentThread().setContextClassLoader(oldClassLoader);
+      }
     }
   }
 
