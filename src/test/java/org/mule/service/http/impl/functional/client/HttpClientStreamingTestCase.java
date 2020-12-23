@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.functional.client;
 
 import io.qameta.allure.Description;
+import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
 import io.qameta.allure.junit4.DisplayName;
 import org.junit.Before;
@@ -35,6 +36,7 @@ import java.util.concurrent.ExecutorService;
 import static java.lang.Thread.currentThread;
 import static java.lang.Thread.sleep;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
@@ -45,6 +47,7 @@ import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import static org.mule.service.http.impl.functional.FillAndWaitStream.RESPONSE_SIZE;
+import static org.mule.tck.SimpleUnitTestSupportSchedulerService.UNIT_TEST_THREAD_GROUP;
 
 @Story(STREAMING)
 @DisplayName("Validates HTTP client behaviour against a streaming server.")
@@ -161,6 +164,30 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
       client.stop();
     }
   }
+
+  @Test
+  @Issue("MULE-19072")
+  @Description("The client should use other thread-pool than the uber to avoid a deadlock when using a PipedInputStream")
+  public void responseStreamingDoesNotUseUberPoolToWritePartsToThePipe() throws IOException {
+    HttpClient client =
+        service.getClientFactory().create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(true).build());
+    client.start();
+    final Reference<HttpResponse> responseReference = new Reference<>();
+    final Reference<String> threadGroupName = new Reference<>();
+    try {
+      client.sendAsync(getRequest(), getDefaultOptions(RESPONSE_TIMEOUT)).whenComplete((response, exception) -> {
+        responseReference.set(response);
+        threadGroupName.set(currentThread().getThreadGroup().getName());
+      });
+      pollingProber.check(new ResponseReceivedProbe(responseReference));
+      verifyStreamed(responseReference.get());
+      assertThat("Response streaming uses a common IO thread-pool to write to the pipe", threadGroupName.get(),
+                 not(containsString(UNIT_TEST_THREAD_GROUP.getName())));
+    } finally {
+      client.stop();
+    }
+  }
+
 
   private HttpRequest getRequest(String uri) {
     return HttpRequest.builder().uri(uri).build();
