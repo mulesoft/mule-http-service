@@ -181,6 +181,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private Scheduler getWorkerScheduler(SchedulerConfig config) {
     if (streamingEnabled) {
+      // TODO MULE-19084: investigate how many schedulers/threads may be created here on complex apps with lots of requester-configs.
       return schedulerService.customScheduler(config.withMaxConcurrentTasks(getMaxStreamingWorkers()),
                                               DEFAULT_SELECTOR_THREAD_COUNT * 4);
     } else {
