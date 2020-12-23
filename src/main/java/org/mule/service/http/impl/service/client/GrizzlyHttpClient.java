@@ -108,9 +108,6 @@ public class GrizzlyHttpClient implements HttpClient {
       getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, DEFAULT_REQUEST_STREAMING_BUFFER_SIZE);
 
   // Stream responses properties
-  private static final String USE_IO_TO_READ_STREAM_RESPONSES_PROPERTY_NAME = "http.responseStreaming.useIOScheduler";
-  private static boolean useIoSchedulerToStreamResponses =
-      getProperties().containsKey(USE_IO_TO_READ_STREAM_RESPONSES_PROPERTY_NAME);
   private static final String MAX_STREAMING_WORKERS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.responseStreaming.maxWorkers";
   private static int maxStreamingWorkers = Integer.parseInt(getProperty(MAX_STREAMING_WORKERS_PROPERTY_NAME, "-1"));
 
@@ -183,15 +180,16 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private Scheduler getWorkerScheduler(SchedulerConfig config) {
-    if (useIoSchedulerToStreamResponses) {
-      return schedulerService.ioScheduler(config);
+    if (streamingEnabled) {
+      return schedulerService.customScheduler(config.withMaxConcurrentTasks(getMaxStreamingWorkers()),
+                                              DEFAULT_SELECTOR_THREAD_COUNT * 4);
     } else {
-      return schedulerService.customScheduler(config.withMaxConcurrentTasks(getMaxStreamingWorkers()));
+      return schedulerService.ioScheduler(config);
     }
   }
 
   private int getMaxStreamingWorkers() {
-    return maxStreamingWorkers > 0 ? maxStreamingWorkers : DEFAULT_SELECTOR_THREAD_COUNT * 4;
+    return maxStreamingWorkers > 0 ? maxStreamingWorkers : DEFAULT_SELECTOR_THREAD_COUNT;
   }
 
   private void configureTlsContext(AsyncHttpClientConfig.Builder builder) {
