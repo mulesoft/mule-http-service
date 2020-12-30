@@ -43,6 +43,7 @@ import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
+import org.mule.service.http.impl.service.client.async.PreservingClassLoaderAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
 
@@ -358,9 +359,9 @@ public class GrizzlyHttpClient implements HttpClient {
     try {
       AsyncHandler<Response> asyncHandler;
       if (streamingEnabled) {
-        asyncHandler = new ResponseBodyDeferringAsyncHandler(future, responseBufferSize);
+        asyncHandler = new PreservingClassLoaderAsyncHandler<>(new ResponseBodyDeferringAsyncHandler(future, responseBufferSize));
       } else {
-        asyncHandler = new ResponseAsyncHandler(future);
+        asyncHandler = new PreservingClassLoaderAsyncHandler<>(new ResponseAsyncHandler(future));
       }
 
       asyncHttpClient.executeRequest(createGrizzlyRequest(request, responseTimeout, followRedirects, authentication),
