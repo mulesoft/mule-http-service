@@ -111,6 +111,9 @@ public class GrizzlyHttpClient implements HttpClient {
   // Stream responses properties
   private static final String MAX_STREAMING_WORKERS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.responseStreaming.maxWorkers";
   private static int maxStreamingWorkers = Integer.parseInt(getProperty(MAX_STREAMING_WORKERS_PROPERTY_NAME, "-1"));
+  private static final String STREAMING_WORKERS_QUEUE_SIZE_PROPERTY_NAME =
+      SYSTEM_PROPERTY_PREFIX + "http.responseStreaming.queueSize";
+  private static int streamingWorkersQueueSize = Integer.parseInt(getProperty(STREAMING_WORKERS_QUEUE_SIZE_PROPERTY_NAME, "-1"));
 
   public static final String CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE = SYSTEM_PROPERTY_PREFIX + "http.client.headerSectionSize";
 
@@ -184,7 +187,7 @@ public class GrizzlyHttpClient implements HttpClient {
     if (streamingEnabled) {
       // TODO MULE-19084: investigate how many schedulers/threads may be created here on complex apps with lots of requester-configs.
       return schedulerService.customScheduler(config.withMaxConcurrentTasks(getMaxStreamingWorkers()),
-                                              DEFAULT_SELECTOR_THREAD_COUNT * 4);
+                                              getStreamingWorkersQueueSize());
     } else {
       return schedulerService.ioScheduler(config);
     }
@@ -192,6 +195,10 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private int getMaxStreamingWorkers() {
     return maxStreamingWorkers > 0 ? maxStreamingWorkers : DEFAULT_SELECTOR_THREAD_COUNT;
+  }
+
+  private int getStreamingWorkersQueueSize() {
+    return streamingWorkersQueueSize > 0 ? streamingWorkersQueueSize : getMaxStreamingWorkers() * 4;
   }
 
   private void configureTlsContext(AsyncHttpClientConfig.Builder builder) {
