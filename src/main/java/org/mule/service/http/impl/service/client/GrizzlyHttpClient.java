@@ -13,7 +13,8 @@ import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderCon
 import static com.ning.http.util.UTF8UrlEncoder.encodeQueryElement;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.getInteger;
-import static java.lang.Integer.max;
+import static java.lang.Integer.parseInt;
+import static java.lang.Math.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
@@ -93,7 +94,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private static final int DEFAULT_SELECTOR_THREAD_COUNT =
       getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
-                 max(getRuntime().availableProcessors(), 2));
+                 Integer.max(getRuntime().availableProcessors(), 2));
   private static final int MAX_CONNECTION_LIFETIME = 30 * 60 * 1000;
   public static final String HOST_SEPARATOR = ",";
   private static final int DEFAULT_SEND_AND_DEFER_BUFFER_SIZE = KB.toBytes(10);
@@ -110,10 +111,11 @@ public class GrizzlyHttpClient implements HttpClient {
 
   // Stream responses properties
   private static final String MAX_STREAMING_WORKERS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.responseStreaming.maxWorkers";
-  private static int maxStreamingWorkers = Integer.parseInt(getProperty(MAX_STREAMING_WORKERS_PROPERTY_NAME, "-1"));
+  private static int maxStreamingWorkers = parseInt(getProperty(MAX_STREAMING_WORKERS_PROPERTY_NAME, "-1"));
   private static final String STREAMING_WORKERS_QUEUE_SIZE_PROPERTY_NAME =
       SYSTEM_PROPERTY_PREFIX + "http.responseStreaming.queueSize";
-  private static int streamingWorkersQueueSize = Integer.parseInt(getProperty(STREAMING_WORKERS_QUEUE_SIZE_PROPERTY_NAME, "-1"));
+  private static int streamingWorkersQueueSize = parseInt(getProperty(STREAMING_WORKERS_QUEUE_SIZE_PROPERTY_NAME, "-1"));
+  private static final int DEFAULT_STREAMING_WORKERS_QUEUE_SIZE = getDefaultStreamingWorkersQueueSize();
 
   public static final String CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE = SYSTEM_PROPERTY_PREFIX + "http.client.headerSectionSize";
 
@@ -198,7 +200,14 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private int getStreamingWorkersQueueSize() {
-    return streamingWorkersQueueSize > 0 ? streamingWorkersQueueSize : getMaxStreamingWorkers() * 4;
+    return streamingWorkersQueueSize > 0 ? streamingWorkersQueueSize : DEFAULT_STREAMING_WORKERS_QUEUE_SIZE;
+  }
+
+  // This default has been extracted from org.mule.service.scheduler.internal.config.ContainerThreadPoolsConfig.BIG_POOL_DEFAULT_SIZE.
+  private static int getDefaultStreamingWorkersQueueSize() {
+    int cores = getRuntime().availableProcessors();
+    long memoryInKB = getRuntime().maxMemory() / 1024;
+    return (int) max(2, cores + ((memoryInKB - 245760) / 5120));
   }
 
   private void configureTlsContext(AsyncHttpClientConfig.Builder builder) {
