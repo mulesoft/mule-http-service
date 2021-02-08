@@ -227,7 +227,6 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
     writeLatch.release();
 
-    when(bodyPart.isLast()).thenReturn(true);
     assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
     handler.onCompleted();
 
