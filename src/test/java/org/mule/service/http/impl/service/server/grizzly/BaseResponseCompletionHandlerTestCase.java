@@ -14,6 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mule.runtime.api.connection.SourceRemoteConnectionException;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.tck.junit4.AbstractMuleTestCase;
@@ -43,7 +44,7 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
     when(connection.isOpen()).thenReturn(false);
     getHandler().failed(new IOException(ERROR));
     verify(callback, never()).responseSendFailure(any(Throwable.class));
-    verify(callback, atLeastOnce()).onErrorSendingResponse(any(Throwable.class));
+    verify(callback, atLeastOnce()).onErrorSendingResponse(any(SourceRemoteConnectionException.class));
   }
 
   @Test
