@@ -284,7 +284,6 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   /**
    * Decorator used to avoid selectors from being blocked reading from not yet written streams.
-   *
    */
   private class DecoratedPipedInputStream extends PipedInputStream {
 
@@ -300,8 +299,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
      * stream is not closed.
      *
      * @param b Buffer to fill by the method.
-     * @return The number of bytes read if available;
-     *         <code>-1</code> if the stream is closed;
+     * @return The number of bytes read if available
+     *         <code>-1</code> if the stream is closed
      *         <code>0</code> if nobody wrote data in the other side of the stream.
      */
     @Override
@@ -317,8 +316,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
      * stream is not closed.
      *
      * @param b Buffer to fill by the method.
-     * @return The number of bytes read if available;
-     *         <code>-1</code> if the stream is closed;
+     * @return The number of bytes read if available
+     *         <code>-1</code> if the stream is closed
      *         <code>0</code> if nobody wrote data in the other side of the stream.
      */
     @Override
@@ -346,7 +345,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     public synchronized void connect(PipedInputStream snk) throws IOException {
       super.connect(snk);
       if (!(snk instanceof DecoratedPipedInputStream)) {
-        throw new IllegalArgumentException("Sink must be an instance of CountingPipedInputStream");
+        throw new IllegalArgumentException("Sink must be an instance of DecoratedPipedInputStream");
       }
       this.countingSink = (DecoratedPipedInputStream) snk;
     }
