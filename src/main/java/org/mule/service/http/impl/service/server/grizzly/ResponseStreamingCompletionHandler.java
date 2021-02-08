@@ -26,6 +26,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.api.connection.SourceRemoteConnectionException;
 import org.mule.runtime.api.exception.DefaultMuleException;
+import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.core.api.config.i18n.CoreMessages;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
@@ -133,26 +134,30 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   public void sendInputStreamChunk() throws IOException {
-    final Buffer buffer = memoryManager.allocate(bufferSize);
+    try {
+      final Buffer buffer = memoryManager.allocate(bufferSize);
 
-    final byte[] bufferByteArray = buffer.array();
-    final int offset = buffer.arrayOffset();
-    final int length = buffer.remaining();
+      final byte[] bufferByteArray = buffer.array();
+      final int offset = buffer.arrayOffset();
+      final int length = buffer.remaining();
 
-    int bytesRead = inputStream.read(bufferByteArray, offset, length);
-    final HttpContent content;
+      int bytesRead = inputStream.read(bufferByteArray, offset, length);
+      final HttpContent content;
 
-    if (bytesRead == -1) {
-      content = httpResponsePacket.httpTrailerBuilder().build();
-      isDone = true;
-    } else {
-      buffer.limit(bytesRead);
-      content = httpResponsePacket.httpContentBuilder().content(buffer).build();
+      if (bytesRead == -1) {
+        content = httpResponsePacket.httpTrailerBuilder().build();
+        isDone = true;
+      } else {
+        buffer.limit(bytesRead);
+        content = httpResponsePacket.httpContentBuilder().content(buffer).build();
+      }
+
+      markConnectionToDelegateWritesInConfiguredExecutor(isSelectorTimeout());
+
+      ctx.write(content, this);
+    } catch (MuleRuntimeException e) {
+      failed(e);
     }
-
-    markConnectionToDelegateWritesInConfiguredExecutor(isSelectorTimeout());
-
-    ctx.write(content, this);
   }
 
   private boolean isSelectorTimeout() {
@@ -196,7 +201,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       } else {
         doComplete();
       }
-    } catch (IOException e) {
+    } catch (MuleRuntimeException | IOException e) {
       failed(e);
     } finally {
       if (REPLACE_CONTEXT_CLASSLOADER) {

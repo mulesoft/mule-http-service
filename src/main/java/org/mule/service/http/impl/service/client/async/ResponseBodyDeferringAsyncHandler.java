@@ -37,7 +37,9 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,6 +81,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
+  private AtomicBoolean throwableReceived = new AtomicBoolean(false);
+
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize) throws IOException {
     this.future = future;
     this.bufferSize = userDefinedBufferSize;
@@ -87,8 +91,10 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   @Override
   public void onThrowable(Throwable t) {
+    throwableReceived.set(true);
     try {
       MDC.setContextMap(mdc);
+      LOGGER.debug("Error caught handling response body: {}", t);
       try {
         closeOut();
       } catch (IOException e) {
@@ -121,6 +127,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   public STATE onStatusReceived(HttpResponseStatus responseStatus) throws Exception {
     try {
       MDC.setContextMap(mdc);
+      if (errorDetected()) {
+        return closeAndAbort();
+      }
       responseBuilder.reset();
       responseBuilder.accumulate(responseStatus);
       return CONTINUE;
@@ -129,10 +138,18 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
+  private STATE closeAndAbort() throws IOException {
+    closeOut();
+    return ABORT;
+  }
+
   @Override
   public STATE onHeadersReceived(HttpResponseHeaders headers) throws Exception {
     try {
       MDC.setContextMap(mdc);
+      if (errorDetected()) {
+        return closeAndAbort();
+      }
       responseBuilder.accumulate(headers);
       if (bufferSize < 0) {
         // If user hasn't configured a buffer size (default) then calculate it.
@@ -182,6 +199,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     // body arrived, can handle the partial response
     try {
       MDC.setContextMap(mdc);
+      if (errorDetected()) {
+        return closeAndAbort();
+      }
       if (!input.isPresent()) {
         if (bodyPart.isLast()) {
           // no need to stream response, we already have it all
@@ -192,8 +212,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
           handleIfNecessary();
           return CONTINUE;
         } else {
-          output = new PipedOutputStream();
-          input = of(new PipedInputStream(output, bufferSize));
+          output = new DecoratedPipedOutputStream();
+          input = of(new DecoratedPipedInputStream(output, bufferSize));
         }
       }
       if (LOGGER.isDebugEnabled()) {
@@ -207,6 +227,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         }
       }
       handleIfNecessary();
+      if (errorDetected()) {
+        return closeAndAbort();
+      }
       try {
         bodyPart.writeTo(output);
       } catch (IOException e) {
@@ -217,6 +240,10 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     } finally {
       MDC.clear();
     }
+  }
+
+  private boolean errorDetected() {
+    return future.isCompletedExceptionally() || throwableReceived.get();
   }
 
   protected void closeOut() throws IOException {
@@ -252,6 +279,99 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         onThrowable(e);
         future.completeExceptionally(e);
       }
+    }
+  }
+
+  /**
+   * Decorator used to avoid selectors from being blocked reading from not yet written streams.
+   */
+  private class DecoratedPipedInputStream extends PipedInputStream {
+
+    private AtomicBoolean wasDataWritten = new AtomicBoolean(false);
+    private AtomicBoolean isWriterClosed = new AtomicBoolean(false);
+
+    DecoratedPipedInputStream(PipedOutputStream output, int bufferSize) throws IOException {
+      super(output, bufferSize);
+    }
+
+    /**
+     * Same as parent except that it returns <code>0</code> if nobody wrote in the other side of the stream yet and the
+     * stream is not closed.
+     *
+     * @param b Buffer to fill by the method.
+     * @return The number of bytes read if available
+     *         <code>-1</code> if the stream is closed
+     *         <code>0</code> if nobody wrote data in the other side of the stream.
+     */
+    @Override
+    public int read(byte[] b) throws IOException {
+      if (!wasDataWritten.get() && !isWriterClosed.get()) {
+        return 0;
+      }
+      return super.read(b);
+    }
+
+    /**
+     * Same as parent except that it returns <code>0</code> if nobody wrote in the other side of the stream yet and the
+     * stream is not closed.
+     *
+     * @param b Buffer to fill by the method.
+     * @return The number of bytes read if available
+     *         <code>-1</code> if the stream is closed
+     *         <code>0</code> if nobody wrote data in the other side of the stream.
+     */
+    @Override
+    public synchronized int read(byte[] b, int off, int len) throws IOException {
+      if (!wasDataWritten.get() && !isWriterClosed.get()) {
+        return 0;
+      }
+      return super.read(b, off, len);
+    }
+
+    void setWriterClosed(boolean value) {
+      this.isWriterClosed.set(value);
+    }
+
+    void setDataWasWritten(boolean value) {
+      wasDataWritten.set(value);
+    }
+  }
+
+  private class DecoratedPipedOutputStream extends PipedOutputStream {
+
+    private DecoratedPipedInputStream countingSink;
+
+    @Override
+    public synchronized void connect(PipedInputStream snk) throws IOException {
+      super.connect(snk);
+      if (!(snk instanceof DecoratedPipedInputStream)) {
+        throw new IllegalArgumentException("Sink must be an instance of DecoratedPipedInputStream");
+      }
+      this.countingSink = (DecoratedPipedInputStream) snk;
+    }
+
+    @Override
+    public void write(int b) throws IOException {
+      countingSink.setDataWasWritten(true);
+      super.write(b);
+    }
+
+    @Override
+    public void write(byte[] b) throws IOException {
+      countingSink.setDataWasWritten(true);
+      super.write(b);
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+      countingSink.setDataWasWritten(true);
+      super.write(b, off, len);
+    }
+
+    @Override
+    public void close() throws IOException {
+      countingSink.setWriterClosed(true);
+      super.close();
     }
   }
 }
