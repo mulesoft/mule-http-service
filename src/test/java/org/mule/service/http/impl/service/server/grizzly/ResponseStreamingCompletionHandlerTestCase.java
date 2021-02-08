@@ -9,15 +9,24 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static java.lang.Thread.currentThread;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.rules.ExpectedException.none;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
 
 import org.glassfish.grizzly.http.ProcessingState;
+import org.junit.Rule;
 import org.junit.Test;
+
+import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -25,10 +34,12 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.glassfish.grizzly.Transport;
 import org.junit.Before;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
+import org.junit.rules.ExpectedException;
 
 @Feature(HTTP_SERVICE)
 @Story(RESPONSES)
@@ -36,6 +47,9 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
 
   private ResponseStreamingCompletionHandler handler;
   private InputStream mockStream;
+
+  @Rule
+  public ExpectedException exception = none();
 
   @Before
   public void setUp() {
@@ -83,4 +97,19 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
     assertThat(getHandler().getHttpResponsePacket().getHeader(CONNECTION), equalTo(CLOSE));
   }
 
+  @Test
+  public void completionHandlerFailsIfAReadOperationThrowsAMuleRuntimeException() throws IOException {
+    responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
+    when(request.getProcessingState()).thenReturn(new ProcessingState());
+    handler = spy(new ResponseStreamingCompletionHandler(ctx,
+                                                         currentThread().getContextClassLoader(),
+                                                         request,
+                                                         responseMock,
+                                                         callback));
+
+    when(mockStream.read(any(), anyInt(), anyInt())).thenThrow(new MuleRuntimeException(new NullPointerException()));
+    handler.sendInputStreamChunk();
+
+    verify(getHandler(), times(1)).failed(any(Throwable.class));
+  }
 }
