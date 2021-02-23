@@ -10,7 +10,6 @@ import static java.lang.String.valueOf;
 import static java.lang.Thread.sleep;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mule.runtime.core.api.config.MuleProperties.MULE_HOME_DIRECTORY_PROPERTY;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
@@ -24,6 +23,7 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.service.http.impl.functional.ResponseReceivedProbe;
 import org.mule.tck.junit4.rule.SystemProperty;
+import org.mule.tck.probe.JUnitLambdaProbe;
 import org.mule.tck.probe.PollingProber;
 
 import java.io.BufferedReader;
@@ -71,19 +71,23 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
   @BeforeClass
   public static void createHttpPropertiesFile() throws Exception {
     PrintWriter writer = new PrintWriter(getHttpPropertiesFile(), "UTF-8");
-    writer.println(PROPERTY_PREFIX + "serverTimeout=" + valueOf(CONNECTION_TIMEOUT_MILLIS));
+    writer.println(PROPERTY_PREFIX + "serverTimeout=" + CONNECTION_TIMEOUT_MILLIS);
     writer.close();
   }
 
   @AfterClass
   public static void removeHttpPropertiesFile() {
-    getHttpPropertiesFile().delete();
+    if (!getHttpPropertiesFile().delete()) {
+      throw new IllegalStateException("Couldn't delete properties file");
+    }
   }
 
   private static File getHttpPropertiesFile() {
     String path = getMuleHome();
     File conf = new File(path, "conf");
-    conf.mkdir();
+    if (!conf.mkdir()) {
+      throw new IllegalStateException("Couldn't create 'conf' directory");
+    }
     return new File(conf.getPath(), "http-server-sockets.conf");
   }
 
@@ -156,7 +160,7 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
 
     writer.close();
 
-    assertThat(reader.readLine(), is(nullValue()));
+    pollingProber.check(new JUnitLambdaProbe(() -> reader.readLine() == null));
   }
 
   private HttpRequest getRequest() {
