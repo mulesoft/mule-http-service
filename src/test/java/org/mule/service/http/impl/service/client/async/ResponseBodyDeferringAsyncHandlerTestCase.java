@@ -30,6 +30,8 @@ import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.S
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.api.util.concurrent.Latch;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.service.http.impl.util.TimedPipedInputStream;
+import org.mule.service.http.impl.util.TimedPipedOutputStream;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 import org.mule.tck.probe.JUnitProbe;
 import org.mule.tck.probe.PollingProber;
@@ -39,8 +41,6 @@ import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseBodyPart;
 
 import java.io.InputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
@@ -50,6 +50,7 @@ import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.http.HttpContent;
+import org.junit.Ignore;
 import org.junit.Test;
 
 @Feature(HTTP_SERVICE)
@@ -80,7 +81,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
       @Override
       protected boolean test() throws Exception {
         assertThat(responseContent.get(), not(nullValue()));
-        assertThat(responseContent.get(), not(instanceOf(PipedInputStream.class)));
+        assertThat(responseContent.get(), not(instanceOf(TimedPipedInputStream.class)));
         return true;
       }
     });
@@ -103,7 +104,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
       @Override
       protected boolean test() throws Exception {
         assertThat(responseContent.get(), not(nullValue()));
-        assertThat(responseContent.get(), instanceOf(PipedInputStream.class));
+        assertThat(responseContent.get(), instanceOf(TimedPipedInputStream.class));
         return true;
       }
     });
@@ -143,7 +144,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     handler.onThrowable(new TimeoutException("Timeout exceeded"));
     handler.onBodyPartReceived(bodyPart);
 
-    verify(bodyPart, never()).writeTo(any(PipedOutputStream.class));
+    verify(bodyPart, never()).writeTo(any(TimedPipedOutputStream.class));
   }
 
   @Test
@@ -165,7 +166,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
       @Override
       protected boolean test() throws Exception {
-        // When the PipedInputStream is closed by writer, read returns -1 indicating EOF.
+        // When the TimedPipedInputStream is closed by writer, read returns -1 indicating EOF.
         byte[] result = new byte[16];
         return future.get().getEntity().getContent().read(result) == -1;
       }
@@ -187,8 +188,8 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     handler.onThrowable(new TimeoutException("Timeout exceeded"));
     assertThat(handler.onBodyPartReceived(bodyPartAfterError), is(ABORT));
 
-    verify(bodyPartBeforeError, times(1)).writeTo(any(PipedOutputStream.class));
-    verify(bodyPartAfterError, never()).writeTo(any(PipedOutputStream.class));
+    verify(bodyPartBeforeError, times(1)).writeTo(any(TimedPipedOutputStream.class));
+    verify(bodyPartAfterError, never()).writeTo(any(TimedPipedOutputStream.class));
   }
 
   @Test
@@ -204,7 +205,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     doAnswer(invocation -> {
       writeLatch.await();
       return invocation.callRealMethod();
-    }).when(bodyPart).writeTo(any(PipedOutputStream.class));
+    }).when(bodyPart).writeTo(any(TimedPipedOutputStream.class));
 
     executor.submit(() -> {
       try {
@@ -219,7 +220,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
       @Override
       protected boolean test() throws Exception {
-        // When the DecoratedPipedInputStream was never written and it's still open, read returns 0.
+        // When the TimedPipedInputStream was never written and it's still open, read returns 0.
         byte[] result = new byte[16];
         return future.get().getEntity().getContent().read(result) == 0;
       }
@@ -227,7 +228,6 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
     writeLatch.release();
 
-    when(bodyPart.isLast()).thenReturn(true);
     assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
     handler.onCompleted();
 
@@ -236,7 +236,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
       @Override
       protected boolean test() throws Exception {
-        // When the PipedInputStream is closed by writer, read returns -1 indicating EOF.
+        // When the TimedPipedInputStream is closed by writer, read returns -1 indicating EOF.
         byte[] result = new byte[16];
         return future.get().getEntity().getContent().read(result) == -1;
       }
