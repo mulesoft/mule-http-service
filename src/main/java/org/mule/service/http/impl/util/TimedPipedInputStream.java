@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Input stream which is blocked
+ * Input stream which is blocking only during a specified timeout.
  */
 public class TimedPipedInputStream extends InputStream {
 
@@ -65,11 +65,27 @@ public class TimedPipedInputStream extends InputStream {
     }
   }
 
+  /**
+   * See {@link InputStream}, but it may return 0 if no byte has been read after the specified timeout.
+   * @param b Destination buffer.
+   * @return     the total number of bytes read into the buffer,
+   *             <code>0</code> if there is no available data after the timeout is reached, or
+   *             <code>-1</code> if there is no more data because the end of the stream has been reached.
+   * @throws IOException
+   */
   @Override
   public int read(byte[] b) throws IOException {
     return read(b, 0, b.length);
   }
 
+  /**
+   * See {@link InputStream}, but it may return 0 if no byte has been read after the specified timeout.
+   * @param b Destination buffer.
+   * @return     the total number of bytes read into the buffer,
+   *             <code>0</code> if there is no available data after the timeout is reached, or
+   *             <code>-1</code> if there is no more data because the end of the stream has been reached.
+   * @throws IOException
+   */
   @Override
   public synchronized int read(byte[] b, int off, int len) throws IOException {
     if (len == 0) {
@@ -97,8 +113,13 @@ public class TimedPipedInputStream extends InputStream {
     }
   }
 
+  /**
+   * Gets the number of bytes available to be read.
+   *
+   * @return The number of available bytes.
+   */
   @Override
-  public int available() throws IOException {
+  public synchronized int available() {
     return length;
   }
 
