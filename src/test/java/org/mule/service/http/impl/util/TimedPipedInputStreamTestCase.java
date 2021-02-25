@@ -6,14 +6,18 @@
  */
 package org.mule.service.http.impl.util;
 
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.fail;
 import static org.junit.rules.ExpectedException.none;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -23,6 +27,8 @@ public class TimedPipedInputStreamTestCase {
 
   @Rule
   public ExpectedException expectedException = none();
+
+  private ExecutorService writerExecutor = newSingleThreadExecutor();
 
   @Test
   public void itBehavesInAFIFOWay() throws IOException {
@@ -113,6 +119,37 @@ public class TimedPipedInputStreamTestCase {
     expectedException.expectCause(instanceOf(TimeoutException.class));
     // noinspection ResultOfMethodCallIgnored, since it must throw an exception.
     in.read();
+  }
+
+  @Test
+  public void readerAndWriterInDifferentThreadsWithAPayloadThatDoesNotFitIntoTheBuffer() throws IOException {
+    TimedPipedOutputStream out = new TimedPipedOutputStream();
+    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
+    String testData = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut " +
+        "labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco " +
+        "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in " +
+        "voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat" +
+        " non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+    AtomicBoolean dataWritten = new AtomicBoolean(false);
+
+    writerExecutor.submit(() -> {
+      try {
+        out.write(testData.getBytes());
+        dataWritten.set(true);
+      } catch (IOException e) {
+        fail(e.getMessage());
+      }
+    });
+
+    StringBuilder sb = new StringBuilder();
+    while (sb.length() != testData.length()) {
+      byte[] buffer = new byte[64];
+      int currentRead = in.read(buffer);
+      sb.append(new String(buffer, 0, currentRead));
+    }
+
+    assertThat(dataWritten.get(), is(true));
+    assertThat(sb.toString(), is(testData));
   }
 
 }

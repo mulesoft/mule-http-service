@@ -34,6 +34,7 @@ public class TimedPipedInputStream extends InputStream {
   private int length = 0;
 
   private boolean closedByWriter = false;
+  private boolean closedByReader = false;
 
   public TimedPipedInputStream(int bufferSize, long timeout, TimeUnit timeUnit, TimedPipedOutputStream origin) {
     this.ringBuffer = new byte[bufferSize];
@@ -132,16 +133,18 @@ public class TimedPipedInputStream extends InputStream {
     notifyAll();
   }
 
-
-  private synchronized int awaitDataAvailable() throws InterruptedException {
+  private synchronized int awaitDataAvailable() throws InterruptedException, IOException {
     long initialNanos = nanoTime();
     long finalNanos = initialNanos + timeoutNanos;
 
-    while (length <= 0 && nanoTime() < finalNanos) {
+    while (length <= 0 && nanoTime() < finalNanos && !closedByReader) {
       if (closedByWriter) {
         return 0;
       }
       wait(100);
+    }
+    if (closedByReader) {
+      throw new IOException("Pipe closed");
     }
 
     return length;
@@ -186,13 +189,12 @@ public class TimedPipedInputStream extends InputStream {
    * @throws IOException if the waiting thread is interrupted.
    */
   private synchronized int awaitSpace() throws IOException {
-    if (closedByWriter) {
-      throw new IOException("Pipe closed");
-    }
-
     try {
-      while (length == ringBufferSize) {
+      while (length == ringBufferSize && !closedByWriter && !closedByReader) {
         wait(100);
+      }
+      if (closedByWriter || closedByReader) {
+        throw new IOException("Pipe closed");
       }
     } catch (InterruptedException e) {
       currentThread().interrupt();
@@ -200,6 +202,12 @@ public class TimedPipedInputStream extends InputStream {
     }
 
     return ringBufferSize - length;
+  }
+
+  @Override
+  public synchronized void close() throws IOException {
+    closedByReader = true;
+    notifyAll();
   }
 
   private class CircularInteger {
