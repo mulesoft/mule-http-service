@@ -6,7 +6,6 @@
  */
 package org.mule.service.http.impl.functional.server;
 
-import static java.lang.String.valueOf;
 import static java.lang.Thread.sleep;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.is;
@@ -85,7 +84,7 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
   private static File getHttpPropertiesFile() {
     String path = getMuleHome();
     File conf = new File(path, "conf");
-    if (!conf.mkdir()) {
+    if (!conf.exists() && !conf.mkdir()) {
       throw new IllegalStateException("Couldn't create 'conf' directory");
     }
     return new File(conf.getPath(), "http-server-sockets.conf");
