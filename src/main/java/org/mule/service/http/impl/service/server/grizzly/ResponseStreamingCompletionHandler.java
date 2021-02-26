@@ -155,7 +155,9 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       markConnectionToDelegateWritesInConfiguredExecutor(isSelectorTimeout());
 
       ctx.write(content, this);
-    } catch (MuleRuntimeException e) {
+    } catch (IOException ioException) {
+      throw ioException;
+    } catch (Exception e) {
       failed(e);
     }
   }
