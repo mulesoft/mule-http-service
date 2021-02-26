@@ -17,7 +17,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Input stream which is blocking only during a specified timeout.
+ * Input stream which is blocking only during a specified timeout. It requires to be connected with a
+ * {@link TimedPipedOutputStream}.
+ *
+ * @since 1.6.0 and 1.5.11.
  */
 public class TimedPipedInputStream extends InputStream {
 

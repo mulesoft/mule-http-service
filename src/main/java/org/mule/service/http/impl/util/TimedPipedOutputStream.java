@@ -9,6 +9,11 @@ package org.mule.service.http.impl.util;
 import java.io.IOException;
 import java.io.OutputStream;
 
+/**
+ * Output stream to be used in conjunction with a {@link TimedPipedOutputStream}.
+ *
+ * @since 1.6.0 and 1.5.11.
+ */
 public class TimedPipedOutputStream extends OutputStream {
 
   private TimedPipedInputStream sink;
