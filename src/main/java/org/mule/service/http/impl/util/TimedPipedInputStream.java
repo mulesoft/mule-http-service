@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.util;
 
 import static java.lang.Integer.min;
+import static java.lang.System.arraycopy;
 import static java.lang.System.nanoTime;
 import static java.lang.Thread.currentThread;
 
@@ -99,10 +100,13 @@ public class TimedPipedInputStream extends InputStream {
         return -1;
       }
 
-      for (int copiedBytes = 0; copiedBytes < bytesToCopy; ++copiedBytes) {
-        b[off + copiedBytes] = ringBuffer[head.get()];
-        head.increase();
+      // As it's a ring buffer, we could need two copies.
+      int firstCopy = min(ringBufferSize - head.get(), bytesToCopy);
+      arraycopy(ringBuffer, head.get(), b, off, firstCopy);
+      if (firstCopy < bytesToCopy) {
+        arraycopy(ringBuffer, 0, b, off + firstCopy, bytesToCopy - firstCopy);
       }
+      head.increase(bytesToCopy);
 
       // There is space in the buffer, notify writers.
       length -= bytesToCopy;
@@ -170,9 +174,12 @@ public class TimedPipedInputStream extends InputStream {
 
     int bytesToCopy = min(awaitSpace(), len);
     CircularInteger destinationIndex = head.plus(length);
-    for (int copiedBytes = 0; copiedBytes < bytesToCopy; ++copiedBytes) {
-      ringBuffer[destinationIndex.get()] = bytes[off + copiedBytes];
-      destinationIndex.increase();
+
+    // As it's a ring buffer, we could need two copies.
+    int firstCopyLength = min(ringBufferSize - destinationIndex.get(), bytesToCopy);
+    arraycopy(bytes, off, ringBuffer, destinationIndex.get(), firstCopyLength);
+    if (firstCopyLength < bytesToCopy) {
+      arraycopy(bytes, off + firstCopyLength, ringBuffer, 0, bytesToCopy - firstCopyLength);
     }
 
     // There is data in the buffer, notify readers.
@@ -226,6 +233,11 @@ public class TimedPipedInputStream extends InputStream {
 
     void increase() {
       this.value += 1;
+      this.value %= this.cap;
+    }
+
+    void increase(int increment) {
+      this.value += increment;
       this.value %= this.cap;
     }
 
