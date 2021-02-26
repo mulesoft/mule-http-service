@@ -13,16 +13,22 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.fail;
 import static org.junit.rules.ExpectedException.none;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.qameta.allure.Issue;
+import io.qameta.allure.Stories;
+import io.qameta.allure.Story;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+@Stories({@Story(RESPONSES), @Story(STREAMING)})
 public class TimedPipedInputStreamTestCase {
 
   @Rule
@@ -31,7 +37,7 @@ public class TimedPipedInputStreamTestCase {
   private ExecutorService writerExecutor = newSingleThreadExecutor();
 
   @Test
-  public void itBehavesInAFIFOWay() throws IOException {
+  public void itBehavesInAFIFOWayWhenWritingBytes() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
     TimedPipedInputStream in = new TimedPipedInputStream(2, 10, MILLISECONDS, out);
 
@@ -73,6 +79,7 @@ public class TimedPipedInputStreamTestCase {
   }
 
   @Test
+  @Issue("MULE-19232")
   public void returnZeroAfterTimeoutWhenUsingBuffer() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
     TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
@@ -92,6 +99,7 @@ public class TimedPipedInputStreamTestCase {
   }
 
   @Test
+  @Issue("MULE-19232")
   public void throwsExceptionAfterTimeoutWhenRequestingByte() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
     TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
@@ -103,6 +111,7 @@ public class TimedPipedInputStreamTestCase {
   }
 
   @Test
+  @Issue("MULE-19232")
   public void throwsExceptionAfterTimeoutWhenRequestingByteAfterSomeBytes() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
     TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
