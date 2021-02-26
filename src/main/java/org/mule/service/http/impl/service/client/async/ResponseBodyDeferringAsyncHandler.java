@@ -8,17 +8,22 @@ package org.mule.service.http.impl.service.client.async;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
-import static java.lang.Integer.valueOf;
+import static java.lang.Integer.parseInt;
 import static java.lang.Math.min;
+import static java.lang.System.getProperty;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
+import org.mule.service.http.impl.util.TimedPipedInputStream;
+import org.mule.service.http.impl.util.TimedPipedOutputStream;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
@@ -29,6 +34,7 @@ import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
@@ -37,9 +43,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,11 +64,14 @@ import org.slf4j.MDC;
 public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
+  private static final String PIPE_READ_TIMEOUT_PROPERTY_NAME =
+      SYSTEM_PROPERTY_PREFIX + "http.responseStreaming.pipeReadTimeoutMillis";
+  private static final long PIPE_READ_TIMEOUT_MILLIS = parseInt(getProperty(PIPE_READ_TIMEOUT_PROPERTY_NAME, "500"));
   private static Field responseField;
 
   private volatile Response response;
   private int bufferSize;
-  private PipedOutputStream output;
+  private OutputStream output;
   private Optional<InputStream> input = empty();
   private final CompletableFuture<HttpResponse> future;
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
@@ -94,7 +101,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     throwableReceived.set(true);
     try {
       MDC.setContextMap(mdc);
-      LOGGER.debug("Error caught handling response body: {}", t);
+      LOGGER.debug("Error caught handling response body", t);
       try {
         closeOut();
       } catch (IOException e) {
@@ -169,13 +176,12 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
    * maximum buffer size possible. Defaults to an ~32KB buffer when transfer encoding is used.
    *
    * @param headers the current headers received
-   * @throws IllegalAccessException
    */
   private void calculateBufferSize(HttpResponseHeaders headers) {
     int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
     String contentLength = headers.getHeaders().getFirstValue(CONTENT_LENGTH);
     if (!isEmpty(contentLength) && isEmpty(headers.getHeaders().getFirstValue(TRANSFER_ENCODING))) {
-      int contentLengthInt = valueOf(contentLength);
+      int contentLengthInt = parseInt(contentLength);
       try {
         if (responseField != null && headers instanceof GrizzlyResponseHeaders) {
           maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
@@ -212,8 +218,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
           handleIfNecessary();
           return CONTINUE;
         } else {
-          output = new DecoratedPipedOutputStream();
-          input = of(new DecoratedPipedInputStream(output, bufferSize));
+          output = new TimedPipedOutputStream();
+          input =
+              of(new TimedPipedInputStream(bufferSize, PIPE_READ_TIMEOUT_MILLIS, MILLISECONDS, (TimedPipedOutputStream) output));
         }
       }
       if (LOGGER.isDebugEnabled()) {
@@ -279,99 +286,6 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         onThrowable(e);
         future.completeExceptionally(e);
       }
-    }
-  }
-
-  /**
-   * Decorator used to avoid selectors from being blocked reading from not yet written streams.
-   */
-  private class DecoratedPipedInputStream extends PipedInputStream {
-
-    private AtomicBoolean wasDataWritten = new AtomicBoolean(false);
-    private AtomicBoolean isWriterClosed = new AtomicBoolean(false);
-
-    DecoratedPipedInputStream(PipedOutputStream output, int bufferSize) throws IOException {
-      super(output, bufferSize);
-    }
-
-    /**
-     * Same as parent except that it returns <code>0</code> if nobody wrote in the other side of the stream yet and the
-     * stream is not closed.
-     *
-     * @param b Buffer to fill by the method.
-     * @return The number of bytes read if available
-     *         <code>-1</code> if the stream is closed
-     *         <code>0</code> if nobody wrote data in the other side of the stream.
-     */
-    @Override
-    public int read(byte[] b) throws IOException {
-      if (!wasDataWritten.get() && !isWriterClosed.get()) {
-        return 0;
-      }
-      return super.read(b);
-    }
-
-    /**
-     * Same as parent except that it returns <code>0</code> if nobody wrote in the other side of the stream yet and the
-     * stream is not closed.
-     *
-     * @param b Buffer to fill by the method.
-     * @return The number of bytes read if available
-     *         <code>-1</code> if the stream is closed
-     *         <code>0</code> if nobody wrote data in the other side of the stream.
-     */
-    @Override
-    public synchronized int read(byte[] b, int off, int len) throws IOException {
-      if (!wasDataWritten.get() && !isWriterClosed.get()) {
-        return 0;
-      }
-      return super.read(b, off, len);
-    }
-
-    void setWriterClosed(boolean value) {
-      this.isWriterClosed.set(value);
-    }
-
-    void setDataWasWritten(boolean value) {
-      wasDataWritten.set(value);
-    }
-  }
-
-  private class DecoratedPipedOutputStream extends PipedOutputStream {
-
-    private DecoratedPipedInputStream countingSink;
-
-    @Override
-    public synchronized void connect(PipedInputStream snk) throws IOException {
-      super.connect(snk);
-      if (!(snk instanceof DecoratedPipedInputStream)) {
-        throw new IllegalArgumentException("Sink must be an instance of DecoratedPipedInputStream");
-      }
-      this.countingSink = (DecoratedPipedInputStream) snk;
-    }
-
-    @Override
-    public void write(int b) throws IOException {
-      countingSink.setDataWasWritten(true);
-      super.write(b);
-    }
-
-    @Override
-    public void write(byte[] b) throws IOException {
-      countingSink.setDataWasWritten(true);
-      super.write(b);
-    }
-
-    @Override
-    public void write(byte[] b, int off, int len) throws IOException {
-      countingSink.setDataWasWritten(true);
-      super.write(b, off, len);
-    }
-
-    @Override
-    public void close() throws IOException {
-      countingSink.setWriterClosed(true);
-      super.close();
     }
   }
 }
