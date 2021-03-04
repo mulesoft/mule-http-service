@@ -16,7 +16,7 @@ public interface GrizzlyAddressFilter<F extends BaseFilter> extends Filter {
    * Adds a new Filter for a particular Server address
    *
    * @param serverAddress the server address to which this filter must be applied
-   * @param filter        the filter to apply
+   * @param filter the filter to apply
    */
   void addFilterForAddress(ServerAddress serverAddress, F filter);
 

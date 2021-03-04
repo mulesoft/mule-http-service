@@ -11,8 +11,8 @@ import org.mule.runtime.api.exception.MuleException;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 
 /**
- * {@code DecodingException} Is an exception thrown when there is attempt to decode a malformed
- * or invalid text, url or url parameter.
+ * {@code DecodingException} Is an exception thrown when there is attempt to decode a malformed or invalid text, url or url
+ * parameter.
  *
  * @since 1.2
  */

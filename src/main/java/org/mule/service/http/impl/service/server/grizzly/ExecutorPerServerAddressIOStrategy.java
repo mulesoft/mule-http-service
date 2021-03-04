@@ -27,8 +27,8 @@ import java.util.concurrent.Executor;
 import java.util.logging.Logger;
 
 /**
- * Grizzly IO Strategy that will handle each work to an specific {@link Executor} based on the
- * {@link ServerAddress} of a {@link Connection}.
+ * Grizzly IO Strategy that will handle each work to an specific {@link Executor} based on the {@link ServerAddress} of a
+ * {@link Connection}.
  * <p/>
  * There's logic from {@link org.glassfish.grizzly.strategies.WorkerThreadIOStrategy} that need to be reused but unfortunately
  * that class cannot be override.

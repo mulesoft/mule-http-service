@@ -227,7 +227,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         int bodyLength = bodyPart.getBodyByteBuffer().remaining();
         LOGGER.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).", bodyLength, bufferSize);
         if (bufferSize - input.get().available() < bodyLength) {
-          //TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
+          // TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
           LOGGER
               .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
                      bodyLength, input.get().available());

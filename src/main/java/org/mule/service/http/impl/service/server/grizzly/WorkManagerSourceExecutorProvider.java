@@ -15,8 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
 /**
- * {@link ExecutorProvider} implementation that retrieves an
- * {@link Executor} for a {@link ServerAddress}.
+ * {@link ExecutorProvider} implementation that retrieves an {@link Executor} for a {@link ServerAddress}.
  */
 public class WorkManagerSourceExecutorProvider implements ExecutorProvider {
 
@@ -24,8 +23,7 @@ public class WorkManagerSourceExecutorProvider implements ExecutorProvider {
       new ServerAddressMap<>(new ConcurrentHashMap<>());
 
   /**
-   * Adds an {@link Executor} to be used when a request is made to a
-   * {@link ServerAddress}
+   * Adds an {@link Executor} to be used when a request is made to a {@link ServerAddress}
    *
    * @param serverAddress address to which the executor should be applied to
    * @param workManagerSource the executor to use when a request is done to the server address

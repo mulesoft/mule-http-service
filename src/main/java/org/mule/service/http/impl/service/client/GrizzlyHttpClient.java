@@ -192,7 +192,8 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private Scheduler getWorkerScheduler(SchedulerConfig config) {
     if (streamingEnabled && useWorkersForStreaming) {
-      // TODO MULE-19084: investigate how many schedulers/threads may be created here on complex apps with lots of requester-configs.
+      // TODO MULE-19084: investigate how many schedulers/threads may be created here on complex apps with lots of
+      // requester-configs.
       return schedulerService.customScheduler(config.withMaxConcurrentTasks(getMaxStreamingWorkers()),
                                               getStreamingWorkersQueueSize());
     } else {
@@ -208,7 +209,8 @@ public class GrizzlyHttpClient implements HttpClient {
     return streamingWorkersQueueSize > 0 ? streamingWorkersQueueSize : DEFAULT_STREAMING_WORKERS_QUEUE_SIZE;
   }
 
-  // This default has been extracted from org.mule.service.scheduler.internal.config.ContainerThreadPoolsConfig.BIG_POOL_DEFAULT_SIZE.
+  // This default has been extracted from
+  // org.mule.service.scheduler.internal.config.ContainerThreadPoolsConfig.BIG_POOL_DEFAULT_SIZE.
   private static int getDefaultStreamingWorkersQueueSize() {
     int cores = getRuntime().availableProcessors();
     long memoryInKB = getRuntime().maxMemory() / 1024;

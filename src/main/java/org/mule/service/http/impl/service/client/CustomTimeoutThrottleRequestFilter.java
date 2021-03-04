@@ -23,8 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A {@link RequestFilter} that throttles requests and blocks when the number of permits is reached,
- * waiting for the response to arrive before executing the next request.
+ * A {@link RequestFilter} that throttles requests and blocks when the number of permits is reached, waiting for the response to
+ * arrive before executing the next request.
  *
  * This is based on {@code com.ning.http.client.extra.ThrottleRequestFilter} from Async Http Client, but uses the request timeout
  * from each request and throttles based on the configured maximum connections allowed.

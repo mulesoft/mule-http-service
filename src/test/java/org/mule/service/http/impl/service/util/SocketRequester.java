@@ -58,12 +58,12 @@ public class SocketRequester {
     StringBuilder stringBuilder = new StringBuilder();
     String outputString;
 
-    //Reading headers.
+    // Reading headers.
     while (!isEmpty((outputString = bufferedReader.readLine()))) {
       stringBuilder.append(outputString).append(lineSeparator());
     }
 
-    //Reading body.
+    // Reading body.
     while (!isEmpty((outputString = bufferedReader.readLine()))) {
       stringBuilder.append(outputString).append(lineSeparator());
     }

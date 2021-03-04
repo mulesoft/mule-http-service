@@ -15,8 +15,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * This is a wrapper for a map whose keys are {@link ServerAddress}s. It makes sure
- * that if an entry is not found we instead search for an entry with that same port but host 0.0.0.0.
+ * This is a wrapper for a map whose keys are {@link ServerAddress}s. It makes sure that if an entry is not found we instead
+ * search for an entry with that same port but host 0.0.0.0.
  */
 public class ServerAddressMap<T> {
 
