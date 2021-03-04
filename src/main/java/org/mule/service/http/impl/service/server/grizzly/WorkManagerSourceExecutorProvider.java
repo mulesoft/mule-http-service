@@ -25,7 +25,7 @@ public class WorkManagerSourceExecutorProvider implements ExecutorProvider {
   /**
    * Adds an {@link Executor} to be used when a request is made to a {@link ServerAddress}
    *
-   * @param serverAddress address to which the executor should be applied to
+   * @param serverAddress     address to which the executor should be applied to
    * @param workManagerSource the executor to use when a request is done to the server address
    */
   public void addExecutor(final ServerAddress serverAddress, final Supplier<ExecutorService> workManagerSource) {

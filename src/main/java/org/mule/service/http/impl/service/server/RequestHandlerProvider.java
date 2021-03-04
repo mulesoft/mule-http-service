@@ -21,7 +21,7 @@ public interface RequestHandlerProvider {
    * Retrieves a RequestHandler to handle the http request
    *
    * @param serverAddress address in which the http request was made
-   * @param request the http request content
+   * @param request       the http request content
    * @return a handler for the request
    */
   RequestHandler getRequestHandler(ServerAddress serverAddress, HttpRequest request);

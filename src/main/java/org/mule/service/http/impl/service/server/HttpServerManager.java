@@ -27,7 +27,7 @@ public interface HttpServerManager {
 
   /**
    * @param serverAddress address of the server
-   * @param identifier the id of the server
+   * @param identifier    the id of the server
    * @return true if there's already a server created for that port and either the same host or an overlapping one (0.0.0.0 or any
    *         other if the serverAddress host is 0.0.0.0), false otherwise.
    */
@@ -35,14 +35,15 @@ public interface HttpServerManager {
 
   /**
    *
-   * @param serverAddress address of the server
-   * @param schedulerSupplier work manager source to use for retrieving an {@link Executor} for processing this server requests
+   * @param serverAddress            address of the server
+   * @param schedulerSupplier        work manager source to use for retrieving an {@link Executor} for processing this server
+   *                                 requests
    * @param usePersistentConnections if true, the connections will be kept open for subsequent requests
-   * @param connectionIdleTimeout the amount of milliseconds to keep open an idle connection @return the create Server handler
-   * @param identifier the id of the server
-   * @param shutdownTimeout time to wait for persistent connections to be closed when server is stopped.
+   * @param connectionIdleTimeout    the amount of milliseconds to keep open an idle connection @return the create Server handler
+   * @param identifier               the id of the server
+   * @param shutdownTimeout          time to wait for persistent connections to be closed when server is stopped.
    * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already
-   *         in use.
+   *                                 in use.
    */
   HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
                              boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier,
@@ -52,15 +53,16 @@ public interface HttpServerManager {
   /**
    *
    * @param tlsContextFactory
-   * @param schedulerSupplier work manager source to use for retrieving an {@link Executor} for processing this server requests
-   * @param serverAddress address of the server
+   * @param schedulerSupplier        work manager source to use for retrieving an {@link Executor} for processing this server
+   *                                 requests
+   * @param serverAddress            address of the server
    * @param usePersistentConnections if true, the connections will be kept open for subsequent requests
-   * @param connectionIdleTimeout the amount of milliseconds to keep open an idle connection
-   * @param identifier the id of the server
-   * @param shutdownTimeout time to wait for persistent connections to be closed when server is stopped.
+   * @param connectionIdleTimeout    the amount of milliseconds to keep open an idle connection
+   * @param identifier               the id of the server
+   * @param shutdownTimeout          time to wait for persistent connections to be closed when server is stopped.
    * @return the create Server handler
    * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already
-   *         in use.
+   *                                 in use.
    */
   HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
                                 ServerAddress serverAddress, boolean usePersistentConnections, int connectionIdleTimeout,

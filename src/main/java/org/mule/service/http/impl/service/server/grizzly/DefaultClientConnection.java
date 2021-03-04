@@ -34,7 +34,7 @@ public class DefaultClientConnection implements ClientConnection {
   }
 
   /**
-   * @param sslSession the SSL session
+   * @param sslSession        the SSL session
    * @param remoteHostAddress
    */
   public DefaultClientConnection(SSLSession sslSession, InetSocketAddress remoteHostAddress) {
