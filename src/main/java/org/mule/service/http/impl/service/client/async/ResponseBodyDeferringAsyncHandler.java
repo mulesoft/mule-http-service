@@ -9,6 +9,7 @@ package org.mule.service.http.impl.service.client.async;
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
 import static java.lang.Integer.parseInt;
+import static java.lang.Long.parseLong;
 import static java.lang.Math.min;
 import static java.lang.System.getProperty;
 import static java.util.Optional.empty;
@@ -181,7 +182,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     int maxBufferSize = MAX_RECEIVE_BUFFER_SIZE;
     String contentLength = headers.getHeaders().getFirstValue(CONTENT_LENGTH);
     if (!isEmpty(contentLength) && isEmpty(headers.getHeaders().getFirstValue(TRANSFER_ENCODING))) {
-      int contentLengthInt = parseInt(contentLength);
+      // XXX olamiral: use long instead of int as content-length can be greater than int max value
+      long contentLengthLong = parseLong(contentLength);
       try {
         if (responseField != null && headers instanceof GrizzlyResponseHeaders) {
           maxBufferSize = (((HttpResponsePacket) responseField.get(headers)).getRequest().getConnection().getReadBufferSize());
@@ -189,7 +191,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       } catch (IllegalAccessException e) {
         LOGGER.debug("Unable to access connection buffer size.");
       }
-      bufferSize = min(maxBufferSize, contentLengthInt);
+      // TODO olamiral: remove this comment after code review (this and next lines)
+      // XXX olamiral: can safely be casted to int since min will return maxBufferSize if contentLengthLong > maxBufferSize
+      bufferSize = (int)min(maxBufferSize, contentLengthLong);
     } else {
       // Assume maximum 32Kb chunk size + 10 bytes for chunk size and new lines etc. (need to confirm is this is needed, but use
       // for now)
