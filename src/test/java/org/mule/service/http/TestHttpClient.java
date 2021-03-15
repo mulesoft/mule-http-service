@@ -36,8 +36,8 @@ import org.junit.rules.ExternalResource;
  * Defines a {@link HttpClient} using a default implementation of {@link HttpService}
  *
  * <p/>
- * This rule is intended to simplify the usage of the {@link HttpClient} as it will be
- * started/stopped as part of the test lifecycle.
+ * This rule is intended to simplify the usage of the {@link HttpClient} as it will be started/stopped as part of the test
+ * lifecycle.
  */
 public class TestHttpClient extends ExternalResource implements HttpClient {
 

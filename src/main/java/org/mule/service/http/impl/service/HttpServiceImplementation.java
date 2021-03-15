@@ -95,18 +95,18 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
       switch (artifactType) {
 
         case POLICY:
-          //If this is a policy, then it's name will be set in the appName field.
-          //Policies should not have the same name as applications, just in case, we will add a prefix to it's name.
+          // If this is a policy, then it's name will be set in the appName field.
+          // Policies should not have the same name as applications, just in case, we will add a prefix to it's name.
           return buildServerFactory(appName, APP_NAME_PROPERTY, POLICY, empty(), null, listenerConnectionManager,
                                     shutdownTimeout);
 
         case DOMAIN:
-          //In case of a domain, use the populated domainName to create the context.
+          // In case of a domain, use the populated domainName to create the context.
           return buildServerFactory(domainName, DOMAIN_NAME_PROPERTY, DOMAIN, empty(), null, listenerConnectionManager,
                                     shutdownTimeout);
 
         case APP:
-          //In case of an app, we should consider the case where it belongs to a domain and use it's name as parent context
+          // In case of an app, we should consider the case where it belongs to a domain and use it's name as parent context
           if (domainName.isPresent() && appName.isPresent()) {
             return buildServerFactory(appName, APP_NAME_PROPERTY, APP, domainName, DOMAIN, listenerConnectionManager,
                                       shutdownTimeout);
@@ -119,7 +119,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
     } catch (ServerFactoryCreationException e) {
       logger.warn(e.getMessage() + ". Using muleContext Id as context");
     }
-    //We should never get to this point. In case we do, fallback to old behaviour.
+    // We should never get to this point. In case we do, fallback to old behaviour.
     return new ContextHttpServerFactoryAdapter(muleContext.getId(), empty(), listenerConnectionManager, shutdownTimeout);
   }
 

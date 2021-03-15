@@ -103,7 +103,7 @@ public class GrizzlyServerManager implements HttpServerManager {
                               TcpServerSocketProperties serverSocketProperties,
                               int selectorCount) {
     this.httpListenerRegistry = httpListenerRegistry;
-    //TODO - MULE-14960: Remove system property once this can be configured through a file
+    // TODO - MULE-14960: Remove system property once this can be configured through a file
     this.serverTimeout = getInteger("mule.http.server.timeout", DEFAULT_SERVER_TIMEOUT_MILLIS);
     requestHandlerFilter = new GrizzlyRequestDispatcherFilter(httpListenerRegistry);
     timeoutFilterDelegate = new GrizzlyAddressDelegateFilter<>();

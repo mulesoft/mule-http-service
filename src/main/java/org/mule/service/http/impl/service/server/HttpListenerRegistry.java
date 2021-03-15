@@ -43,7 +43,7 @@ public class HttpListenerRegistry implements RequestHandlerProvider {
    * Introduces a new {@link RequestHandler} for requests matching a given {@link PathAndMethodRequestMatcher} in the provided
    * {@link HttpServer}.
    *
-   * @param server where the handler should be added
+   * @param server         where the handler should be added
    * @param requestHandler the handler to add
    * @param requestMatcher the matcher to be applied for the handler
    * @return a {@link RequestHandlerManager} for the added handler that allows enabling, disabling and disposing it

@@ -328,7 +328,7 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
 
     requestHandlerPerPath.put(FIRST_LEVEL_CATCH_ALL, getHandler);
 
-    //Register mock GET handler for wildcard endpoint.
+    // Register mock GET handler for wildcard endpoint.
     listenerRegistry.addRequestHandler(testServer, requestHandlerPerPath.get(FIRST_LEVEL_CATCH_ALL),
                                        PathAndMethodRequestMatcher.builder()
                                            .methodRequestMatcher(MethodRequestMatcher.builder().add(GET).build())

@@ -148,7 +148,7 @@ public class HttpMultipartEncoder {
   /**
    * Extracts a parameter value from a content type
    *
-   * @param contentType the content type
+   * @param contentType    the content type
    * @param parameterName: the name of the parameter to extract.
    * @return the value of the extracted parameter.
    */

@@ -103,7 +103,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
     final String app = "app";
     HttpServerFactory factory = newAppServerFactory(app, empty());
 
-    //No failure means OK. Can't compare servers because they are different implementations
+    // No failure means OK. Can't compare servers because they are different implementations
     assertThat(factory.create(serverConfiguration), is(notNullValue()));
     assertThat(factory.lookup(serverConfiguration.getName()), is(notNullValue()));
   }
@@ -113,7 +113,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
     final String domain = "domain";
     HttpServerFactory factory = newDomainServerFactory(domain);
 
-    //No failure means OK. Can't compare servers because they are different implementations
+    // No failure means OK. Can't compare servers because they are different implementations
     assertThat(factory.create(serverConfiguration), is(notNullValue()));
     assertThat(factory.lookup(serverConfiguration.getName()), is(notNullValue()));
   }
@@ -123,7 +123,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
     final String policy = "policy";
     HttpServerFactory factory = newPolicyServerFactory(policy);
 
-    //No failure means OK. Can't compare servers because they are different implementations
+    // No failure means OK. Can't compare servers because they are different implementations
     assertThat(factory.create(serverConfiguration), is(notNullValue()));
     assertThat(factory.lookup(serverConfiguration.getName()), is(notNullValue()));
   }
@@ -138,7 +138,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
     HttpServerFactory appFactory2 = newAppServerFactory(app2, of(domain));
     HttpServerFactory domainFactory = newDomainServerFactory(domain);
 
-    //No failure means OK. Can't compare servers because they are different implementations
+    // No failure means OK. Can't compare servers because they are different implementations
     assertThat(domainFactory.create(serverConfiguration), is(notNullValue()));
     assertThat(appFactory1.lookup(serverConfiguration.getName()), is(notNullValue()));
     assertThat(appFactory2.lookup(serverConfiguration.getName()), is(notNullValue()));
@@ -209,7 +209,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
     return newServerFactory(of(policyName), empty(), POLICY);
   }
 
-  //Use this to test invalid configurations. For valid configurations use the specific factory methods
+  // Use this to test invalid configurations. For valid configurations use the specific factory methods
   private HttpServerFactory newServerFactory(Optional<String> artifactName,
                                              Optional<String> domainName,
                                              ArtifactType artifactType) {

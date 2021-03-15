@@ -395,7 +395,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     /**
      * Creates a new instance for the given name and with the provided parent.
      *
-     * @param name for this path
+     * @param name   for this path
      * @param parent of this path
      */
     public Path(String name, Path parent) {
@@ -418,9 +418,9 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     }
 
     /**
-     * @param subPath the sub part of the path to find
+     * @param subPath     the sub part of the path to find
      * @param nextSubPath the next sub part of the path. It is useful for deciding between static paths and middle-wildcard paths
-     *        when they are similar.
+     *                    when they are similar.
      * @return the node with the existent mappings. null if there's no such node.
      */
     public Path getChildPath(final String subPath, String nextSubPath) {
@@ -444,7 +444,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     }
 
     /**
-     * @param subPath the sub path to check
+     * @param subPath     the sub path to check
      * @param nextSubPath the path following the sub path
      * @return whether there's a sub path where the following path is available
      */
@@ -487,7 +487,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
      * Adds a new sub or uri param path.
      *
      * @param pathName the path name
-     * @param path the representation of this path
+     * @param path     the representation of this path
      */
     public void addChildPath(final String pathName, final Path path) {
       if (pathName.equals(WILDCARD_CHARACTER) || pathName.endsWith("}")) {
