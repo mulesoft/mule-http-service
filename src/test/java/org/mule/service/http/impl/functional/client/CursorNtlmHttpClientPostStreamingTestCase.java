@@ -8,9 +8,9 @@ package org.mule.service.http.impl.functional.client;
 
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
-import java.io.InputStream;
+import org.mule.weave.v2.el.ByteArrayBasedCursorStreamProvider;
 
-import org.mule.weave.v2.el.ByteArrayBasedCursorStream;
+import java.io.InputStream;
 
 import io.qameta.allure.Story;
 import io.qameta.allure.junit4.DisplayName;
@@ -25,7 +25,7 @@ public class CursorNtlmHttpClientPostStreamingTestCase extends AbstractNtlmHttpC
 
   @Override
   protected InputStream getInputStream() {
-    return new ByteArrayBasedCursorStream(TEST_PAYLOAD.getBytes(), null);
+    return new ByteArrayBasedCursorStreamProvider(TEST_PAYLOAD.getBytes(), null).doOpenCursor();
   }
 
 }
