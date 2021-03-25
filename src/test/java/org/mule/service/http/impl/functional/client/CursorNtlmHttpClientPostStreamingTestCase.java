@@ -25,7 +25,7 @@ public class CursorNtlmHttpClientPostStreamingTestCase extends AbstractNtlmHttpC
 
   @Override
   protected InputStream getInputStream() {
-    return new ByteArrayBasedCursorStreamProvider(TEST_PAYLOAD.getBytes(), null).doOpenCursor();
+    return new ByteArrayBasedCursorStreamProvider(TEST_PAYLOAD.getBytes()).doOpenCursor();
   }
 
 }
