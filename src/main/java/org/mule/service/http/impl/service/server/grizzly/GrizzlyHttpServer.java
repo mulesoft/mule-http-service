@@ -12,17 +12,20 @@ import static java.lang.System.nanoTime;
 import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpConstants.Protocol;
+import org.mule.runtime.http.api.domain.request.HttpRequestContext;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.MethodRequestMatcher;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 
 import java.io.IOException;
@@ -164,7 +167,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(Collection<String> methods, String path, RequestHandler requestHandler) {
-    return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
+    return this.listenerRegistry.addRequestHandler(this, preservingTCCL(requestHandler), PathAndMethodRequestMatcher.builder()
         .methodRequestMatcher(MethodRequestMatcher.builder(methods).build())
         .path(path)
         .build());
@@ -172,10 +175,32 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
-    return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
+    return this.listenerRegistry.addRequestHandler(this, preservingTCCL(requestHandler), PathAndMethodRequestMatcher.builder()
         .methodRequestMatcher(acceptAll())
         .path(path)
         .build());
+  }
+
+  private RequestHandler preservingTCCL(final RequestHandler requestHandler) {
+    final ClassLoader creationClassLoader = currentThread().getContextClassLoader();
+    return new RequestHandler() {
+
+      @Override
+      public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
+        ClassLoader outerClassLoader = currentThread().getContextClassLoader();
+        setContextClassLoader(currentThread(), outerClassLoader, creationClassLoader);
+        try {
+          requestHandler.handleRequest(requestContext, responseCallback);
+        } finally {
+          setContextClassLoader(currentThread(), creationClassLoader, outerClassLoader);
+        }
+      }
+
+      @Override
+      public ClassLoader getContextClassLoader() {
+        return creationClassLoader;
+      }
+    };
   }
 
   @Override

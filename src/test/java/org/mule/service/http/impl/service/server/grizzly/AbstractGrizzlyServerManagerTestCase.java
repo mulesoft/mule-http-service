@@ -7,18 +7,22 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.Runtime.getRuntime;
+import static java.lang.Thread.currentThread;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.apache.http.client.fluent.Request.Get;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
+import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.tck.probe.PollingProber.DEFAULT_POLLING_INTERVAL;
 
+import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -309,6 +313,43 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     owner.dispose();
 
     assertThat(serverManager.containsServerFor(serverAddress, identifier), is(false));
+  }
+
+  @Test
+  public void requestHandlerIsExecutedWithTheSameClassLoaderItWasAddedWith() throws Exception {
+    final GrizzlyServerManager serverManager =
+        createServerManager(new HttpListenerRegistry(), new DefaultTcpServerSocketProperties());
+
+    final HttpServer server =
+        serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
+                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                      (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
+                                      new ServerIdentifier("context", "name"),
+                                      () -> muleContext.getConfiguration().getShutdownTimeout());
+    final ResponseStatusCallback responseStatusCallback = mock(ResponseStatusCallback.class);
+    Reference<ClassLoader> requestHandlerExecutionClassLoader = new Reference<>();
+
+    // The request handler is added using this class loader.
+    ClassLoader requestHandlerAdditionClassLoader = mock(ClassLoader.class);
+    withContextClassLoader(requestHandlerAdditionClassLoader, () -> {
+      server.addRequestHandler("/path", (requestContext, responseCallback) -> {
+        responseCallback.responseReady(HttpResponse.builder().statusCode(OK.getStatusCode()).build(),
+                                       responseStatusCallback);
+
+        // We intercept the class loader used on handler execution.
+        requestHandlerExecutionClassLoader.set(currentThread().getContextClassLoader());
+      });
+    });
+    server.start();
+
+    // Send a request.
+    Get("http://localhost:" + listenerPort.getValue() + "/path").execute();
+
+    // Both class loaders are the same.
+    assertThat(requestHandlerExecutionClassLoader.get(), is(requestHandlerAdditionClassLoader));
+
+    server.stop();
+    serverManager.dispose();
   }
 
   protected class DefaultTcpServerSocketProperties implements TcpServerSocketProperties {
