@@ -6,14 +6,15 @@
  */
 package org.mule.service.http.impl.service;
 
-import static java.lang.Thread.currentThread;
-import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
+import static org.slf4j.LoggerFactory.getLogger;
+import org.mule.service.http.impl.service.util.ThreadContext;
+
+import java.util.Map;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.http.HttpProbe;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Logger for plain HTTP request and response.
@@ -28,32 +29,35 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
     LISTENER, REQUESTER
   }
 
-  public HttpMessageLogger(final LoggerType loggerType, String identifier, ClassLoader classLoader) {
+  HttpMessageLogger(final LoggerType loggerType, ClassLoader classLoader, Logger logger) {
     this.loggerType = loggerType;
     this.classLoader = classLoader;
-    this.logger = LoggerFactory.getLogger(HttpMessageLogger.class.getName() + "." + identifier);
+    this.logger = logger;
+  }
+
+  public HttpMessageLogger(final LoggerType loggerType, String identifier, ClassLoader classLoader) {
+    this(loggerType, classLoader, getLogger(HttpMessageLogger.class.getName() + "." + identifier));
   }
 
   @Override
   public void onDataReceivedEvent(Connection connection, Buffer buffer) {
-    logBuffer(buffer);
+    logBuffer(connection, buffer);
   }
 
   @Override
   public void onDataSentEvent(Connection connection, Buffer buffer) {
-    logBuffer(buffer);
+    logBuffer(connection, buffer);
   }
 
-  private void logBuffer(Buffer buffer) {
-    Thread currentThread = currentThread();
-    ClassLoader originalClassLoader = currentThread.getContextClassLoader();
-    setContextClassLoader(currentThread, originalClassLoader, classLoader);
-    try {
+  private void logBuffer(Connection connection, Buffer buffer) {
+    try (ThreadContext threadContext = createContext(connection)) {
       if (logger.isDebugEnabled()) {
-        logger.debug(loggerType.name() + "\n" + buffer.toStringContent());
+        logger.debug("{}\n{}", loggerType.name(), buffer.toStringContent());
       }
-    } finally {
-      setContextClassLoader(currentThread, classLoader, originalClassLoader);
     }
+  }
+
+  private ThreadContext createContext(Connection connection) {
+    return new ThreadContext(classLoader, (Map<String, String>) connection.getAttributes().getAttribute("mdc"));
   }
 }
