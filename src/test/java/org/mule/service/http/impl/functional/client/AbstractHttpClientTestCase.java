@@ -6,6 +6,8 @@
  */
 package org.mule.service.http.impl.functional.client;
 
+import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
+import org.mule.runtime.core.api.util.ClassUtils;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -41,7 +43,10 @@ public abstract class AbstractHttpClientTestCase extends AbstractHttpServiceTest
   public void setUp() throws Exception {
     server = service.getServerFactory().create(getServerConfigurationBuilder().build());
     server.start();
-    server.addRequestHandler("/*", getRequestHandler());
+    RequestHandler requestHandler = getRequestHandler();
+    withContextClassLoader(requestHandler.getContextClassLoader(), () -> {
+      server.addRequestHandler("/*", requestHandler);
+    });
   }
 
   /**
