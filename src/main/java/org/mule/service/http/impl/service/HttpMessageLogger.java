@@ -25,6 +25,8 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
   private final LoggerType loggerType;
   private final ClassLoader classLoader;
 
+  public static final String MDC_ATTRIBUTE_KEY = "mdc";
+
   public enum LoggerType {
     LISTENER, REQUESTER
   }
@@ -58,6 +60,6 @@ public class HttpMessageLogger extends HttpProbe.Adapter {
   }
 
   private ThreadContext createContext(Connection connection) {
-    return new ThreadContext(classLoader, (Map<String, String>) connection.getAttributes().getAttribute("mdc"));
+    return new ThreadContext(classLoader, (Map<String, String>) connection.getAttributes().getAttribute(MDC_ATTRIBUTE_KEY));
   }
 }
