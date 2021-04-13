@@ -61,6 +61,7 @@ import org.junit.rules.ExpectedException;
 public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
 
   private static final int GC_POLLING_TIMEOUT = 10000;
+  private static final String TEST_PATH = "/path";
 
   private static InetAddress SOME_HOST_ADDRESS;
   private static InetAddress OTHER_HOST_ADDRESS;
@@ -121,7 +122,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
                                       new ServerIdentifier("context", "name"),
                                       () -> muleContext.getConfiguration().getShutdownTimeout());
     final ResponseStatusCallback responseStatusCallback = mock(ResponseStatusCallback.class);
-    server.addRequestHandler("/path", (requestContext, responseCallback) -> {
+    server.addRequestHandler(TEST_PATH, (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().statusCode(OK.getStatusCode()).build(),
                                      responseStatusCallback);
     });
@@ -129,7 +130,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
 
     try (Socket clientSocket = new Socket("localhost", listenerPort.getNumber())) {
       final PrintWriter writer = new PrintWriter(clientSocket.getOutputStream());
-      writer.println("GET /path HTTP/1.1");
+      writer.println("GET " + TEST_PATH + " HTTP/1.1");
       writer.println("Host: localhost");
       writer.println("");
       writer.flush();
@@ -221,7 +222,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     RequestHandler requestHandler = new DummyRequestHandler();
     PhantomReference<RequestHandler> requestHandlerRef = new PhantomReference<>(requestHandler, new ReferenceQueue<>());
 
-    server.addRequestHandler("/path", requestHandler);
+    server.addRequestHandler(TEST_PATH, requestHandler);
     server.stop();
     server.dispose();
 
@@ -332,7 +333,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     // The request handler is added using this class loader.
     ClassLoader requestHandlerAdditionClassLoader = mock(ClassLoader.class);
     withContextClassLoader(requestHandlerAdditionClassLoader, () -> {
-      server.addRequestHandler("/path", (requestContext, responseCallback) -> {
+      server.addRequestHandler(TEST_PATH, (requestContext, responseCallback) -> {
         responseCallback.responseReady(HttpResponse.builder().statusCode(OK.getStatusCode()).build(),
                                        responseStatusCallback);
 
@@ -343,7 +344,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     server.start();
 
     // Send a request.
-    Get("http://localhost:" + listenerPort.getValue() + "/path").execute();
+    Get("http://localhost:" + listenerPort.getValue() + TEST_PATH).execute();
 
     // Both class loaders are the same.
     assertThat(requestHandlerExecutionClassLoader.get(), is(requestHandlerAdditionClassLoader));
