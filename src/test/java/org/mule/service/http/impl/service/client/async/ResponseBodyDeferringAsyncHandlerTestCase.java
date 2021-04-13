@@ -16,6 +16,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
+import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 import org.mule.runtime.api.util.Reference;
@@ -37,6 +40,8 @@ import org.mule.tck.probe.JUnitProbe;
 import org.mule.tck.probe.PollingProber;
 
 import com.ning.http.client.AsyncHandler;
+import com.ning.http.client.FluentCaseInsensitiveStringsMap;
+import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseBodyPart;
 
@@ -50,7 +55,6 @@ import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.http.HttpContent;
-import org.junit.Ignore;
 import org.junit.Test;
 
 @Feature(HTTP_SERVICE)
@@ -256,4 +260,19 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     assertThat(handler.onBodyPartReceived(bodyPart), is(ABORT));
   }
 
+  @Test
+  public void doesNotThrowExceptionIfContentLengthIsGreaterThanMaxInteger() throws Exception {
+    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, -1);
+    handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
+
+    FluentCaseInsensitiveStringsMap headersMap = mock((FluentCaseInsensitiveStringsMap.class));
+    when(headersMap.getFirstValue(eq(CONTENT_LENGTH))).thenReturn(Long.toString((long) Integer.MAX_VALUE * 2));
+    when(headersMap.getFirstValue(eq(TRANSFER_ENCODING))).thenReturn("");
+
+    HttpResponseHeaders headers = mock(HttpResponseHeaders.class);
+    when(headers.getHeaders()).thenReturn(headersMap);
+
+    assertThat(handler.onHeadersReceived(headers), is(CONTINUE));
+  }
 }
