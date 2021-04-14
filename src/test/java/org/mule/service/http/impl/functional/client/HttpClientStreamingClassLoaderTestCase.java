@@ -20,14 +20,12 @@ import static org.mockito.Mockito.verify;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
-import static org.mule.service.http.impl.service.server.grizzly.ResponseStreamingCompletionHandler.setReplaceCtxClassloader;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Before;
@@ -48,6 +46,8 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.functional.FillAndWaitStream;
 import org.mule.service.http.impl.functional.ResponseReceivedProbe;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
+import org.mule.service.http.impl.service.server.grizzly.GrizzlyHttpServer;
+import org.mule.service.http.impl.service.server.grizzly.ResponseStreamingCompletionHandler;
 import org.mule.tck.probe.PollingProber;
 
 import io.qameta.allure.Description;
@@ -72,7 +72,7 @@ public class HttpClientStreamingClassLoaderTestCase extends AbstractHttpClientTe
   private Set<ClassLoader> classLoadersWhileReading;
 
   @Parameter
-  public final boolean replaceCtxClassLoader;
+  private final boolean replaceCtxClassLoader;
 
   @Parameterized.Parameters(name = "Service: {0}, replaceCtxClassLoader: {1}")
   public static Object[][] parameters() {
@@ -85,14 +85,14 @@ public class HttpClientStreamingClassLoaderTestCase extends AbstractHttpClientTe
   public HttpClientStreamingClassLoaderTestCase(String serviceToLoad, boolean replaceCtxClassLoader) {
     super(serviceToLoad);
     this.replaceCtxClassLoader = replaceCtxClassLoader;
-  }
 
-  @Before
-  public void setupClassloader() {
+    // noinspection deprecation
+    ResponseStreamingCompletionHandler.setReplaceCtxClassloader(replaceCtxClassLoader);
+    // noinspection deprecation
+    GrizzlyHttpServer.setReplaceCtxClassloader(replaceCtxClassLoader);
+
     this.classLoader = new ClassLoader() {};
     this.classLoadersWhileReading = new HashSet<>();
-    // noinspection deprecation
-    setReplaceCtxClassloader(replaceCtxClassLoader);
   }
 
   @Override
