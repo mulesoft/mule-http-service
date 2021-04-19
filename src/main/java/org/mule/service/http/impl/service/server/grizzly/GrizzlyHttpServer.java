@@ -8,21 +8,26 @@ package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.Math.min;
 import static java.lang.String.format;
+import static java.lang.System.getProperty;
 import static java.lang.System.nanoTime;
 import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static org.mule.runtime.api.util.MuleSystemProperties.MULE_LOG_SEPARATION_DISABLED;
+import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpConstants.Protocol;
+import org.mule.runtime.http.api.domain.request.HttpRequestContext;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.MethodRequestMatcher;
 import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 
 import java.io.IOException;
@@ -45,6 +50,7 @@ import org.slf4j.LoggerFactory;
 public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> {
 
   protected static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpServer.class);
+  private static boolean REPLACE_CONTEXT_CLASSLOADER = getProperty(MULE_LOG_SEPARATION_DISABLED) == null;
 
   private final TCPNIOTransport transport;
   private final ServerAddress serverAddress;
@@ -164,7 +170,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(Collection<String> methods, String path, RequestHandler requestHandler) {
-    return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
+    return this.listenerRegistry.addRequestHandler(this, preservingTCCL(requestHandler), PathAndMethodRequestMatcher.builder()
         .methodRequestMatcher(MethodRequestMatcher.builder(methods).build())
         .path(path)
         .build());
@@ -172,10 +178,33 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
-    return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
+    return this.listenerRegistry.addRequestHandler(this, preservingTCCL(requestHandler), PathAndMethodRequestMatcher.builder()
         .methodRequestMatcher(acceptAll())
         .path(path)
         .build());
+  }
+
+  private RequestHandler preservingTCCL(final RequestHandler requestHandler) {
+    final ClassLoader creationClassLoader = currentThread().getContextClassLoader();
+    return new RequestHandler() {
+
+      @Override
+      public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
+        ClassLoader outerClassLoader = currentThread().getContextClassLoader();
+        ClassLoader innerClassLoader = getContextClassLoader();
+        setContextClassLoader(currentThread(), outerClassLoader, innerClassLoader);
+        try {
+          requestHandler.handleRequest(requestContext, responseCallback);
+        } finally {
+          setContextClassLoader(currentThread(), innerClassLoader, outerClassLoader);
+        }
+      }
+
+      @Override
+      public ClassLoader getContextClassLoader() {
+        return REPLACE_CONTEXT_CLASSLOADER ? creationClassLoader : requestHandler.getContextClassLoader();
+      }
+    };
   }
 
   @Override
@@ -237,5 +266,15 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
         acceptedConnectionsProbe = null;
       }
     }
+  }
+
+  /**
+   *
+   * @param replaceContextClassloader
+   *
+   * @deprecated Used only for testing
+   */
+  public static void setReplaceCtxClassloader(boolean replaceContextClassloader) {
+    REPLACE_CONTEXT_CLASSLOADER = replaceContextClassloader;
   }
 }
