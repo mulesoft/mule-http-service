@@ -15,7 +15,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.runtime.http.api.server.raml.spec.RamlSpec.API_RETRIEVAL_PATH;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
-import static org.raml.builder.RamlDocumentBuilder.document;
+import static org.raml.builder.RamlDocumentBuilder.*;
 import static org.raml.builder.ResourceBuilder.resource;
 
 import java.io.IOException;
@@ -73,7 +73,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private final Object openConnectionsSync = new Object();
   private CountAcceptedConnectionsProbe acceptedConnectionsProbe;
 
-  private RamlDocumentBuilder ramlDocumentBuilder = RamlDocumentBuilder.document();
+  private RamlDocumentBuilder ramlDocumentBuilder = document();
 
   public GrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport, HttpListenerRegistry listenerRegistry,
                            Supplier<Scheduler> schedulerSource, Runnable schedulerDisposer,
