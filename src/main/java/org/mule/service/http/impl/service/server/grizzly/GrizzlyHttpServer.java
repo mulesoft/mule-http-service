@@ -13,17 +13,8 @@ import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
+import static org.mule.runtime.http.api.server.raml.spec.RamlSpec.API_RETRIEVAL_PATH;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
-import org.mule.runtime.api.scheduler.Scheduler;
-import org.mule.runtime.api.tls.TlsContextFactory;
-import org.mule.runtime.http.api.HttpConstants.Protocol;
-import org.mule.runtime.http.api.server.HttpServer;
-import org.mule.runtime.http.api.server.MethodRequestMatcher;
-import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
-import org.mule.runtime.http.api.server.RequestHandler;
-import org.mule.runtime.http.api.server.RequestHandlerManager;
-import org.mule.runtime.http.api.server.ServerAddress;
-import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -36,6 +27,21 @@ import org.glassfish.grizzly.ConnectionProbe;
 import org.glassfish.grizzly.nio.transport.TCPNIOServerConnection;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.ssl.SSLFilter;
+import org.mule.runtime.api.scheduler.Scheduler;
+import org.mule.runtime.api.tls.TlsContextFactory;
+import org.mule.runtime.http.api.HttpConstants.Protocol;
+import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
+import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.runtime.http.api.server.HttpServer;
+import org.mule.runtime.http.api.server.MethodRequestMatcher;
+import org.mule.runtime.http.api.server.PathAndMethodRequestMatcher;
+import org.mule.runtime.http.api.server.RequestHandler;
+import org.mule.runtime.http.api.server.RequestHandlerManager;
+import org.mule.runtime.http.api.server.ServerAddress;
+import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+import org.mule.runtime.http.api.server.raml.spec.ApiSpec;
+import org.mule.runtime.http.api.server.raml.spec.RamlSpec;
+import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +67,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private volatile int openConnectionsCounter = 0;
   private final Object openConnectionsSync = new Object();
   private CountAcceptedConnectionsProbe acceptedConnectionsProbe;
+
+  private ApiSpec apiSpec = new RamlSpec();
 
   public GrizzlyHttpServer(ServerAddress serverAddress,
                            TCPNIOTransport transport,
@@ -93,7 +101,34 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
     serverConnection.addCloseListener(new OnCloseConnectionListener());
     stopped = false;
+    addApiSpecHandler();
     return this;
+  }
+
+  private void addApiSpecHandler() {
+    this.addRequestHandler(API_RETRIEVAL_PATH, (requestContext, responseCallback) -> {
+      responseCallback.responseReady(HttpResponse.builder().entity(new ByteArrayHttpEntity(getApiInfo(apiSpec)))
+          .build(), new ResponseStatusCallback() {
+
+            @Override
+            public void responseSendFailure(Throwable throwable) {
+              // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void responseSendSuccessfully() {
+              // TODO Auto-generated method stub
+
+            }
+
+          });
+
+    });
+  }
+
+  protected byte[] getApiInfo(ApiSpec apiSpec) {
+    return apiSpec.getSpecAsString().getBytes();
   }
 
   @Override
@@ -164,6 +199,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(Collection<String> methods, String path, RequestHandler requestHandler) {
+    apiSpec.addEndpoint(path);
     return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
         .methodRequestMatcher(MethodRequestMatcher.builder(methods).build())
         .path(path)
@@ -172,6 +208,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
+    apiSpec.addEndpoint(path);
     return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
         .methodRequestMatcher(acceptAll())
         .path(path)
