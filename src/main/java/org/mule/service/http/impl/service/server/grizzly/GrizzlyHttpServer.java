@@ -15,14 +15,17 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.runtime.http.api.server.raml.spec.RamlSpec.API_RETRIEVAL_PATH;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
+import static org.raml.builder.MethodBuilder.method;
 import static org.raml.builder.RamlDocumentBuilder.*;
 import static org.raml.builder.ResourceBuilder.resource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.glassfish.grizzly.CloseListener;
 import org.glassfish.grizzly.Connection;
@@ -45,6 +48,8 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.runtime.http.api.server.raml.spec.ApiSpec;
 import org.mule.runtime.http.api.server.raml.spec.RamlSpec;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
+
+import org.raml.builder.MethodBuilder;
 import org.raml.builder.RamlDocumentBuilder;
 import org.raml.v2.api.model.v10.api.Api;
 import org.slf4j.Logger;
@@ -202,7 +207,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(Collection<String> methods, String path, RequestHandler requestHandler) {
-    ramlDocumentBuilder.withResources(resource(path));
+    ramlDocumentBuilder.withResources(resource(path).withMethods((MethodBuilder[]) methods.stream().map(MethodBuilder::method).toArray()));
     return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
         .methodRequestMatcher(MethodRequestMatcher.builder(methods).build()).path(path).build());
   }
