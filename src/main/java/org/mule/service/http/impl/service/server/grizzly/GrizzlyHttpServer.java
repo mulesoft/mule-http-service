@@ -15,8 +15,11 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.runtime.http.api.server.raml.spec.RamlSpec.API_RETRIEVAL_PATH;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
+import static org.raml.builder.RamlDocumentBuilder.document;
+import static org.raml.builder.ResourceBuilder.resource;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
@@ -42,6 +45,8 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.runtime.http.api.server.raml.spec.ApiSpec;
 import org.mule.runtime.http.api.server.raml.spec.RamlSpec;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
+import org.raml.builder.RamlDocumentBuilder;
+import org.raml.v2.api.model.v10.api.Api;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,15 +73,11 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private final Object openConnectionsSync = new Object();
   private CountAcceptedConnectionsProbe acceptedConnectionsProbe;
 
-  private ApiSpec apiSpec = new RamlSpec();
+  private RamlDocumentBuilder ramlDocumentBuilder = RamlDocumentBuilder.document();
 
-  public GrizzlyHttpServer(ServerAddress serverAddress,
-                           TCPNIOTransport transport,
-                           HttpListenerRegistry listenerRegistry,
-                           Supplier<Scheduler> schedulerSource,
-                           Runnable schedulerDisposer,
-                           GrizzlyAddressFilter<SSLFilter> sslFilter,
-                           Supplier<Long> shutdownTimeoutSupplier) {
+  public GrizzlyHttpServer(ServerAddress serverAddress, TCPNIOTransport transport, HttpListenerRegistry listenerRegistry,
+                           Supplier<Scheduler> schedulerSource, Runnable schedulerDisposer,
+                           GrizzlyAddressFilter<SSLFilter> sslFilter, Supplier<Long> shutdownTimeoutSupplier) {
     this.serverAddress = serverAddress;
     this.transport = transport;
     this.listenerRegistry = listenerRegistry;
@@ -107,7 +108,9 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   private void addApiSpecHandler() {
     this.addRequestHandler(API_RETRIEVAL_PATH, (requestContext, responseCallback) -> {
-      responseCallback.responseReady(HttpResponse.builder().entity(new ByteArrayHttpEntity(getApiInfo(apiSpec)))
+      responseCallback.responseReady(HttpResponse.builder().entity(
+                                                                   new ByteArrayHttpEntity(getRamlSpec().getSpecAsString()
+                                                                       .getBytes(StandardCharsets.UTF_8)))
           .build(), new ResponseStatusCallback() {
 
             @Override
@@ -149,8 +152,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
           long remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
           while (openConnectionsCounter != 0 && remainingMillis > 0) {
             long millisToWait = min(remainingMillis, 50);
-            logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
-                         openConnectionsCounter, millisToWait);
+            logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds", openConnectionsCounter,
+                         millisToWait);
             openConnectionsSync.wait(millisToWait);
             remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
           }
@@ -199,20 +202,17 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   @Override
   public RequestHandlerManager addRequestHandler(Collection<String> methods, String path, RequestHandler requestHandler) {
-    apiSpec.addEndpoint(path);
+    ramlDocumentBuilder.withResources(resource(path));
     return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
-        .methodRequestMatcher(MethodRequestMatcher.builder(methods).build())
-        .path(path)
-        .build());
+        .methodRequestMatcher(MethodRequestMatcher.builder(methods).build()).path(path).build());
   }
 
   @Override
   public RequestHandlerManager addRequestHandler(String path, RequestHandler requestHandler) {
-    apiSpec.addEndpoint(path);
-    return this.listenerRegistry.addRequestHandler(this, requestHandler, PathAndMethodRequestMatcher.builder()
-        .methodRequestMatcher(acceptAll())
-        .path(path)
-        .build());
+    ramlDocumentBuilder.withResources(resource(path));
+    return this.listenerRegistry
+        .addRequestHandler(this, requestHandler,
+                           PathAndMethodRequestMatcher.builder().methodRequestMatcher(acceptAll()).path(path).build());
   }
 
   @Override
@@ -232,6 +232,21 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   private String listenerUrl() {
     return format("%s://%s:%d", getProtocol().getScheme(), serverAddress.getIp(), serverAddress.getPort());
+  }
+
+  @Override
+  public ApiSpec getRamlSpec() {
+
+    Api api = ramlDocumentBuilder
+        .baseUri(this.getProtocol().getScheme() + "://" + this.getServerAddress().getAddress().getHostAddress())
+        .title(this.getServerAddress().getAddress().getHostName())
+        // .version("one")
+        // .mediaType("foo/fun")
+        .buildModel();
+
+    RamlSpec ramlSpec = new RamlSpec();
+    ramlSpec.setApi(api);
+    return ramlSpec;
   }
 
   private class CountAcceptedConnectionsProbe extends ConnectionProbe.Adapter {
