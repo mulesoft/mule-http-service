@@ -20,6 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.service.http.impl.service.server.grizzly.GrizzlyHttpServer.setReplaceCtxClassloader;
 import static org.mule.tck.probe.PollingProber.DEFAULT_POLLING_INTERVAL;
 
 import org.mule.runtime.api.util.Reference;
@@ -318,6 +319,9 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
 
   @Test
   public void requestHandlerIsExecutedWithTheSameClassLoaderItWasAddedWith() throws Exception {
+    // This test is only valid when disableLogSeparation isn't configured.
+    setReplaceCtxClassloader(true);
+
     final GrizzlyServerManager serverManager =
         createServerManager(new HttpListenerRegistry(), new DefaultTcpServerSocketProperties());
 
