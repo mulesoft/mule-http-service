@@ -284,7 +284,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     }
     if (requestHandlerMatcherPair == null) {
       if (LOGGER.isInfoEnabled()) {
-        LOGGER.info("No listener found for request: " + getMethodAndPath(request.getMethod(), request.getPath()));
+        LOGGER.info("No listener found for request: {}", getMethodAndPath(request.getMethod(), request.getPath()));
         LOGGER.info("Available listeners are: [{}]", join(", ", this.paths));
       }
       if (methodNotAllowed) {
