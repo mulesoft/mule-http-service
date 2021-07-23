@@ -20,11 +20,10 @@ import org.mule.service.http.impl.service.server.DecodingException;
 
 import org.apache.commons.io.IOUtils;
 
-import com.google.common.collect.Lists;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
@@ -60,7 +59,7 @@ public class HttpParser {
 
   public static Collection<HttpPart> parseMultipartContent(InputStream content, String contentType) throws IOException {
     MimeMultipart mimeMultipart = null;
-    List<HttpPart> parts = Lists.newArrayList();
+    List<HttpPart> parts = new ArrayList();
 
     try {
       mimeMultipart = new MimeMultipart(new ByteArrayDataSource(content, contentType));

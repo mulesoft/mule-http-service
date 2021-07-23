@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.util;
 
 import static java.lang.Boolean.valueOf;
 import static java.lang.String.format;
+import static java.lang.String.join;
 import static java.lang.System.getProperty;
 import static java.util.Collections.list;
 import static java.util.Collections.reverse;
@@ -30,7 +31,6 @@ import org.slf4j.Logger;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.google.common.base.Joiner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -285,7 +285,7 @@ public class DefaultRequestMatcherRegistry<T> implements RequestMatcherRegistry<
     if (requestHandlerMatcherPair == null) {
       if (LOGGER.isInfoEnabled()) {
         LOGGER.info("No listener found for request: " + getMethodAndPath(request.getMethod(), request.getPath()));
-        LOGGER.info("Available listeners are: [{}]", Joiner.on(", ").join(this.paths));
+        LOGGER.info("Available listeners are: [{}]", join(", ", this.paths));
       }
       if (methodNotAllowed) {
         return noMatchMismatchHandler.get();
