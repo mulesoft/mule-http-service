@@ -6,7 +6,6 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Integer.valueOf;
 import static java.lang.Math.min;
 import static java.lang.System.getProperty;
@@ -68,7 +67,9 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
                                             ClassLoader ctxClassLoader,
                                             final HttpRequestPacket request,
                                             final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
-    checkArgument((httpResponse.getEntity().isStreaming()), "HTTP response entity must be stream based");
+    if (!httpResponse.getEntity().isStreaming()) {
+      throw new IllegalArgumentException("HTTP response entity must be stream based");
+    }
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
     httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
