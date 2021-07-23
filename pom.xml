@@ -18,7 +18,9 @@
 
     <properties>
         <asyncHttpClientVersion>1.14-MULE-020</asyncHttpClientVersion>
+        <commonsIoVersion>2.11.0</commonsIoVersion>
         <grizzlyVersion>2.3.36-MULE-023</grizzlyVersion>
+        <guavaVersion>30.1.1-jre</guavaVersion>
         <javax.activation.version>1.2.0</javax.activation.version>
         <sun.mailapi.version>1.6.4</sun.mailapi.version>
 
@@ -119,10 +121,12 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
+            <version>${commonsIoVersion}</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
+            <version>${guavaVersion}</version>
         </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
