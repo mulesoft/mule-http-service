@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultMaxRedirects;
 import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
@@ -32,6 +33,8 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
+import static org.mule.service.http.impl.service.util.RedirectUtils.createRedirectRequest;
+import static org.mule.service.http.impl.service.util.RedirectUtils.shouldFollowRedirect;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +50,7 @@ import java.util.concurrent.TimeoutException;
 
 import javax.net.ssl.SSLContext;
 
+import com.ning.http.client.MaxRedirectException;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -109,6 +113,7 @@ public class GrizzlyHttpClient implements HttpClient {
       SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.bufferSize";
   private static int requestStreamingBufferSize =
       getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, DEFAULT_REQUEST_STREAMING_BUFFER_SIZE);
+  private static int MAX_REDIRECTS = defaultMaxRedirects();
 
   // Stream responses properties
   private static final String USE_WORKERS_FOR_STREAMING_PROPERTY_NAME =
@@ -324,9 +329,9 @@ public class GrizzlyHttpClient implements HttpClient {
   public HttpResponse send(HttpRequest request, HttpRequestOptions options) throws IOException, TimeoutException {
     checkState(asyncHttpClient != null, "The client must be started before use.");
     if (streamingEnabled) {
-      return sendAndDefer(request, options);
+      return sendAndDefer(request, options, 0);
     } else {
-      return sendAndWait(request, options);
+      return sendAndWait(request, options, 0);
     }
   }
 
@@ -338,7 +343,7 @@ public class GrizzlyHttpClient implements HttpClient {
    * will block waiting to allocate them. Likewise, read/write speed differences could cause issues. The buffer size can be
    * customized for these reason.
    */
-  private HttpResponse sendAndDefer(HttpRequest request, HttpRequestOptions options)
+  private HttpResponse sendAndDefer(HttpRequest request, HttpRequestOptions options, int currentRedirects)
       throws IOException, TimeoutException {
     Request grizzlyRequest = createGrizzlyRequest(request, options);
     PipedOutputStream outPipe = new PipedOutputStream();
@@ -348,7 +353,14 @@ public class GrizzlyHttpClient implements HttpClient {
     asyncHttpClient.executeRequest(grizzlyRequest, asyncHandler);
     try {
       Response response = asyncHandler.getResponse();
-      return httpResponseCreator.create(response, inPipe);
+      HttpResponse httpResponse = httpResponseCreator.create(response, inPipe);
+      if (shouldFollowRedirect(httpResponse, options)) {
+        if (currentRedirects > MAX_REDIRECTS) {
+          throw new IOException("Max redirects exceeded", new MaxRedirectException());
+        }
+        httpResponse = sendAndDefer(createRedirectRequest(httpResponse, request), options, currentRedirects + 1);
+      }
+      return httpResponse;
     } catch (IOException e) {
       if (e.getCause() instanceof TimeoutException) {
         throw (TimeoutException) e.getCause();
@@ -365,7 +377,7 @@ public class GrizzlyHttpClient implements HttpClient {
   /**
    * Blocking send which waits to load the whole response to memory before propagating it.
    */
-  private HttpResponse sendAndWait(HttpRequest request, HttpRequestOptions options)
+  private HttpResponse sendAndWait(HttpRequest request, HttpRequestOptions options, int currentRedirects)
       throws IOException, TimeoutException {
     Request grizzlyRequest = createGrizzlyRequest(request, options);
     ListenableFuture<Response> future = asyncHttpClient.executeRequest(grizzlyRequest);
@@ -381,7 +393,14 @@ public class GrizzlyHttpClient implements HttpClient {
         }
         response = future.get();
       }
-      return httpResponseCreator.create(response, response.getResponseBodyAsStream());
+      HttpResponse httpResponse = httpResponseCreator.create(response, response.getResponseBodyAsStream());
+      if (shouldFollowRedirect(httpResponse, options)) {
+        if (currentRedirects > MAX_REDIRECTS) {
+          throw new IOException("Max redirects exceeded", new MaxRedirectException());
+        }
+        httpResponse = sendAndWait(createRedirectRequest(httpResponse, request), options, currentRedirects + 1);
+      }
+      return httpResponse;
     } catch (InterruptedException e) {
       throw new IOException(e.getMessage(), e);
     } catch (ExecutionException e) {
@@ -399,15 +418,33 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options) {
+    return sendAsync(request, options, 0);
+  }
+
+  private CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options, int currentRedirects) {
     checkState(asyncHttpClient != null, "The client must be started before use.");
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
+      CompletableFuture<HttpResponse> auxFuture = new CompletableFuture<>();
       if (streamingEnabled) {
-        asyncHandler = new PreservingClassLoaderAsyncHandler<>(new ResponseBodyDeferringAsyncHandler(future, responseBufferSize));
+        asyncHandler =
+            new PreservingClassLoaderAsyncHandler<>(new ResponseBodyDeferringAsyncHandler(auxFuture, responseBufferSize));
       } else {
-        asyncHandler = new PreservingClassLoaderAsyncHandler<>(new ResponseAsyncHandler(future));
+        asyncHandler = new PreservingClassLoaderAsyncHandler<>(new ResponseAsyncHandler(auxFuture));
       }
+
+      auxFuture.whenComplete((response, exception) -> {
+        if (response != null) {
+          if (shouldFollowRedirect(response, options)) {
+            handleRedirectAsync(request, response, options, currentRedirects, future);
+          } else {
+            future.complete(response);
+          }
+        } else {
+          future.completeExceptionally(exception);
+        }
+      });
 
       asyncHttpClient.executeRequest(createGrizzlyRequest(request, options), asyncHandler);
     } catch (Exception e) {
@@ -416,10 +453,27 @@ public class GrizzlyHttpClient implements HttpClient {
     return future;
   }
 
+  private void handleRedirectAsync(HttpRequest request, HttpResponse response, HttpRequestOptions options,
+                                   int currentRedirects, CompletableFuture<HttpResponse> future) {
+    if (currentRedirects > MAX_REDIRECTS) {
+      future.completeExceptionally(new MaxRedirectException());
+      return;
+    }
+
+    HttpRequest redirectRequest = createRedirectRequest(response, request);
+    sendAsync(redirectRequest, options, currentRedirects + 1).whenComplete((redirectResponse, redirectException) -> {
+      if (redirectResponse != null) {
+        future.complete(redirectResponse);
+      } else {
+        future.completeExceptionally(redirectException);
+      }
+    });
+  }
+
   protected Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, options, builder -> {
-      builder.setFollowRedirects(options.isFollowsRedirect());
+      builder.setFollowRedirects(false);
 
       populateHeaders(request, builder);
 
