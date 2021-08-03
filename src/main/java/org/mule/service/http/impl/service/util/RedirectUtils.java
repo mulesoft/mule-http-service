@@ -22,7 +22,6 @@ import com.ning.http.client.uri.Uri;
 public class RedirectUtils {
 
   /**
-   *
    * @param response HttpResponse
    * @param options  HttpRequestOptions
    * @return a boolean indicating if the response contains a redirect status and the LOCATION header.
