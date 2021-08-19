@@ -132,7 +132,8 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
     setContextClassLoader(currentThread, originalClassLoader, ctxClassLoader);
     try {
       if (LOGGER.isWarnEnabled()) {
-        LOGGER.warn(format("HTTP response sending task failed with error: %s", throwable.getMessage()));
+        LOGGER.warn(format("HTTP response sending task failed with error: %s", throwable));
+        throwable.printStackTrace();
       }
     } finally {
       setContextClassLoader(currentThread, ctxClassLoader, originalClassLoader);

@@ -174,14 +174,17 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
 
   private void markConnectionToDelegateWritesInConfiguredExecutor(boolean value) {
     if (ctx == null) {
+      LOGGER.error("ctx was null");
       return;
     }
     Connection connection = ctx.getConnection();
     if (connection == null) {
+      LOGGER.error("connection was null");
       return;
     }
     AttributeHolder attributeHolder = connection.getAttributes();
     if (attributeHolder == null) {
+      LOGGER.error("attributeHolder was null");
       return;
     }
     if (value) {
