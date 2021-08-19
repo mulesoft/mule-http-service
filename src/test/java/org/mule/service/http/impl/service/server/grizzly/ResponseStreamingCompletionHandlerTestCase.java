@@ -112,4 +112,19 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
 
     verify(getHandler(), times(1)).failed(any(Throwable.class));
   }
+
+  @Test
+  public void IOExceptionIsRethrownIfCauseOfFailure() throws IOException {
+    responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
+    when(request.getProcessingState()).thenReturn(new ProcessingState());
+    handler = spy(new ResponseStreamingCompletionHandler(ctx,
+                                                         currentThread().getContextClassLoader(),
+                                                         request,
+                                                         responseMock,
+                                                         callback));
+
+    exception.expect(IOException.class);
+    when(mockStream.read(any(), anyInt(), anyInt())).thenThrow(new MuleRuntimeException(new IOException()));
+    handler.sendInputStreamChunk();
+  }
 }

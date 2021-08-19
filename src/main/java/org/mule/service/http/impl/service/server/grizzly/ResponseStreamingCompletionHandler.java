@@ -158,6 +158,9 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     } catch (IOException ioException) {
       throw ioException;
     } catch (Exception e) {
+      if (e.getCause() instanceof IOException) {
+        throw (IOException) e.getCause();
+      }
       failed(e);
     }
   }
