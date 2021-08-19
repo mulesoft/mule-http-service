@@ -35,7 +35,9 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.glassfish.grizzly.Buffer;
+import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.WriteResult;
+import org.glassfish.grizzly.attributes.AttributeHolder;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
@@ -171,10 +173,21 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   private void markConnectionToDelegateWritesInConfiguredExecutor(boolean value) {
+    if (ctx == null) {
+      return;
+    }
+    Connection connection = ctx.getConnection();
+    if (connection == null) {
+      return;
+    }
+    AttributeHolder attributeHolder = connection.getAttributes();
+    if (attributeHolder == null) {
+      return;
+    }
     if (value) {
-      ctx.getConnection().getAttributes().setAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR, true);
+      attributeHolder.setAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR, true);
     } else {
-      ctx.getConnection().getAttributes().removeAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
+      attributeHolder.removeAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
     }
   }
 
