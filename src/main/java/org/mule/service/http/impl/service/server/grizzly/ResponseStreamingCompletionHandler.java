@@ -173,24 +173,15 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   private void markConnectionToDelegateWritesInConfiguredExecutor(boolean value) {
-    if (ctx == null) {
-      LOGGER.error("ctx was null");
-      return;
-    }
     Connection connection = ctx.getConnection();
     if (connection == null) {
       LOGGER.error("connection was null");
       return;
     }
-    AttributeHolder attributeHolder = connection.getAttributes();
-    if (attributeHolder == null) {
-      LOGGER.error("attributeHolder was null");
-      return;
-    }
     if (value) {
-      attributeHolder.setAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR, true);
+      connection.getAttributes().setAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR, true);
     } else {
-      attributeHolder.removeAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
+      connection.getAttributes().removeAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
     }
   }
 
@@ -287,15 +278,22 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       super.failed(throwable);
       markConnectionToDelegateWritesInConfiguredExecutor(false);
       close();
-      responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
+      responseStatusCallback.onErrorSendingResponse(isConnectionOpen() ? throwable
           : new SourceRemoteConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
       resume();
-
     } finally {
       if (REPLACE_CONTEXT_CLASSLOADER) {
         setContextClassLoader(thread, newClassLoader, currentClassLoader);
       }
     }
+  }
+
+  private boolean isConnectionOpen() {
+    Connection connection = ctx.getConnection();
+    if (connection == null) {
+      return false;
+    }
+    return connection.isOpen();
   }
 
   /**
