@@ -175,7 +175,6 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private void markConnectionToDelegateWritesInConfiguredExecutor(boolean value) {
     Connection connection = ctx.getConnection();
     if (connection == null) {
-      LOGGER.error("connection was null");
       return;
     }
     if (value) {
