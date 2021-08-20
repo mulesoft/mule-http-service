@@ -65,6 +65,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private final long selectorTimeoutNanos = MILLISECONDS.toNanos(Long.valueOf(getProperty(SELECTOR_TIMEOUT, "50")));
 
   private volatile boolean isDone;
+  private boolean alreadyFailed = false;
 
   public ResponseStreamingCompletionHandler(final FilterChainContext ctx,
                                             ClassLoader ctxClassLoader,
@@ -264,6 +265,12 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    */
   @Override
   public void failed(Throwable throwable) {
+    // Ensure that this method is executed only once.
+    if (alreadyFailed) {
+      return;
+    }
+    alreadyFailed = true;
+
     Thread thread = null;
     ClassLoader currentClassLoader = null;
     ClassLoader newClassLoader = null;
