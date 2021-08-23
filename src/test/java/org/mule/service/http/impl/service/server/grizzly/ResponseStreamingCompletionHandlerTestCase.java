@@ -22,6 +22,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
 
+import io.qameta.allure.Issue;
 import org.glassfish.grizzly.http.ProcessingState;
 import org.junit.Rule;
 import org.junit.Test;
@@ -55,7 +56,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
   public void setUp() {
     when(ctx.getConnection()).thenReturn(connection);
     when(connection.getTransport()).thenReturn(mock(Transport.class, RETURNS_DEEP_STUBS));
-    mockStream = mock(InputStream.class);
+    mockStream = spy(mock(InputStream.class));
     responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
     handler = new ResponseStreamingCompletionHandler(ctx,
                                                      currentThread().getContextClassLoader(),
@@ -126,5 +127,44 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
     exception.expect(IOException.class);
     when(mockStream.read(any(), anyInt(), anyInt())).thenThrow(new MuleRuntimeException(new IOException()));
     handler.sendInputStreamChunk();
+  }
+
+  @Test
+  @Issue("MULE-19727")
+  public void handlerDoesntThrowNPEWhenConnectionIsNull() {
+    // Given a valid handler.
+    handler = new ResponseStreamingCompletionHandler(ctx,
+                                                     currentThread().getContextClassLoader(),
+                                                     request,
+                                                     responseMock,
+                                                     callback);
+    // When an unexpected error makes getConnection return null.
+    when(ctx.getConnection()).thenReturn(null);
+    // Then the failed() method is executed without throwing NPE.
+    handler.failed(createExpectedException());
+  }
+
+  @Test
+  @Issue("MULE-19727")
+  public void failedMethodBehaviorIsExecutedOnlyOnceForTheSameHandler() throws IOException {
+    // Given a valid handler.
+    handler = new ResponseStreamingCompletionHandler(ctx,
+                                                     currentThread().getContextClassLoader(),
+                                                     request,
+                                                     responseMock,
+                                                     callback);
+
+    // When the failed() method is invoked several times
+    handler.failed(createExpectedException());
+    handler.failed(createExpectedException());
+    handler.failed(createExpectedException());
+
+    // Then the effects of failed() are invoked only once.
+    verify(mockStream, times(1)).close();
+    verify(callback, times(1)).onErrorSendingResponse(any(Exception.class));
+  }
+
+  private Exception createExpectedException() {
+    return new Exception("EXPECTED EXCEPTION");
   }
 }
