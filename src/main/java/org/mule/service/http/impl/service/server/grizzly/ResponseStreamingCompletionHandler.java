@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.glassfish.grizzly.Buffer;
+import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.WriteResult;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
@@ -63,6 +64,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   private final long selectorTimeoutNanos = MILLISECONDS.toNanos(Long.valueOf(getProperty(SELECTOR_TIMEOUT, "50")));
 
   private volatile boolean isDone;
+  private boolean alreadyFailed = false;
 
   public ResponseStreamingCompletionHandler(final FilterChainContext ctx,
                                             ClassLoader ctxClassLoader,
@@ -171,10 +173,14 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   private void markConnectionToDelegateWritesInConfiguredExecutor(boolean value) {
+    Connection connection = ctx.getConnection();
+    if (connection == null) {
+      return;
+    }
     if (value) {
-      ctx.getConnection().getAttributes().setAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR, true);
+      connection.getAttributes().setAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR, true);
     } else {
-      ctx.getConnection().getAttributes().removeAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
+      connection.getAttributes().removeAttribute(DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR);
     }
   }
 
@@ -258,6 +264,13 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    */
   @Override
   public void failed(Throwable throwable) {
+    // Ensure that this method is executed only once, because we detected cases where unexpected exceptions generate
+    // multiple calls to it.
+    if (alreadyFailed) {
+      LOGGER.warn("Failed callback has been called more than once for the same chunked response", throwable);
+      return;
+    }
+    alreadyFailed = true;
     Thread thread = null;
     ClassLoader currentClassLoader = null;
     ClassLoader newClassLoader = null;
@@ -271,7 +284,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       super.failed(throwable);
       markConnectionToDelegateWritesInConfiguredExecutor(false);
       close();
-      responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
+      responseStatusCallback.onErrorSendingResponse(isConnectionOpen() ? throwable
           : new SourceRemoteConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
       resume();
 
@@ -280,6 +293,14 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
         setContextClassLoader(thread, newClassLoader, currentClassLoader);
       }
     }
+  }
+
+  private boolean isConnectionOpen() {
+    Connection connection = ctx.getConnection();
+    if (connection == null) {
+      return false;
+    }
+    return connection.isOpen();
   }
 
   /**
