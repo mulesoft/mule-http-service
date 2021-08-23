@@ -265,7 +265,8 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
    */
   @Override
   public void failed(Throwable throwable) {
-    // Ensure that this method is executed only once.
+    // Ensure that this method is executed only once, because we detected cases where unexpected exceptions generate
+    // multiple calls to it.
     if (alreadyFailed) {
       LOGGER.warn("Failed callback has been called more than once for the same chunked response", throwable);
       return;
