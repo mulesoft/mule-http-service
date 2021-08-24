@@ -21,6 +21,8 @@ import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
 import static org.slf4j.LoggerFactory.getLogger;
 
+import com.google.common.base.*;
+import org.mule.runtime.core.api.util.*;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
 import java.util.OptionalLong;
@@ -132,6 +134,7 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
     setContextClassLoader(currentThread, originalClassLoader, ctxClassLoader);
     try {
       if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn(format("StackTrace: %s", Throwables.getStackTraceAsString(throwable)));
         LOGGER.warn(format("HTTP response sending task failed with error: %s", throwable.getMessage()));
       }
     } finally {
