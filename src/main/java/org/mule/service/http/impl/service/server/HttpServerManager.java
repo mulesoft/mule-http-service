@@ -52,6 +52,24 @@ public interface HttpServerManager {
 
   /**
    *
+   * @param serverAddress            address of the server
+   * @param schedulerSupplier        work manager source to use for retrieving an {@link Executor} for processing this server
+   *                                 requests
+   * @param usePersistentConnections if true, the connections will be kept open for subsequent requests
+   * @param connectionIdleTimeout    the amount of milliseconds to keep open an idle connection @return the create Server handler
+   * @param identifier               the id of the server
+   * @param shutdownTimeout          time to wait for persistent connections to be closed when server is stopped.
+   * @param readTimeout              time to wait while reading input in milliseconds
+   * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already
+   *                                 in use.
+   */
+  HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
+                             boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier,
+                             Supplier<Long> shutdownTimeout, long readTimeout)
+      throws ServerCreationException;
+
+  /**
+   *
    * @param tlsContextFactory
    * @param schedulerSupplier        work manager source to use for retrieving an {@link Executor} for processing this server
    *                                 requests
@@ -67,6 +85,26 @@ public interface HttpServerManager {
   HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
                                 ServerAddress serverAddress, boolean usePersistentConnections, int connectionIdleTimeout,
                                 ServerIdentifier identifier, Supplier<Long> shutdownTimeout)
+      throws ServerCreationException;
+
+  /**
+   *
+   * @param tlsContextFactory
+   * @param schedulerSupplier        work manager source to use for retrieving an {@link Executor} for processing this server
+   *                                 requests
+   * @param serverAddress            address of the server
+   * @param usePersistentConnections if true, the connections will be kept open for subsequent requests
+   * @param connectionIdleTimeout    the amount of milliseconds to keep open an idle connection
+   * @param identifier               the id of the server
+   * @param shutdownTimeout          time to wait for persistent connections to be closed when server is stopped.
+   * @param readTimeout              time to wait while reading input in milliseconds
+   * @return the create Server handler
+   * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already
+   *                                 in use.
+   */
+  HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
+                                ServerAddress serverAddress, boolean usePersistentConnections, int connectionIdleTimeout,
+                                ServerIdentifier identifier, Supplier<Long> shutdownTimeout, long readTimeout)
       throws ServerCreationException;
 
   /**
