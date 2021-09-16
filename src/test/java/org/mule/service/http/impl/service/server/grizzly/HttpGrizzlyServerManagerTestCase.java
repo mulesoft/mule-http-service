@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static java.lang.Runtime.getRuntime;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -30,8 +31,10 @@ import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.concurrent.ExecutorService;
 
+import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.junit.Test;
 
 import io.qameta.allure.Feature;
@@ -69,6 +72,36 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
       assertThat(createdServer.getProtocol(), is(HTTP));
       createdServer.enableTls(tlsContextFactory);
       assertThat(createdServer.getProtocol(), is(HTTPS));
+    } finally {
+      createdServer.dispose();
+    }
+  }
+
+  @Test
+  public void setDefaultReadTimeoutTo30secs() throws Exception {
+    final HttpServer createdServer = getServer(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
+        new ServerIdentifier("context", "name"));
+    try {
+      Field transportField = GrizzlyServerManager.class.getDeclaredField("transport");
+      transportField.setAccessible(true);
+      TCPNIOTransport tcpnioTransport = (TCPNIOTransport) transportField.get(serverManager);
+      assertThat(tcpnioTransport.getReadTimeout(MILLISECONDS), is(30000L));
+    } finally {
+      createdServer.dispose();
+    }
+  }
+
+  @Test
+  public void setCustomReadTimeoutTo20secs() throws Exception {
+    long readTimeout = 20000L;
+    final HttpServer createdServer = serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()), () -> muleContext.getSchedulerService().ioScheduler(), true,
+        (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), new ServerIdentifier("context", "name"),
+        () -> muleContext.getConfiguration().getShutdownTimeout(), readTimeout);
+    try {
+      Field transportField = GrizzlyServerManager.class.getDeclaredField("transport");
+      transportField.setAccessible(true);
+      TCPNIOTransport tcpnioTransport = (TCPNIOTransport) transportField.get(serverManager);
+      assertThat(tcpnioTransport.getReadTimeout(MILLISECONDS), is(readTimeout));
     } finally {
       createdServer.dispose();
     }

@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server;
 
+import org.mule.runtime.api.message.Message;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -44,7 +45,9 @@ public interface HttpServerManager {
    * @param shutdownTimeout          time to wait for persistent connections to be closed when server is stopped.
    * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already
    *                                 in use.
+   * @deprecated as of 1.6.0 use {@link #createServerFor(ServerAddress, Supplier, boolean, int, ServerIdentifier, Supplier, long)} instead.
    */
+  @Deprecated
   HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
                              boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier,
                              Supplier<Long> shutdownTimeout)
@@ -81,7 +84,9 @@ public interface HttpServerManager {
    * @return the create Server handler
    * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already
    *                                 in use.
+   * @deprecated as of 1.6.0 use {@link #createSslServerFor(TlsContextFactory, Supplier, ServerAddress, boolean, int, ServerIdentifier, Supplier, long)} instead.
    */
+  @Deprecated
   HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
                                 ServerAddress serverAddress, boolean usePersistentConnections, int connectionIdleTimeout,
                                 ServerIdentifier identifier, Supplier<Long> shutdownTimeout)
