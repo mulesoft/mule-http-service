@@ -80,7 +80,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   @Test
   public void setDefaultReadTimeoutTo30secs() throws Exception {
     final HttpServer createdServer = getServer(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-        new ServerIdentifier("context", "name"));
+                                               new ServerIdentifier("context", "name"));
     try {
       Field transportField = GrizzlyServerManager.class.getDeclaredField("transport");
       transportField.setAccessible(true);
@@ -94,9 +94,11 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   @Test
   public void setCustomReadTimeoutTo20secs() throws Exception {
     long readTimeout = 20000L;
-    final HttpServer createdServer = serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()), () -> muleContext.getSchedulerService().ioScheduler(), true,
-        (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), new ServerIdentifier("context", "name"),
-        () -> muleContext.getConfiguration().getShutdownTimeout(), readTimeout);
+    final HttpServer createdServer =
+        serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
+                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                      (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), new ServerIdentifier("context", "name"),
+                                      () -> muleContext.getConfiguration().getShutdownTimeout(), readTimeout);
     try {
       Field transportField = GrizzlyServerManager.class.getDeclaredField("transport");
       transportField.setAccessible(true);

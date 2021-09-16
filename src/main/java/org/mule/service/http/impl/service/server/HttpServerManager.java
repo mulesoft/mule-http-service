@@ -45,7 +45,8 @@ public interface HttpServerManager {
    * @param shutdownTimeout          time to wait for persistent connections to be closed when server is stopped.
    * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already
    *                                 in use.
-   * @deprecated as of 1.6.0 use {@link #createServerFor(ServerAddress, Supplier, boolean, int, ServerIdentifier, Supplier, long)} instead.
+   * @deprecated as of 1.6.0 use {@link #createServerFor(ServerAddress, Supplier, boolean, int, ServerIdentifier, Supplier, long)}
+   *             instead.
    */
   @Deprecated
   HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
@@ -84,7 +85,9 @@ public interface HttpServerManager {
    * @return the create Server handler
    * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already
    *                                 in use.
-   * @deprecated as of 1.6.0 use {@link #createSslServerFor(TlsContextFactory, Supplier, ServerAddress, boolean, int, ServerIdentifier, Supplier, long)} instead.
+   * @deprecated as of 1.6.0 use
+   *             {@link #createSslServerFor(TlsContextFactory, Supplier, ServerAddress, boolean, int, ServerIdentifier, Supplier, long)}
+   *             instead.
    */
   @Deprecated
   HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
