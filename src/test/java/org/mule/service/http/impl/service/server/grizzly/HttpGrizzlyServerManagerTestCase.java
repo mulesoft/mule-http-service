@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.concurrent.ExecutorService;
 
+import io.qameta.allure.Description;
+import io.qameta.allure.Issue;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.junit.Test;
 
@@ -78,6 +80,8 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   }
 
   @Test
+  @Issue("MULE-19779")
+  @Description("Tests that by default the read timeout field of TCPNIOTransport is set to 30 seconds")
   public void setDefaultReadTimeoutTo30secs() throws Exception {
     final HttpServer createdServer = getServer(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                                new ServerIdentifier("context", "name"));
@@ -92,6 +96,8 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   }
 
   @Test
+  @Issue("MULE-19779")
+  @Description("Tests that, when specified, the read timeout field of TCPNIOTransport is set to a custom value")
   public void setCustomReadTimeoutTo20secs() throws Exception {
     long readTimeout = 20000L;
     final HttpServer createdServer =
