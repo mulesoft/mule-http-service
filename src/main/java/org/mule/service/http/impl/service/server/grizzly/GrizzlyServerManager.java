@@ -80,6 +80,8 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
 
+  private static final Integer DEFAULT_READ_TIMEOUT_MILLIS = 30000;
+
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
   protected final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
   protected final GrizzlyAddressDelegateFilter<WebSocketFilter> webSocketFilter;
@@ -221,10 +223,21 @@ public class GrizzlyServerManager implements HttpServerManager {
                                        int connectionIdleTimeout, ServerIdentifier identifier,
                                        Supplier<Long> shutdownTimeout)
       throws ServerCreationException {
+    return createSslServerFor(tlsContextFactory, schedulerSupplier, serverAddress, usePersistentConnections,
+                              connectionIdleTimeout, identifier, shutdownTimeout, DEFAULT_READ_TIMEOUT_MILLIS);
+  }
+
+  @Override
+  public HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
+                                       final ServerAddress serverAddress, boolean usePersistentConnections,
+                                       int connectionIdleTimeout, ServerIdentifier identifier,
+                                       Supplier<Long> shutdownTimeout, long readTimeout)
+      throws ServerCreationException {
     LOGGER.debug("Creating https server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     if (servers.containsKey(serverAddress)) {
       throw new ServerAlreadyExistsException(serverAddress);
     }
+    this.transport.setReadTimeout(readTimeout, MILLISECONDS);
     startTransportIfNotStarted();
     DelayedExecutor delayedExecutor = createAndGetDelayedExecutor(serverAddress);
     addTimeoutFilter(serverAddress, usePersistentConnections, connectionIdleTimeout, delayedExecutor);
@@ -260,10 +273,20 @@ public class GrizzlyServerManager implements HttpServerManager {
                                     boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier,
                                     Supplier<Long> shutdownTimeout)
       throws ServerCreationException {
+    return createServerFor(serverAddress, schedulerSupplier, usePersistentConnections, connectionIdleTimeout, identifier,
+                           shutdownTimeout, DEFAULT_READ_TIMEOUT_MILLIS);
+  }
+
+  @Override
+  public HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
+                                    boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier,
+                                    Supplier<Long> shutdownTimeout, long readTimeout)
+      throws ServerCreationException {
     LOGGER.debug("Creating http server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     if (servers.containsKey(serverAddress)) {
       throw new ServerAlreadyExistsException(serverAddress);
     }
+    this.transport.setReadTimeout(readTimeout, MILLISECONDS);
     startTransportIfNotStarted();
     DelayedExecutor delayedExecutor = createAndGetDelayedExecutor(serverAddress);
     addTimeoutFilter(serverAddress, usePersistentConnections, connectionIdleTimeout, delayedExecutor);
