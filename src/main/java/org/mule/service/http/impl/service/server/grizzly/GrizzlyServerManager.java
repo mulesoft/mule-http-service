@@ -220,18 +220,17 @@ public class GrizzlyServerManager implements HttpServerManager {
   @Override
   public HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
                                        final ServerAddress serverAddress, boolean usePersistentConnections,
-                                       int connectionIdleTimeout, ServerIdentifier identifier,
-                                       Supplier<Long> shutdownTimeout)
+                                       int connectionIdleTimeout, ServerIdentifier identifier)
       throws ServerCreationException {
     return createSslServerFor(tlsContextFactory, schedulerSupplier, serverAddress, usePersistentConnections,
-                              connectionIdleTimeout, identifier, shutdownTimeout, DEFAULT_READ_TIMEOUT_MILLIS);
+                              connectionIdleTimeout, identifier, DEFAULT_READ_TIMEOUT_MILLIS);
   }
 
   @Override
   public HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
                                        final ServerAddress serverAddress, boolean usePersistentConnections,
                                        int connectionIdleTimeout, ServerIdentifier identifier,
-                                       Supplier<Long> shutdownTimeout, long readTimeout)
+                                       long readTimeout)
       throws ServerCreationException {
     LOGGER.debug("Creating https server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     if (servers.containsKey(serverAddress)) {
@@ -247,8 +246,7 @@ public class GrizzlyServerManager implements HttpServerManager {
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor,
                                                     identifier));
 
-    final ManagedGrizzlyHttpServer grizzlyServer = getManagedServerAndWrapSupplier(serverAddress, schedulerSupplier, identifier,
-                                                                                   shutdownTimeout);
+    final ManagedGrizzlyHttpServer grizzlyServer = getManagedServerAndWrapSupplier(serverAddress, schedulerSupplier, identifier);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
     return grizzlyServer;
@@ -256,31 +254,28 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   protected ManagedGrizzlyHttpServer createManagedServer(Supplier<Scheduler> schedulerSupplier,
                                                          ServerAddress serverAddress,
-                                                         ServerIdentifier identifier,
-                                                         Supplier<Long> shutdownTimeout) {
+                                                         ServerIdentifier identifier) {
     return new ManagedGrizzlyHttpServer(new GrizzlyHttpServer(serverAddress,
                                                               transport,
                                                               httpListenerRegistry,
                                                               schedulerSupplier,
                                                               () -> executorProvider.removeExecutor(serverAddress),
-                                                              sslFilterDelegate,
-                                                              shutdownTimeout),
+                                                              sslFilterDelegate),
                                         identifier);
   }
 
   @Override
   public HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
-                                    boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier,
-                                    Supplier<Long> shutdownTimeout)
+                                    boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier)
       throws ServerCreationException {
     return createServerFor(serverAddress, schedulerSupplier, usePersistentConnections, connectionIdleTimeout, identifier,
-                           shutdownTimeout, DEFAULT_READ_TIMEOUT_MILLIS);
+                           DEFAULT_READ_TIMEOUT_MILLIS);
   }
 
   @Override
   public HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
                                     boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier,
-                                    Supplier<Long> shutdownTimeout, long readTimeout)
+                                    long readTimeout)
       throws ServerCreationException {
     LOGGER.debug("Creating http server socket for ip {} and port {}", serverAddress.getIp(), serverAddress.getPort());
     if (servers.containsKey(serverAddress)) {
@@ -295,8 +290,7 @@ public class GrizzlyServerManager implements HttpServerManager {
                              createHttpServerFilter(connectionIdleTimeout, usePersistentConnections, delayedExecutor,
                                                     identifier));
 
-    final ManagedGrizzlyHttpServer grizzlyServer = getManagedServerAndWrapSupplier(serverAddress, schedulerSupplier, identifier,
-                                                                                   shutdownTimeout);
+    final ManagedGrizzlyHttpServer grizzlyServer = getManagedServerAndWrapSupplier(serverAddress, schedulerSupplier, identifier);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
     return grizzlyServer;
@@ -304,11 +298,9 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   private ManagedGrizzlyHttpServer getManagedServerAndWrapSupplier(ServerAddress serverAddress,
                                                                    Supplier<Scheduler> schedulerSupplier,
-                                                                   ServerIdentifier identifier,
-                                                                   Supplier<Long> shutdownTimeout) {
+                                                                   ServerIdentifier identifier) {
     SchedulerSupplier wrappedSupplier = new SchedulerSupplier(schedulerSupplier, serverAddress, executorProvider);
-    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(wrappedSupplier, serverAddress, identifier,
-                                                                       shutdownTimeout);
+    final ManagedGrizzlyHttpServer grizzlyServer = createManagedServer(wrappedSupplier, serverAddress, identifier);
     wrappedSupplier.setServer(grizzlyServer);
     return grizzlyServer;
   }

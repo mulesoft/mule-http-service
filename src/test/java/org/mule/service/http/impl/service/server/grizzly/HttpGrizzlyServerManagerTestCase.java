@@ -51,8 +51,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   @Override
   protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
     return serverManager.createServerFor(address, () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                         (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), id,
-                                         () -> muleContext.getConfiguration().getShutdownTimeout());
+                                         (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), id);
   }
 
   @Test
@@ -104,7 +103,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), new ServerIdentifier("context", "name"),
-                                      () -> muleContext.getConfiguration().getShutdownTimeout(), readTimeout);
+                                      readTimeout);
     try {
       Field transportField = GrizzlyServerManager.class.getDeclaredField("transport");
       transportField.setAccessible(true);
