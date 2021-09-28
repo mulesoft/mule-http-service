@@ -13,7 +13,6 @@ import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 
 import java.util.Optional;
-import java.util.function.Supplier;
 
 /**
  * Adapts a {@link ContextHttpServerFactory} to a {@link HttpServerFactory}.
@@ -27,19 +26,16 @@ public class ContextHttpServerFactoryAdapter implements HttpServerFactory {
   private final Optional<String> parentContext;
   private final String context;
   private final ContextHttpServerFactory delegate;
-  private final Supplier<Long> shutdownTimeout;
 
-  public ContextHttpServerFactoryAdapter(String context, Optional<String> parentContext, ContextHttpServerFactory delegate,
-                                         Supplier<Long> shutdownTimeout) {
+  public ContextHttpServerFactoryAdapter(String context, Optional<String> parentContext, ContextHttpServerFactory delegate) {
     this.context = context;
     this.parentContext = parentContext;
     this.delegate = delegate;
-    this.shutdownTimeout = shutdownTimeout;
   }
 
   @Override
   public HttpServer create(HttpServerConfiguration configuration) throws ServerCreationException {
-    return delegate.create(configuration, context, shutdownTimeout);
+    return delegate.create(configuration, context);
   }
 
   @Override

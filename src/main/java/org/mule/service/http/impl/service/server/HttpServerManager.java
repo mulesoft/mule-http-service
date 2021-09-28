@@ -40,12 +40,10 @@ public interface HttpServerManager {
    * @param usePersistentConnections if true, the connections will be kept open for subsequent requests
    * @param connectionIdleTimeout the amount of milliseconds to keep open an idle connection @return the create Server handler
    * @param identifier the id of the server
-   * @param shutdownTimeout time to wait for persistent connections to be closed when server is stopped.
    * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already in use.
    */
   HttpServer createServerFor(ServerAddress serverAddress, Supplier<Scheduler> schedulerSupplier,
-                             boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier,
-                             Supplier<Long> shutdownTimeout)
+                             boolean usePersistentConnections, int connectionIdleTimeout, ServerIdentifier identifier)
       throws ServerCreationException;
 
   /**
@@ -56,13 +54,12 @@ public interface HttpServerManager {
    * @param usePersistentConnections if true, the connections will be kept open for subsequent requests
    * @param connectionIdleTimeout the amount of milliseconds to keep open an idle connection
    * @param identifier the id of the server
-   * @param shutdownTimeout time to wait for persistent connections to be closed when server is stopped.
    * @return the create Server handler
    * @throws ServerCreationException if it was not possible to create the Server. Most likely because the host and port is already in use.
    */
   HttpServer createSslServerFor(TlsContextFactory tlsContextFactory, Supplier<Scheduler> schedulerSupplier,
                                 ServerAddress serverAddress, boolean usePersistentConnections, int connectionIdleTimeout,
-                                ServerIdentifier identifier, Supplier<Long> shutdownTimeout)
+                                ServerIdentifier identifier)
       throws ServerCreationException;
 
   /**

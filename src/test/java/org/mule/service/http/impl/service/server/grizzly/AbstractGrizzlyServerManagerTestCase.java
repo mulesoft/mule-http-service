@@ -120,8 +120,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                      new ServerIdentifier("context", "name"),
-                                      () -> muleContext.getConfiguration().getShutdownTimeout());
+                                      new ServerIdentifier("context", "name"));
     final ResponseStatusCallback responseStatusCallback = mock(ResponseStatusCallback.class);
     server.addRequestHandler(TEST_PATH, (requestContext, responseCallback) -> {
       responseCallback.responseReady(HttpResponse.builder().statusCode(OK.getStatusCode()).build(),
@@ -162,7 +161,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                      identifier, () -> muleContext.getConfiguration().getShutdownTimeout());
+                                      identifier);
     final HttpServer foundServer = serverManager.lookupServer(new ServerIdentifier("context", "name"));
     assertThat(createdServer.getServerAddress(), is(equalTo(foundServer.getServerAddress())));
     createdServer.dispose();
@@ -175,7 +174,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     HttpServer server = serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                                      identifier, () -> muleContext.getConfiguration().getShutdownTimeout());
+                                                      identifier);
     try {
       expectedException.expect(ServerNotFoundException.class);
       expectedException.expectMessage(is("Server 'name' could not be found."));
@@ -329,8 +328,7 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
                                       () -> muleContext.getSchedulerService().ioScheduler(), true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                      new ServerIdentifier("context", "name"),
-                                      () -> muleContext.getConfiguration().getShutdownTimeout());
+                                      new ServerIdentifier("context", "name"));
     final ResponseStatusCallback responseStatusCallback = mock(ResponseStatusCallback.class);
     Reference<ClassLoader> requestHandlerExecutionClassLoader = new Reference<>();
 

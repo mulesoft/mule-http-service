@@ -86,8 +86,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
   }
 
   @Override
-  public HttpServer create(HttpServerConfiguration configuration, String context, Supplier<Long> shutdownTimeout)
-      throws ServerCreationException {
+  public HttpServer create(HttpServerConfiguration configuration, String context) throws ServerCreationException {
     ServerAddress serverAddress;
     String host = configuration.getHost();
     try {
@@ -100,12 +99,11 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
     HttpServer httpServer;
     if (tlsContextFactory == null) {
       httpServer = createServer(serverAddress, configuration.getSchedulerSupplier(), configuration.isUsePersistentConnections(),
-                                configuration.getConnectionIdleTimeout(), new ServerIdentifier(context, configuration.getName()),
-                                shutdownTimeout);
+                                configuration.getConnectionIdleTimeout(), new ServerIdentifier(context, configuration.getName()));
     } else {
       httpServer = createSslServer(serverAddress, tlsContextFactory, configuration.getSchedulerSupplier(),
                                    configuration.isUsePersistentConnections(), configuration.getConnectionIdleTimeout(),
-                                   new ServerIdentifier(context, configuration.getName()), shutdownTimeout);
+                                   new ServerIdentifier(context, configuration.getName()));
     }
 
     return httpServer;
@@ -118,11 +116,11 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
 
   public HttpServer createServer(ServerAddress serverAddress,
                                  Supplier<Scheduler> schedulerSupplier, boolean usePersistentConnections,
-                                 int connectionIdleTimeout, ServerIdentifier identifier, Supplier<Long> shutdownTimeout)
+                                 int connectionIdleTimeout, ServerIdentifier identifier)
       throws ServerCreationException {
     if (!containsServerFor(serverAddress, identifier)) {
       return httpServerManager.createServerFor(serverAddress, schedulerSupplier, usePersistentConnections,
-                                               connectionIdleTimeout, identifier, shutdownTimeout);
+                                               connectionIdleTimeout, identifier);
     } else {
       throw new ServerAlreadyExistsException(serverAddress);
     }
@@ -134,11 +132,11 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
 
   public HttpServer createSslServer(ServerAddress serverAddress, TlsContextFactory tlsContext,
                                     Supplier<Scheduler> schedulerSupplier, boolean usePersistentConnections,
-                                    int connectionIdleTimeout, ServerIdentifier identifier, Supplier<Long> shutdownTimeout)
+                                    int connectionIdleTimeout, ServerIdentifier identifier)
       throws ServerCreationException {
     if (!containsServerFor(serverAddress, identifier)) {
       return httpServerManager.createSslServerFor(tlsContext, schedulerSupplier, serverAddress, usePersistentConnections,
-                                                  connectionIdleTimeout, identifier, shutdownTimeout);
+                                                  connectionIdleTimeout, identifier);
     } else {
       throw new ServerAlreadyExistsException(serverAddress);
     }
