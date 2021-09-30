@@ -80,7 +80,7 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
 
-  private static final Integer DEFAULT_READ_TIMEOUT_MILLIS = 30000;
+  public static final long DEFAULT_READ_TIMEOUT_MILLIS = 30000L;
 
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
   protected final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
