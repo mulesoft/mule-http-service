@@ -41,7 +41,8 @@ public class HttpListenerConnectionManagerTestCase {
     when(schedulerConfigMock.withMaxConcurrentTasks(any(int.class))).thenReturn(schedulerConfigMock);
     when(schedulerConfigMock.withName(any())).thenReturn(schedulerConfigMock);
 
-    HttpListenerConnectionManager httpListenerConnectionManager = new TestHttpListenerConnectionManager(schedulerServiceMock, schedulerConfigMock);
+    HttpListenerConnectionManager httpListenerConnectionManager =
+        new TestHttpListenerConnectionManager(schedulerServiceMock, schedulerConfigMock);
     httpListenerConnectionManager.initialise();
     httpListenerConnectionManager.create(serverConfiguration, "context", () -> shutdownTimeout);
 
@@ -68,21 +69,22 @@ public class HttpListenerConnectionManagerTestCase {
     when(schedulerConfigMock.withMaxConcurrentTasks(any(int.class))).thenReturn(schedulerConfigMock);
     when(schedulerConfigMock.withName(any())).thenReturn(schedulerConfigMock);
 
-    HttpListenerConnectionManager httpListenerConnectionManager = new TestHttpListenerConnectionManager(schedulerServiceMock, schedulerConfigMock);
+    HttpListenerConnectionManager httpListenerConnectionManager =
+        new TestHttpListenerConnectionManager(schedulerServiceMock, schedulerConfigMock);
     httpListenerConnectionManager.initialise();
     httpListenerConnectionManager.create(serverConfiguration, "context", () -> shutdownTimeout);
 
     verify(grizzlyServerManager).createServerFor(any(), any(), any(boolean.class), any(int.class), any(), any(), eq(readTimeout));
   }
 
-  class TestHttpListenerConnectionManager extends HttpListenerConnectionManager{
+  class TestHttpListenerConnectionManager extends HttpListenerConnectionManager {
 
     public TestHttpListenerConnectionManager(SchedulerService schedulerService, SchedulerConfig schedulersConfig) {
       super(schedulerService, schedulersConfig);
     }
 
     @Override
-    public GrizzlyServerManager createServerManager(){
+    public GrizzlyServerManager createServerManager() {
       grizzlyServerManager = mock(GrizzlyServerManager.class);
       return grizzlyServerManager;
     }
