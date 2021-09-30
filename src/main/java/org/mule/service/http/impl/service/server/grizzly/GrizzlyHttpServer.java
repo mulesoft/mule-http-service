@@ -109,7 +109,6 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
     }
 
     Long shutdownTimeout = shutdownTimeoutSupplier.get();
-    shutdownTimeout = 0L;
     final long stopNanos = nanoTime() + MILLISECONDS.toNanos(shutdownTimeout);
 
     stopping = true;
