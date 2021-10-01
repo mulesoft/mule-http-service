@@ -133,11 +133,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
             remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
           }
 
-          // graceful shutdown timeout has expired
           if (!clientConnections.isEmpty()) {
-            // force-closing remaining connections now
             logger.warn("There are still {} open connections on server stop.", clientConnections.size());
-            clientConnections.forEach(this::tryCloseConnection);
           }
         }
       }
