@@ -72,6 +72,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private boolean stopping;
   private Supplier<Long> shutdownTimeoutSupplier;
 
+  private volatile int openConnectionsCounter = 0;
+
   private CountAcceptedConnectionsProbe acceptedConnectionsProbe;
 
   /** List with client connections for cleanup purposes. */
@@ -103,6 +105,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
     if (logger.isInfoEnabled()) {
       logger.info("Listening for connections on '{}'", listenerUrl());
     }
+
+    openConnectionsCounter = 0;
 
     serverConnection.addCloseListener(new OnCloseConnectionListener());
     stopped = false;
@@ -246,10 +250,12 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
     public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
       synchronized (clientConnections) {
         clientConnections.add(clientConnection);
+        openConnectionsCounter += 1;
       }
       clientConnection.addCloseListener((CloseListener) (closeable, iCloseType) -> {
         synchronized (clientConnections) {
           clientConnections.remove(clientConnection);
+          openConnectionsCounter -= 1;
           if (clientConnections.isEmpty()) {
             clientConnections.notifyAll();
           }
