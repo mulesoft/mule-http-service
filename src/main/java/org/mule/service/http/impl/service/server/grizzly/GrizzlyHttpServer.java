@@ -256,7 +256,7 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
         synchronized (clientConnections) {
           clientConnections.remove(clientConnection);
           openConnectionsCounter -= 1;
-          if (clientConnections.isEmpty()) {
+          if (openConnectionsCounter == 0) {
             clientConnections.notifyAll();
           }
         }
