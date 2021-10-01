@@ -244,14 +244,14 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
      */
     @Override
     public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
-      clientConnections.add(clientConnection);
+      synchronized (clientConnections) {
+        clientConnections.add(clientConnection);
+      }
       clientConnection.addCloseListener((CloseListener) (closeable, iCloseType) -> {
-        clientConnections.remove(clientConnection);
-        if (clientConnections.isEmpty()) {
-          synchronized (clientConnections) {
-            if (clientConnections.isEmpty()) {
-              clientConnections.notifyAll();
-            }
+        synchronized (clientConnections) {
+          clientConnections.remove(clientConnection);
+          if (clientConnections.isEmpty()) {
+            clientConnections.notifyAll();
           }
         }
       });
