@@ -11,6 +11,7 @@ import static java.lang.String.format;
 import static java.lang.System.getProperty;
 import static java.lang.System.nanoTime;
 import static java.lang.Thread.currentThread;
+import static java.util.Collections.synchronizedList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.mule.runtime.api.util.MuleSystemProperties.MULE_LOG_SEPARATION_DISABLED;
@@ -32,6 +33,8 @@ import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
@@ -67,6 +70,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private volatile int openConnectionsCounter = 0;
   private final Object openConnectionsSync = new Object();
   private CountAcceptedConnectionsProbe acceptedConnectionsProbe;
+
+  private final List<Connection<?>> clientConnections = synchronizedList(new LinkedList<>());
 
   public GrizzlyHttpServer(ServerAddress serverAddress,
                            TCPNIOTransport transport,
@@ -234,10 +239,12 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
     @Override
     public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
       synchronized (openConnectionsSync) {
+        clientConnections.add(clientConnection);
         openConnectionsCounter += 1;
       }
       clientConnection.addCloseListener((CloseListener) (closeable, iCloseType) -> {
         synchronized (openConnectionsSync) {
+          clientConnections.remove(clientConnection);
           openConnectionsCounter -= 1;
           if (openConnectionsCounter == 0) {
             openConnectionsSync.notifyAll();
