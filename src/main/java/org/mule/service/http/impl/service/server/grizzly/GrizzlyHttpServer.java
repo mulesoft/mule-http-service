@@ -240,13 +240,6 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
         synchronized (openConnectionsSync) {
           openConnectionsCounter -= 1;
         }
-        if (stopping && openConnectionsCounter == 0) {
-          synchronized (openConnectionsSync) {
-            if (stopping && openConnectionsCounter == 0) {
-              openConnectionsSync.notifyAll();
-            }
-          }
-        }
       });
     }
   }
