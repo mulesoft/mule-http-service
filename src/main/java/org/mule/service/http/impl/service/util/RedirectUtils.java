@@ -10,6 +10,7 @@ import static com.ning.http.client.uri.Uri.create;
 import static org.mule.runtime.http.api.HttpHeaders.Names.LOCATION;
 import static org.mule.runtime.http.api.domain.message.request.HttpRequest.builder;
 
+import org.mule.runtime.http.api.HttpConstants;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -49,6 +50,25 @@ public class RedirectUtils {
   }
 
   /**
+   * @param requestMethod
+   * @param responseStatusCode
+   * @return the original request method if the status code is 301, 307 or 308, or GET if it is 302 or 303.
+   */
+  public static String getMethodForStatusCode(String requestMethod, int responseStatusCode) {
+    switch (responseStatusCode) {
+      case 301:
+      case 307:
+      case 308:
+        return requestMethod;
+      case 302:
+      case 303:
+        return HttpConstants.Method.GET.name();
+      default:
+        throw new IllegalArgumentException("Invalid status code");
+    }
+  }
+
+  /**
    * Create a new request with the params of the original and the new URI from the LOCATION header.
    * 
    * @param response HttpResponse
@@ -56,8 +76,8 @@ public class RedirectUtils {
    * @return an HttpRequest request.
    */
   public static HttpRequest createRedirectRequest(HttpResponse response, HttpRequest request) {
-    Uri path = create(create(request.getUri().toString()), response.getHeaders().get(LOCATION));
-    return builder().uri(path.toUrl()).method(request.getMethod())
+    Uri path = create(create(request.getUri().toString()), response.getHeaders().get(LOCATION)).withNewQuery(null);
+    return builder().uri(path.toUrl()).method(getMethodForStatusCode(request.getMethod(), response.getStatusCode()))
         .protocol(request.getProtocol()).headers(request.getHeaders())
         .queryParams(request.getQueryParams()).entity(request.getEntity())
         .build();
