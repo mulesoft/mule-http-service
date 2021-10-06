@@ -104,16 +104,15 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
 
     TlsContextFactory tlsContextFactory = configuration.getTlsContextFactory();
     HttpServer httpServer;
-    long readTimeout = getReadTimeout(configuration);
     if (tlsContextFactory == null) {
       httpServer = createServer(serverAddress, configuration.getSchedulerSupplier(), configuration.isUsePersistentConnections(),
                                 configuration.getConnectionIdleTimeout(), new ServerIdentifier(context, configuration.getName()),
-                                shutdownTimeout, readTimeout);
+                                shutdownTimeout, configuration.getReadTimeout());
     } else {
       httpServer = createSslServer(serverAddress, tlsContextFactory, configuration.getSchedulerSupplier(),
                                    configuration.isUsePersistentConnections(), configuration.getConnectionIdleTimeout(),
                                    new ServerIdentifier(context, configuration.getName()), shutdownTimeout,
-                                   readTimeout);
+                                   configuration.getReadTimeout());
     }
 
     return httpServer;
@@ -169,17 +168,4 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
   private ServerAddress createServerAddress(String host, int port) throws UnknownHostException {
     return new DefaultServerAddress(getLocalHostAddress(host), port);
   }
-
-  private long getReadTimeout(HttpServerConfiguration configuration) {
-    Method method = getMethod(HttpServerConfiguration.class, "getReadTimeout", null);
-    if (method != null) {
-      try {
-        return (long) method.invoke(configuration);
-      } catch (InvocationTargetException | IllegalAccessException e) {
-        throw new MuleRuntimeException(createStaticMessage("Exception while calling method by reflection"), e);
-      }
-    }
-    return DEFAULT_READ_TIMEOUT_MILLIS;
-  }
-
 }
