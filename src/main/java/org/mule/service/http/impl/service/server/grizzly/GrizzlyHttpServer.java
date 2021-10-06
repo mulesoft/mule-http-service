@@ -11,7 +11,6 @@ import static java.lang.String.format;
 import static java.lang.System.getProperty;
 import static java.lang.System.nanoTime;
 import static java.lang.Thread.currentThread;
-import static java.util.Collections.synchronizedList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.mule.runtime.api.util.MuleSystemProperties.MULE_LOG_SEPARATION_DISABLED;
@@ -33,9 +32,8 @@ import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.glassfish.grizzly.CloseListener;
@@ -67,10 +65,9 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private boolean stopping;
   private Supplier<Long> shutdownTimeoutSupplier;
 
+  private AtomicInteger openConnectionsCounter = new AtomicInteger();
+  private final Object openConnectionsSync = new Object();
   private CountAcceptedConnectionsProbe acceptedConnectionsProbe;
-
-  /** Used to track client connections so we know if we have to wait on stop. */
-  private final List<Connection<?>> clientConnections = synchronizedList(new LinkedList<>());
 
   public GrizzlyHttpServer(ServerAddress serverAddress,
                            TCPNIOTransport transport,
@@ -99,6 +96,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       logger.info("Listening for connections on '{}'", listenerUrl());
     }
 
+    openConnectionsCounter.set(0);
+
     serverConnection.addCloseListener(new OnCloseConnectionListener());
     stopped = false;
     return this;
@@ -118,18 +117,17 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       transport.unbind(serverConnection);
 
       if (shutdownTimeout != 0) {
-        synchronized (clientConnections) {
+        synchronized (openConnectionsSync) {
           long remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
-          while (!clientConnections.isEmpty() && remainingMillis > 0) {
+          while (openConnectionsCounter.get() != 0 && remainingMillis > 0) {
             long millisToWait = min(remainingMillis, 50);
             logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
-                         clientConnections.size(), millisToWait);
-            clientConnections.wait(millisToWait);
+                         openConnectionsCounter.get(), millisToWait);
+            openConnectionsSync.wait(millisToWait);
             remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
           }
-
-          if (!clientConnections.isEmpty()) {
-            logger.warn("There are still {} open connections on server stop.", clientConnections.size());
+          if (openConnectionsCounter.get() != 0) {
+            logger.warn("There are still {} open connections on server stop.", openConnectionsCounter.get());
           }
         }
       }
@@ -236,14 +234,11 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
      */
     @Override
     public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
-      clientConnections.add(clientConnection);
+      openConnectionsCounter.incrementAndGet();
       clientConnection.addCloseListener((CloseListener) (closeable, iCloseType) -> {
-        clientConnections.remove(clientConnection);
-        if (clientConnections.isEmpty()) {
-          synchronized (clientConnections) {
-            if (clientConnections.isEmpty()) {
-              clientConnections.notifyAll();
-            }
+        if (openConnectionsCounter.decrementAndGet() == 0) {
+          synchronized (openConnectionsSync) {
+            openConnectionsSync.notifyAll();
           }
         }
       });
