@@ -9,13 +9,17 @@ package org.mule.service.http.impl.service.server;
 
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.max;
+import static java.lang.Long.parseLong;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.core.api.util.ClassUtils.getMethod;
 import static org.mule.runtime.core.api.util.NetworkUtils.getLocalHostAddress;
 import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.loadTcpServerSocketProperties;
+import static org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager.DEFAULT_READ_TIMEOUT_MILLIS;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
 import org.mule.runtime.api.exception.MuleException;
+import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
@@ -32,6 +36,8 @@ import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.UnknownHostException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -101,11 +107,12 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
     if (tlsContextFactory == null) {
       httpServer = createServer(serverAddress, configuration.getSchedulerSupplier(), configuration.isUsePersistentConnections(),
                                 configuration.getConnectionIdleTimeout(), new ServerIdentifier(context, configuration.getName()),
-                                shutdownTimeout);
+                                shutdownTimeout, configuration.getReadTimeout());
     } else {
       httpServer = createSslServer(serverAddress, tlsContextFactory, configuration.getSchedulerSupplier(),
                                    configuration.isUsePersistentConnections(), configuration.getConnectionIdleTimeout(),
-                                   new ServerIdentifier(context, configuration.getName()), shutdownTimeout);
+                                   new ServerIdentifier(context, configuration.getName()), shutdownTimeout,
+                                   configuration.getReadTimeout());
     }
 
     return httpServer;
@@ -118,11 +125,12 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
 
   public HttpServer createServer(ServerAddress serverAddress,
                                  Supplier<Scheduler> schedulerSupplier, boolean usePersistentConnections,
-                                 int connectionIdleTimeout, ServerIdentifier identifier, Supplier<Long> shutdownTimeout)
+                                 int connectionIdleTimeout, ServerIdentifier identifier, Supplier<Long> shutdownTimeout,
+                                 long readTimeout)
       throws ServerCreationException {
     if (!containsServerFor(serverAddress, identifier)) {
       return httpServerManager.createServerFor(serverAddress, schedulerSupplier, usePersistentConnections,
-                                               connectionIdleTimeout, identifier, shutdownTimeout);
+                                               connectionIdleTimeout, identifier, shutdownTimeout, readTimeout);
     } else {
       throw new ServerAlreadyExistsException(serverAddress);
     }
@@ -134,11 +142,12 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
 
   public HttpServer createSslServer(ServerAddress serverAddress, TlsContextFactory tlsContext,
                                     Supplier<Scheduler> schedulerSupplier, boolean usePersistentConnections,
-                                    int connectionIdleTimeout, ServerIdentifier identifier, Supplier<Long> shutdownTimeout)
+                                    int connectionIdleTimeout, ServerIdentifier identifier, Supplier<Long> shutdownTimeout,
+                                    long readTimeout)
       throws ServerCreationException {
     if (!containsServerFor(serverAddress, identifier)) {
       return httpServerManager.createSslServerFor(tlsContext, schedulerSupplier, serverAddress, usePersistentConnections,
-                                                  connectionIdleTimeout, identifier, shutdownTimeout);
+                                                  connectionIdleTimeout, identifier, shutdownTimeout, readTimeout);
     } else {
       throw new ServerAlreadyExistsException(serverAddress);
     }
@@ -159,5 +168,4 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
   private ServerAddress createServerAddress(String host, int port) throws UnknownHostException {
     return new DefaultServerAddress(getLocalHostAddress(host), port);
   }
-
 }
