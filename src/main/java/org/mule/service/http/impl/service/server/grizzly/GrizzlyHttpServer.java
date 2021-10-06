@@ -11,6 +11,7 @@ import static java.lang.String.format;
 import static java.lang.System.getProperty;
 import static java.lang.System.nanoTime;
 import static java.lang.Thread.currentThread;
+import static java.lang.Thread.yield;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.mule.runtime.api.util.MuleSystemProperties.MULE_LOG_SEPARATION_DISABLED;
@@ -33,8 +34,6 @@ import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Phaser;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 import org.glassfish.grizzly.CloseListener;
@@ -66,7 +65,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   private boolean stopping;
   private Supplier<Long> shutdownTimeoutSupplier;
 
-  private final Phaser phaser = new Phaser();
+  private volatile int openConnectionsCounter = 0;
+  private final Object openConnectionsSync = new Object();
   private CountAcceptedConnectionsProbe acceptedConnectionsProbe;
 
   public GrizzlyHttpServer(ServerAddress serverAddress,
@@ -96,6 +96,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       logger.info("Listening for connections on '{}'", listenerUrl());
     }
 
+    openConnectionsCounter = 0;
+
     serverConnection.addCloseListener(new OnCloseConnectionListener());
     stopped = false;
     return this;
@@ -115,21 +117,18 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       transport.unbind(serverConnection);
 
       if (shutdownTimeout != 0) {
-        long remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
-        while (!phaser.isTerminated() && remainingMillis > 0) {
-          long millisToWait = min(remainingMillis, 50);
-          logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
-                       phaser.getUnarrivedParties(), millisToWait);
-          try {
-            phaser.awaitAdvanceInterruptibly(phaser.getPhase(), millisToWait, MILLISECONDS);
-          } catch (TimeoutException e) {
-            // do nothing, this is valid
+        synchronized (openConnectionsSync) {
+          long remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
+          while (openConnectionsCounter != 0 && remainingMillis > 0) {
+            long millisToWait = min(remainingMillis, 50);
+            logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
+                         openConnectionsCounter, millisToWait);
+            openConnectionsSync.wait(millisToWait);
+            remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
           }
-
-          remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
-        }
-        if (!phaser.isTerminated()) {
-          logger.warn("There are still {} open connections on server stop.", phaser.getUnarrivedParties());
+          if (openConnectionsCounter != 0) {
+            logger.warn("There are still {} open connections on server stop.", openConnectionsCounter);
+          }
         }
       }
 
@@ -235,8 +234,18 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
      */
     @Override
     public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
-      phaser.register();
-      clientConnection.addCloseListener((CloseListener) (closeable, iCloseType) -> phaser.arriveAndDeregister());
+      synchronized (openConnectionsSync) {
+        openConnectionsCounter += 1;
+      }
+      clientConnection.addCloseListener((CloseListener) (closeable, iCloseType) -> {
+        synchronized (openConnectionsSync) {
+          openConnectionsCounter -= 1;
+          Thread.yield();
+          if (openConnectionsCounter == 0) {
+            openConnectionsSync.notifyAll();
+          }
+        }
+      });
     }
   }
 
