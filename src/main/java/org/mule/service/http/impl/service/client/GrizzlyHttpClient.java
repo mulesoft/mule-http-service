@@ -180,7 +180,7 @@ public class GrizzlyHttpClient implements HttpClient {
     selectorScheduler = schedulerService.customScheduler(schedulersConfig
         .withDirectRunCpuLightWhenTargetBusy(true)
         .withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
-        .withName(name), 0);
+        .withName(name), DEFAULT_SELECTOR_THREAD_COUNT);
     workerScheduler = getWorkerScheduler(schedulersConfig.withName(name + ".requester.workers"));
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
