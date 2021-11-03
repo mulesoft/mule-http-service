@@ -76,10 +76,9 @@ public class RedirectUtils {
    * @return an HttpRequest request.
    */
   public static HttpRequest createRedirectRequest(HttpResponse response, HttpRequest request) {
-    Uri path = create(create(request.getUri().toString()), response.getHeaders().get(LOCATION)).withNewQuery(null);
+    Uri path = create(create(request.getUri().toString()), response.getHeaders().get(LOCATION));
     return builder().uri(path.toUrl()).method(getMethodForStatusCode(request.getMethod(), response.getStatusCode()))
-        .protocol(request.getProtocol()).headers(request.getHeaders())
-        .queryParams(request.getQueryParams()).entity(request.getEntity())
+        .protocol(request.getProtocol()).headers(request.getHeaders()).entity(request.getEntity())
         .build();
   }
 }
