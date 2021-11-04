@@ -61,8 +61,7 @@ public class RedirectUtilsTestCase {
 
   @Test
   public void redirectedRequestWithHostUsesQueryParamsFromResponseLocation() {
-    responseHeaders.removeAll(LOCATION);
-    responseHeaders.put(LOCATION, "http://redirecthost/redirectPath?param=redirect");
+    setLocationHeader("http://redirecthost/redirectPath?param=redirect");
 
     HttpRequest redirectedRequest = createRedirectRequest(response, originalRequest);
     assertThat(redirectedRequest.getUri().getRawQuery(), is("param=redirect"));
@@ -70,10 +69,14 @@ public class RedirectUtilsTestCase {
 
   @Test
   public void redirectedRequestWithoutHostUsesQueryParamsFromResponseLocation() {
-    responseHeaders.removeAll(LOCATION);
-    responseHeaders.put(LOCATION, "/redirectPath?param=redirect");
+    setLocationHeader("/redirectPath?param=redirect");
 
     HttpRequest redirectedRequest = createRedirectRequest(response, originalRequest);
     assertThat(redirectedRequest.getUri().getRawQuery(), is("param=redirect"));
+  }
+
+  private void setLocationHeader(String path) {
+    responseHeaders.removeAll(LOCATION);
+    responseHeaders.put(LOCATION, path);
   }
 }
