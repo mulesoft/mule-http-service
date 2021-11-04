@@ -16,13 +16,13 @@ import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVIC
 import static org.mule.service.http.impl.service.util.RedirectUtils.createRedirectRequest;
 
 import io.qameta.allure.Feature;
+import io.qameta.allure.Issue;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.mule.runtime.api.util.MultiMap;
-import org.mule.runtime.http.api.domain.HttpProtocol;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -32,6 +32,7 @@ import java.net.URISyntaxException;
 
 @RunWith(MockitoJUnitRunner.class)
 @Feature(HTTP_SERVICE)
+@Issue("MULE-19908")
 public class RedirectUtilsTestCase {
 
   @Mock
@@ -40,7 +41,7 @@ public class RedirectUtilsTestCase {
   @Mock
   private HttpRequest originalRequest;
 
-  private MultiMap<String, String> responseHeaders = new MultiMap<>();
+  private final MultiMap<String, String> responseHeaders = new MultiMap<>();
 
   @Before
   public void setup() throws URISyntaxException {
@@ -75,5 +76,4 @@ public class RedirectUtilsTestCase {
     HttpRequest redirectedRequest = createRedirectRequest(response, originalRequest);
     assertThat(redirectedRequest.getUri().getRawQuery(), is("param=redirect"));
   }
-
 }
