@@ -129,7 +129,8 @@ public class GrizzlyHttpClient implements HttpClient {
 
   public static final String CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE = SYSTEM_PROPERTY_PREFIX + "http.client.headerSectionSize";
 
-  // By default, we will delegate the redirect to Grizzly. If the system property is set to true Mule will handle redirects requests.
+  // By default, we will delegate the redirect to Grizzly. If the system property is set to true Mule will handle redirects
+  // requests.
   // Currently, Grizzly will fail to handle concurrent redirects if streaming is not enabled.
   private static final String ENABLE_MULE_REDIRECT_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.enableMuleRedirect";
   private static final boolean enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY_NAME, "false"));
