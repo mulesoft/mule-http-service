@@ -27,8 +27,9 @@ public class RedirectUtils {
    * @param options  HttpRequestOptions
    * @return a boolean indicating if the response contains a redirect status and the LOCATION header.
    */
-  public static boolean shouldFollowRedirect(HttpResponse response, HttpRequestOptions options) {
-    return isRedirected(response.getStatusCode()) && response.getHeaders().containsKey(LOCATION) && options.isFollowsRedirect();
+  public static boolean shouldFollowRedirect(HttpResponse response, HttpRequestOptions options, boolean enableMuleRedirect) {
+    return enableMuleRedirect && isRedirected(response.getStatusCode())
+        && response.getHeaders().containsKey(LOCATION) && options.isFollowsRedirect();
   }
 
   /**
