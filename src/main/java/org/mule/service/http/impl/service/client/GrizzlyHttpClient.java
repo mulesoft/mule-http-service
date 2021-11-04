@@ -478,7 +478,7 @@ public class GrizzlyHttpClient implements HttpClient {
   protected Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
       throws IOException {
     RequestBuilder reqBuilder = createRequestBuilder(request, options, builder -> {
-      builder.setFollowRedirects(!enableMuleRedirect);
+      builder.setFollowRedirects(!enableMuleRedirect && options.isFollowsRedirect());
 
       populateHeaders(request, builder);
 
