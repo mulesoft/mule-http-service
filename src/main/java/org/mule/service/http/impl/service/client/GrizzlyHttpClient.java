@@ -7,7 +7,9 @@
 package org.mule.service.http.impl.service.client;
 
 import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultMaxRedirects;
+import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultStrict302Handling;
 import static com.ning.http.client.Realm.AuthScheme.NTLM;
+import static com.ning.http.client.cookie.CookieDecoder.decode;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
@@ -21,9 +23,11 @@ import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static java.lang.System.getProperty;
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
+import static org.glassfish.grizzly.http.util.Header.SetCookie;
 import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.api.util.MuleSystemProperties.ENABLE_MULE_REDIRECT_PROPERTY;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.api.util.Preconditions.checkState;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
@@ -32,8 +36,6 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
-import static org.mule.service.http.impl.service.util.RedirectUtils.createRedirectRequest;
-import static org.mule.service.http.impl.service.util.RedirectUtils.shouldFollowRedirect;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -65,6 +67,7 @@ import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
 import org.mule.service.http.impl.service.client.async.PreservingClassLoaderAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
+import org.mule.service.http.impl.service.util.RedirectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +100,7 @@ public class GrizzlyHttpClient implements HttpClient {
       SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.bufferSize";
   private static int requestStreamingBufferSize =
       getInteger(REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME, DEFAULT_REQUEST_STREAMING_BUFFER_SIZE);
-  private static int MAX_REDIRECTS = defaultMaxRedirects();
+  public static int MAX_REDIRECTS = defaultMaxRedirects();
 
   // Stream responses properties
   private static final String USE_WORKERS_FOR_STREAMING_PROPERTY_NAME =
@@ -113,11 +116,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   public static final String CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE = SYSTEM_PROPERTY_PREFIX + "http.client.headerSectionSize";
 
-  // By default, we will delegate the redirect to Grizzly. If the system property is set to true Mule will handle redirects
-  // requests.
-  // Currently, Grizzly will fail to handle concurrent redirects if streaming is not enabled.
-  private static final String ENABLE_MULE_REDIRECT_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.enableMuleRedirect";
-  private static final boolean enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY_NAME, "false"));
+  private static final boolean enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY, "true"));
 
   private static final String MAX_CLIENT_REQUEST_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_CLIENT_REQUEST_HEADERS";
   private static int MAX_CLIENT_REQUEST_HEADERS =
@@ -153,6 +152,9 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private final TlsContextFactory defaultTlsContextFactory = TlsContextFactory.builder().buildDefault();
 
+  private final RedirectUtils redirectUtils;
+  private static final boolean isStrict302Handling = defaultStrict302Handling();
+
   public GrizzlyHttpClient(HttpClientConfiguration config, SchedulerService schedulerService, SchedulerConfig schedulersConfig) {
     this.tlsContextFactory = config.getTlsContextFactory();
     this.proxyConfig = config.getProxyConfig();
@@ -167,6 +169,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
     this.schedulerService = schedulerService;
     this.schedulersConfig = schedulersConfig;
+    this.redirectUtils = new RedirectUtils(isStrict302Handling);
   }
 
   @Override
@@ -326,9 +329,9 @@ public class GrizzlyHttpClient implements HttpClient {
   public HttpResponse send(HttpRequest request, HttpRequestOptions options) throws IOException, TimeoutException {
     checkState(asyncHttpClient != null, "The client must be started before use.");
     if (streamingEnabled) {
-      return sendAndDefer(request, options, 0);
+      return sendAndDefer(request, createGrizzlyRequest(request, options), options, 0);
     } else {
-      return sendAndWait(request, options, 0);
+      return sendAndWait(request, createGrizzlyRequest(request, options), options, 0);
     }
   }
 
@@ -340,9 +343,8 @@ public class GrizzlyHttpClient implements HttpClient {
    * will block waiting to allocate them. Likewise, read/write speed differences could cause issues. The buffer size can be
    * customized for these reason.
    */
-  private HttpResponse sendAndDefer(HttpRequest request, HttpRequestOptions options, int currentRedirects)
+  private HttpResponse sendAndDefer(HttpRequest request, Request grizzlyRequest, HttpRequestOptions options, int currentRedirects)
       throws IOException, TimeoutException {
-    Request grizzlyRequest = createGrizzlyRequest(request, options);
     PipedOutputStream outPipe = new PipedOutputStream();
     PipedInputStream inPipe =
         new PipedInputStream(outPipe, responseBufferSize > 0 ? responseBufferSize : DEFAULT_SEND_AND_DEFER_BUFFER_SIZE);
@@ -351,11 +353,14 @@ public class GrizzlyHttpClient implements HttpClient {
     try {
       Response response = asyncHandler.getResponse();
       HttpResponse httpResponse = httpResponseCreator.create(response, inPipe);
-      if (shouldFollowRedirect(httpResponse, options, enableMuleRedirect)) {
-        if (currentRedirects > MAX_REDIRECTS) {
+      if (redirectUtils.shouldFollowRedirect(httpResponse, options, enableMuleRedirect)) {
+        if (currentRedirects >= MAX_REDIRECTS) {
           throw new IOException("Max redirects exceeded", new MaxRedirectException());
         }
-        httpResponse = sendAndDefer(createRedirectRequest(httpResponse, request), options, currentRedirects + 1);
+        HttpRequest redirectRequest = redirectUtils.createRedirectRequest(httpResponse, request, options);
+        httpResponse = sendAndDefer(redirectRequest,
+                                    createGrizzlyRedirectRequest(redirectRequest, httpResponse, options), options,
+                                    currentRedirects + 1);
       }
       return httpResponse;
     } catch (IOException e) {
@@ -374,9 +379,8 @@ public class GrizzlyHttpClient implements HttpClient {
   /**
    * Blocking send which waits to load the whole response to memory before propagating it.
    */
-  private HttpResponse sendAndWait(HttpRequest request, HttpRequestOptions options, int currentRedirects)
+  private HttpResponse sendAndWait(HttpRequest request, Request grizzlyRequest, HttpRequestOptions options, int currentRedirects)
       throws IOException, TimeoutException {
-    Request grizzlyRequest = createGrizzlyRequest(request, options);
     ListenableFuture<Response> future = asyncHttpClient.executeRequest(grizzlyRequest);
     try {
       // No timeout is used to get the value of the future object, as the responseTimeout configured in the request that
@@ -391,11 +395,14 @@ public class GrizzlyHttpClient implements HttpClient {
         response = future.get();
       }
       HttpResponse httpResponse = httpResponseCreator.create(response, response.getResponseBodyAsStream());
-      if (shouldFollowRedirect(httpResponse, options, enableMuleRedirect)) {
-        if (currentRedirects > MAX_REDIRECTS) {
+      if (redirectUtils.shouldFollowRedirect(httpResponse, options, enableMuleRedirect)) {
+        if (currentRedirects >= MAX_REDIRECTS) {
           throw new IOException("Max redirects exceeded", new MaxRedirectException());
         }
-        httpResponse = sendAndWait(createRedirectRequest(httpResponse, request), options, currentRedirects + 1);
+        HttpRequest redirectRequest = redirectUtils.createRedirectRequest(httpResponse, request, options);
+        httpResponse = sendAndWait(redirectRequest,
+                                   createGrizzlyRedirectRequest(redirectRequest, httpResponse, options), options,
+                                   currentRedirects + 1);
       }
       return httpResponse;
     } catch (InterruptedException e) {
@@ -415,14 +422,22 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options) {
-    return sendAsync(request, options, 0);
+    try {
+      return sendAsync(request, createGrizzlyRequest(request, options), options, 0);
+    } catch (IOException e) {
+      CompletableFuture ex = new CompletableFuture();
+      ex.completeExceptionally(e);
+      return ex;
+    }
   }
 
-  private CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options, int currentRedirects) {
+  private CompletableFuture<HttpResponse> sendAsync(HttpRequest request, Request grizzlyRequest,
+                                                    HttpRequestOptions options, int currentRedirects) {
     checkState(asyncHttpClient != null, "The client must be started before use.");
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
+
       CompletableFuture<HttpResponse> auxFuture = new CompletableFuture<>();
       if (streamingEnabled) {
         asyncHandler =
@@ -433,8 +448,12 @@ public class GrizzlyHttpClient implements HttpClient {
 
       auxFuture.whenComplete((response, exception) -> {
         if (response != null) {
-          if (shouldFollowRedirect(response, options, enableMuleRedirect)) {
-            handleRedirectAsync(request, response, options, currentRedirects, future);
+          if (redirectUtils.shouldFollowRedirect(response, options, enableMuleRedirect)) {
+            try {
+              handleRedirectAsync(request, response, options, currentRedirects, future);
+            } catch (IOException e) {
+              future.completeExceptionally(e);
+            }
           } else {
             future.complete(response);
           }
@@ -442,8 +461,7 @@ public class GrizzlyHttpClient implements HttpClient {
           future.completeExceptionally(exception);
         }
       });
-
-      asyncHttpClient.executeRequest(createGrizzlyRequest(request, options), asyncHandler);
+      asyncHttpClient.executeRequest(grizzlyRequest, asyncHandler);
     } catch (Exception e) {
       future.completeExceptionally(e);
     }
@@ -451,32 +469,52 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private void handleRedirectAsync(HttpRequest request, HttpResponse response, HttpRequestOptions options,
-                                   int currentRedirects, CompletableFuture<HttpResponse> future) {
-    if (currentRedirects > MAX_REDIRECTS) {
+                                   int currentRedirects, CompletableFuture<HttpResponse> future)
+      throws IOException {
+    if (currentRedirects >= MAX_REDIRECTS) {
       future.completeExceptionally(new MaxRedirectException());
       return;
     }
 
-    HttpRequest redirectRequest = createRedirectRequest(response, request);
-    sendAsync(redirectRequest, options, currentRedirects + 1).whenComplete((redirectResponse, redirectException) -> {
-      if (redirectResponse != null) {
-        future.complete(redirectResponse);
-      } else {
-        future.completeExceptionally(redirectException);
-      }
-    });
+    HttpRequest redirectRequest = redirectUtils.createRedirectRequest(response, request, options);
+    Request grizzlyRequest = createGrizzlyRedirectRequest(redirectRequest, response, options);
+    sendAsync(redirectRequest, grizzlyRequest, options, currentRedirects + 1)
+        .whenComplete((redirectResponse, redirectException) -> {
+          if (redirectResponse != null) {
+            future.complete(redirectResponse);
+          } else {
+            future.completeExceptionally(redirectException);
+          }
+        });
+  }
+
+  // In case we receive a 30x response, this method will create a new Grizzly request adding also the cookies present
+  // in the set-cookies header in the response.
+  private Request createGrizzlyRedirectRequest(HttpRequest request, HttpResponse response, HttpRequestOptions options)
+      throws IOException {
+    RequestBuilder reqBuilder = createGrizzlyRequestBuilder(request, options);
+    for (String cookieStr : response.getHeaderValues(SetCookie.toString())) {
+      reqBuilder.addOrReplaceCookie(decode(cookieStr));
+    }
+    return reqBuilder.build();
   }
 
   protected Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
       throws IOException {
+    return createGrizzlyRequestBuilder(request, options).build();
+  }
+
+  private RequestBuilder createGrizzlyRequestBuilder(HttpRequest request, HttpRequestOptions options)
+      throws IOException {
     RequestBuilder reqBuilder =
-        createRequestBuilder(request, options, new GrizzlyRequestConfigurer(this, options, request, enableMuleRedirect,
-                                                                            requestStreamingEnabled, requestStreamingBufferSize));
+        createRequestBuilder(request, options,
+                             new GrizzlyRequestConfigurer(this, options, request, enableMuleRedirect,
+                                                          requestStreamingEnabled, requestStreamingBufferSize));
     URI uri = request.getUri();
     reqBuilder.setUri(new Uri(uri.getScheme(), uri.getRawUserInfo(), uri.getHost(), uri.getPort(), uri.getRawPath(),
                               uri.getRawQuery() != null ? uri.getRawQuery() + (request.getQueryParams().isEmpty() ? "" : "&")
                                   : null));
-    return reqBuilder.build();
+    return reqBuilder;
   }
 
   protected RequestBuilder createRequestBuilder(HttpRequest request, HttpRequestOptions options,

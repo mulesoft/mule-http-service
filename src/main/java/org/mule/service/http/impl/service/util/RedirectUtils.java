@@ -6,11 +6,20 @@
  */
 package org.mule.service.http.impl.service.util;
 
+import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultStrict302Handling;
 import static com.ning.http.client.uri.Uri.create;
+import static org.glassfish.grizzly.http.util.Header.Authorization;
+import static org.glassfish.grizzly.http.util.Header.ContentLength;
+import static org.glassfish.grizzly.http.util.Header.ContentType;
+import static org.glassfish.grizzly.http.util.Header.Host;
+import static org.glassfish.grizzly.http.util.Header.ProxyAuthorization;
 import static org.mule.runtime.http.api.HttpHeaders.Names.LOCATION;
+import static org.mule.runtime.http.api.client.auth.HttpAuthenticationType.NTLM;
 import static org.mule.runtime.http.api.domain.message.request.HttpRequest.builder;
+import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 
-import org.mule.runtime.http.api.HttpConstants;
+import org.mule.runtime.api.util.MultiMap;
+
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -22,12 +31,18 @@ import com.ning.http.client.uri.Uri;
  */
 public class RedirectUtils {
 
+  private final boolean isStrict302Handling;
+
+  public RedirectUtils(boolean isStrict302Handling) {
+    this.isStrict302Handling = isStrict302Handling;
+  }
+
   /**
    * @param response HttpResponse
    * @param options  HttpRequestOptions
    * @return a boolean indicating if the response contains a redirect status and the LOCATION header.
    */
-  public static boolean shouldFollowRedirect(HttpResponse response, HttpRequestOptions options, boolean enableMuleRedirect) {
+  public boolean shouldFollowRedirect(HttpResponse response, HttpRequestOptions options, boolean enableMuleRedirect) {
     return enableMuleRedirect && isRedirected(response.getStatusCode())
         && response.getHeaders().containsKey(LOCATION) && options.isFollowsRedirect();
   }
@@ -37,7 +52,7 @@ public class RedirectUtils {
    * @return if the status code is a redirect one.
    */
   // Copy from ResponseBase
-  public static boolean isRedirected(int statusCode) {
+  private boolean isRedirected(int statusCode) {
     switch (statusCode) {
       case 301:
       case 302:
@@ -51,35 +66,47 @@ public class RedirectUtils {
   }
 
   /**
-   * @param requestMethod
-   * @param responseStatusCode
-   * @return the original request method if the status code is 301, 307 or 308, or GET if it is 302 or 303.
+   * Copy from RedirectHandler#sendAsGet.
+   * 
+   * @param statusCode
+   * @return false if the status code is 301, 307 or 308, or true if it is 302 or 303.
    */
-  public static String getMethodForStatusCode(String requestMethod, int responseStatusCode) {
-    switch (responseStatusCode) {
-      case 301:
-      case 307:
-      case 308:
-        return requestMethod;
-      case 302:
-      case 303:
-        return HttpConstants.Method.GET.name();
-      default:
-        throw new IllegalArgumentException("Invalid status code");
-    }
+  private boolean mustSendAsGet(int statusCode) {
+    return !(statusCode < 302 || statusCode > 303) && !(statusCode == 302 && isStrict302Handling);
   }
 
   /**
-   * Create a new request with the params of the original and the new URI from the LOCATION header.
+   * Create a new request with the params of the original and the new URI from the LOCATION header. This method is copy from
+   * AhcEventFilter#RedirectHandler.newRequest. The set-cookie header is handle in GrizzlyHttpClient.createGrizzlyRedirectRequest
    * 
    * @param response HttpResponse
    * @param request  HttpRequest
    * @return an HttpRequest request.
    */
-  public static HttpRequest createRedirectRequest(HttpResponse response, HttpRequest request) {
+  public HttpRequest createRedirectRequest(HttpResponse response, HttpRequest request, HttpRequestOptions options) {
     Uri path = create(create(request.getUri().toString()), response.getHeaders().get(LOCATION));
-    return builder().uri(path.toUrl()).method(getMethodForStatusCode(request.getMethod(), response.getStatusCode()))
-        .protocol(request.getProtocol()).headers(request.getHeaders()).entity(request.getEntity())
-        .build();
+
+    MultiMap<String, String> headers = new MultiMap<>(request.getHeaders());
+    headers.remove(Host.toString());
+    headers.remove(ContentLength.toString());
+    String redirectMethod;
+
+    if (mustSendAsGet(response.getStatusCode())) {
+      redirectMethod = GET.name();
+      headers.remove(ContentType.toString());
+    } else {
+      redirectMethod = request.getMethod();
+    }
+
+    options.getAuthentication().ifPresent(httpAuthentication -> {
+      if (httpAuthentication.getType().equals(NTLM)) {
+        headers.remove(Authorization.toString());
+        headers.remove(ProxyAuthorization.toString());
+      }
+    });
+
+    return builder().uri(path.toUrl()).method(redirectMethod)
+        .protocol(request.getProtocol()).headers(headers).entity(request.getEntity()).build();
   }
+
 }
