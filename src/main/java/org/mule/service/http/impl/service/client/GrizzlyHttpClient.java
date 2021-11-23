@@ -11,7 +11,6 @@ import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
-import static com.ning.http.util.UTF8UrlEncoder.encodeQueryElement;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Boolean.parseBoolean;
 import static java.lang.Integer.getInteger;
@@ -20,7 +19,6 @@ import static java.lang.Math.max;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
-import static java.lang.System.getProperties;
 import static java.lang.System.getProperty;
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
 import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
@@ -37,37 +35,30 @@ import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEA
 import static org.mule.service.http.impl.service.util.RedirectUtils.createRedirectRequest;
 import static org.mule.service.http.impl.service.util.RedirectUtils.shouldFollowRedirect;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
-import javax.net.ssl.SSLContext;
-
+import com.ning.http.client.AsyncHandler;
+import com.ning.http.client.AsyncHttpClient;
+import com.ning.http.client.AsyncHttpClientConfig;
+import com.ning.http.client.BodyDeferringAsyncHandler;
+import com.ning.http.client.ListenableFuture;
 import com.ning.http.client.MaxRedirectException;
+import com.ning.http.client.ProxyServer;
+import com.ning.http.client.Request;
+import com.ning.http.client.RequestBuilder;
+import com.ning.http.client.Response;
+import com.ning.http.client.filter.FilterException;
+import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
+import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
+import com.ning.http.client.uri.Uri;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
-import org.mule.runtime.api.streaming.bytes.CursorStream;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.api.tls.TlsContextTrustStoreConfiguration;
-import org.mule.runtime.core.api.util.IOUtils;
-import org.mule.runtime.core.api.util.func.CheckedConsumer;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
-import org.mule.runtime.http.api.client.auth.HttpAuthentication;
-import org.mule.runtime.http.api.client.auth.HttpAuthenticationType;
 import org.mule.runtime.http.api.client.proxy.ProxyConfig;
-import org.mule.runtime.http.api.domain.entity.multipart.HttpPart;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
@@ -77,24 +68,16 @@ import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyn
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ning.http.client.AsyncHandler;
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.AsyncHttpClientConfig;
-import com.ning.http.client.BodyDeferringAsyncHandler;
-import com.ning.http.client.ListenableFuture;
-import com.ning.http.client.ProxyServer;
-import com.ning.http.client.Realm;
-import com.ning.http.client.Request;
-import com.ning.http.client.RequestBuilder;
-import com.ning.http.client.Response;
-import com.ning.http.client.filter.FilterException;
-import com.ning.http.client.generators.InputStreamBodyGenerator;
-import com.ning.http.client.multipart.ByteArrayPart;
-import com.ning.http.client.providers.grizzly.FeedableBodyGenerator;
-import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
-import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
-import com.ning.http.client.providers.grizzly.NonBlockingInputStreamFeeder;
-import com.ning.http.client.uri.Uri;
+import javax.net.ssl.SSLContext;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 public class GrizzlyHttpClient implements HttpClient {
 
@@ -107,7 +90,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
   private static final String ENABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.enable";
-  private static boolean requestStreamingEnabled = getProperties().containsKey(ENABLE_REQUEST_STREAMING_PROPERTY_NAME);
+  private static boolean requestStreamingEnabled = parseBoolean(getProperty(ENABLE_REQUEST_STREAMING_PROPERTY_NAME, "true"));
 
   private static final int DEFAULT_REQUEST_STREAMING_BUFFER_SIZE = 8 * 1024;
   private static final String REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME =
@@ -276,7 +259,7 @@ public class GrizzlyHttpClient implements HttpClient {
     builder.setProxyServer(buildProxy(proxyConfig));
   }
 
-  protected final ProxyServer buildProxy(ProxyConfig proxyConfig) {
+  ProxyServer buildProxy(ProxyConfig proxyConfig) {
     ProxyServer proxyServer;
     if (!isEmpty(proxyConfig.getUsername())) {
       proxyServer =
@@ -484,78 +467,14 @@ public class GrizzlyHttpClient implements HttpClient {
 
   protected Request createGrizzlyRequest(HttpRequest request, HttpRequestOptions options)
       throws IOException {
-    RequestBuilder reqBuilder = createRequestBuilder(request, options, builder -> {
-      builder.setFollowRedirects(!enableMuleRedirect && options.isFollowsRedirect());
-
-      populateHeaders(request, builder);
-
-      for (Map.Entry<String, String> entry : request.getQueryParams().entryList()) {
-        builder.addQueryParam(entry.getKey() != null ? encodeQueryElement(entry.getKey()) : null,
-                              entry.getValue() != null ? encodeQueryElement(entry.getValue()) : null);
-      }
-      options.getAuthentication().ifPresent((CheckedConsumer<HttpAuthentication>) (authentication -> {
-        Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder()
-            .setPrincipal(authentication.getUsername())
-            .setPassword(authentication.getPassword())
-            .setUsePreemptiveAuth(authentication.isPreemptive());
-
-        if (authentication.getType() == HttpAuthenticationType.BASIC) {
-          realmBuilder.setScheme(Realm.AuthScheme.BASIC);
-        } else if (authentication.getType() == HttpAuthenticationType.DIGEST) {
-          realmBuilder.setScheme(Realm.AuthScheme.DIGEST);
-        } else if (authentication.getType() == HttpAuthenticationType.NTLM) {
-          String domain = ((HttpAuthentication.HttpNtlmAuthentication) authentication).getDomain();
-          if (domain != null) {
-            realmBuilder.setNtlmDomain(domain);
-          }
-          String workstation = ((HttpAuthentication.HttpNtlmAuthentication) authentication).getWorkstation();
-          String ntlmHost = workstation != null ? workstation : getHostName();
-          realmBuilder.setNtlmHost(ntlmHost).setScheme(NTLM);
-        }
-
-        builder.setRealm(realmBuilder.build());
-      }));
-
-      options.getProxyConfig().ifPresent(proxyConfig -> builder.setProxyServer(buildProxy(proxyConfig)));
-
-      if (request.getEntity() != null) {
-        if (request.getEntity().isStreaming()) {
-          setStreamingBodyToRequestBuilder(request, builder);
-        } else if (request.getEntity().isComposed()) {
-          for (HttpPart part : request.getEntity().getParts()) {
-            if (part.getFileName() != null) {
-              builder.addBodyPart(new ByteArrayPart(part.getName(), IOUtils.toByteArray(part.getInputStream()),
-                                                    part.getContentType(), null, part.getFileName()));
-            } else {
-              byte[] content = IOUtils.toByteArray(part.getInputStream());
-              builder.addBodyPart(new ByteArrayPart(part.getName(), content, part.getContentType(), null));
-            }
-          }
-        } else {
-          builder.setBody(request.getEntity().getBytes());
-        }
-      }
-
-      // Set the response timeout in the request, this value is read by {@code CustomTimeoutThrottleRequestFilter}
-      // if the maxConnections attribute is configured in the requester.
-      builder.setRequestTimeout(options.getResponseTimeout());
-    });
+    RequestBuilder reqBuilder =
+        createRequestBuilder(request, options, new GrizzlyRequestConfigurer(this, options, request, enableMuleRedirect,
+                                                                            requestStreamingEnabled, requestStreamingBufferSize));
     URI uri = request.getUri();
     reqBuilder.setUri(new Uri(uri.getScheme(), uri.getRawUserInfo(), uri.getHost(), uri.getPort(), uri.getRawPath(),
                               uri.getRawQuery() != null ? uri.getRawQuery() + (request.getQueryParams().isEmpty() ? "" : "&")
                                   : null));
     return reqBuilder.build();
-  }
-
-  private void setStreamingBodyToRequestBuilder(HttpRequest request, RequestBuilder builder) throws IOException {
-    if (isRequestStreamingEnabled()) {
-      FeedableBodyGenerator bodyGenerator = new FeedableBodyGenerator();
-      bodyGenerator.setFeeder(new InputStreamFeederFactory(bodyGenerator, request.getEntity().getContent(),
-                                                           requestStreamingBufferSize).getInputStreamFeeder());
-      builder.setBody(bodyGenerator);
-    } else {
-      builder.setBody(new InputStreamBodyGeneratorFactory(request.getEntity().getContent()).getInputStreamBodyGenerator());
-    }
   }
 
   protected RequestBuilder createRequestBuilder(HttpRequest request, HttpRequestOptions options,
@@ -625,7 +544,7 @@ public class GrizzlyHttpClient implements HttpClient {
     }
   }
 
-  private String getHostName() throws UnknownHostException {
+  String getHostName() throws UnknownHostException {
     return InetAddress.getLocalHost().getHostName();
   }
 
@@ -658,46 +577,6 @@ public class GrizzlyHttpClient implements HttpClient {
                                                                 getProperty(CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE),
                                                                 CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE)),
                                      e);
-    }
-  }
-
-  private static class InputStreamFeederFactory {
-
-    private FeedableBodyGenerator feedableBodyGenerator;
-    private InputStream content;
-    private int internalBufferSize;
-
-    public InputStreamFeederFactory(FeedableBodyGenerator feedableBodyGenerator, InputStream content,
-                                    int internalBufferSize) {
-
-      this.feedableBodyGenerator = feedableBodyGenerator;
-      this.content = content;
-      this.internalBufferSize = internalBufferSize;
-    }
-
-    public NonBlockingInputStreamFeeder getInputStreamFeeder() {
-      if (content instanceof CursorStream) {
-        return new CursorNonBlockingInputStreamFeeder(feedableBodyGenerator, (CursorStream) content, internalBufferSize);
-      }
-
-      return new NonBlockingInputStreamFeeder(feedableBodyGenerator, content, internalBufferSize);
-    }
-  }
-
-  private static class InputStreamBodyGeneratorFactory {
-
-    private InputStream inputStream;
-
-    public InputStreamBodyGeneratorFactory(InputStream inputStream) {
-      this.inputStream = inputStream;
-    }
-
-    public InputStreamBodyGenerator getInputStreamBodyGenerator() {
-      if (inputStream instanceof CursorStream) {
-        return new CursorInputStreamBodyGenerator((CursorStream) inputStream);
-      }
-
-      return new InputStreamBodyGenerator(inputStream);
     }
   }
 }
