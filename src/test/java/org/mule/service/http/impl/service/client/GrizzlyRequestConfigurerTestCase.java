@@ -11,16 +11,17 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.junit.MockitoJUnit.rule;
 import static org.mule.runtime.api.util.MultiMap.emptyMultiMap;
 
 import com.ning.http.client.Request;
 import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.providers.grizzly.FeedableBodyGenerator;
 import io.qameta.allure.Issue;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.MockitoRule;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
@@ -28,8 +29,10 @@ import org.mule.service.http.impl.service.client.GrizzlyHttpClient.RequestConfig
 
 import java.io.IOException;
 
-@RunWith(MockitoJUnitRunner.class)
 public class GrizzlyRequestConfigurerTestCase {
+
+  @Rule
+  public MockitoRule mockitorule = rule();
 
   @Mock
   private GrizzlyHttpClient client;

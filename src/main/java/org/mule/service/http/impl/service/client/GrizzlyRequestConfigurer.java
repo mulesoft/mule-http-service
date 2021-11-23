@@ -8,15 +8,16 @@ package org.mule.service.http.impl.service.client;
 
 import static com.ning.http.client.Realm.AuthScheme.NTLM;
 import static com.ning.http.util.UTF8UrlEncoder.encodeQueryElement;
+import static org.mule.runtime.core.api.util.IOUtils.toByteArray;
 
 import com.ning.http.client.Realm;
+import com.ning.http.client.Realm.RealmBuilder;
 import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.generators.InputStreamBodyGenerator;
 import com.ning.http.client.multipart.ByteArrayPart;
 import com.ning.http.client.providers.grizzly.FeedableBodyGenerator;
 import com.ning.http.client.providers.grizzly.NonBlockingInputStreamFeeder;
 import org.mule.runtime.api.streaming.bytes.CursorStream;
-import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.core.api.util.func.CheckedConsumer;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
@@ -27,7 +28,7 @@ import org.mule.service.http.impl.service.client.GrizzlyHttpClient.RequestConfig
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Map;
+import java.util.Map.Entry;
 
 class GrizzlyRequestConfigurer implements RequestConfigurer {
 
@@ -54,12 +55,12 @@ class GrizzlyRequestConfigurer implements RequestConfigurer {
 
     client.populateHeaders(request, builder);
 
-    for (Map.Entry<String, String> entry : request.getQueryParams().entryList()) {
+    for (Entry<String, String> entry : request.getQueryParams().entryList()) {
       builder.addQueryParam(entry.getKey() != null ? encodeQueryElement(entry.getKey()) : null,
                             entry.getValue() != null ? encodeQueryElement(entry.getValue()) : null);
     }
     options.getAuthentication().ifPresent((CheckedConsumer<HttpAuthentication>) (authentication -> {
-      Realm.RealmBuilder realmBuilder = new Realm.RealmBuilder()
+      RealmBuilder realmBuilder = new RealmBuilder()
           .setPrincipal(authentication.getUsername())
           .setPassword(authentication.getPassword())
           .setUsePreemptiveAuth(authentication.isPreemptive());
@@ -89,10 +90,10 @@ class GrizzlyRequestConfigurer implements RequestConfigurer {
       } else if (request.getEntity().isComposed()) {
         for (HttpPart part : request.getEntity().getParts()) {
           if (part.getFileName() != null) {
-            builder.addBodyPart(new ByteArrayPart(part.getName(), IOUtils.toByteArray(part.getInputStream()),
+            builder.addBodyPart(new ByteArrayPart(part.getName(), toByteArray(part.getInputStream()),
                                                   part.getContentType(), null, part.getFileName()));
           } else {
-            byte[] content = IOUtils.toByteArray(part.getInputStream());
+            byte[] content = toByteArray(part.getInputStream());
             builder.addBodyPart(new ByteArrayPart(part.getName(), content, part.getContentType(), null));
           }
         }

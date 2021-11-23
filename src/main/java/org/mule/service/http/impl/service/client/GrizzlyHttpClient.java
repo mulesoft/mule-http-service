@@ -89,7 +89,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
   private static final String ENABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.enable";
-  private static boolean requestStreamingEnabled = isRequestStreamingPropertySet();
+  private static boolean requestStreamingEnabled = parseBoolean(getProperty(ENABLE_REQUEST_STREAMING_PROPERTY_NAME, "true"));
 
   private static final int DEFAULT_REQUEST_STREAMING_BUFFER_SIZE = 8 * 1024;
   private static final String REQUEST_STREAMING_BUFFER_LEN_PROPERTY_NAME =
@@ -573,9 +573,5 @@ public class GrizzlyHttpClient implements HttpClient {
                                                                 CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE)),
                                      e);
     }
-  }
-
-  private static boolean isRequestStreamingPropertySet() {
-    return parseBoolean(getProperty(ENABLE_REQUEST_STREAMING_PROPERTY_NAME, "true"));
   }
 }
