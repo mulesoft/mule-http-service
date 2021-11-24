@@ -59,7 +59,7 @@
         <dependency>
             <groupId>org.mule.runtime</groupId>
             <artifactId>mule-service-http-api</artifactId>
-            <version>${mule.version}</version>
+            <version>4.4.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
