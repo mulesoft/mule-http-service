@@ -15,8 +15,12 @@ import static java.lang.System.getProperty;
 import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
+import static org.glassfish.grizzly.http.util.Constants.DEFAULT_RESPONSE_TYPE;
+import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
+import static org.mule.runtime.http.api.server.HttpServerProperties.MAX_REQUEST_HEADERS_KEY;
+import static org.mule.runtime.http.api.server.HttpServerProperties.MAX_RESPONSE_HEADERS_KEY;
 import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.LISTENER;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
@@ -79,15 +83,6 @@ public class GrizzlyServerManager implements HttpServerManager {
       parseBoolean(getProperty(ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS_PROPERTY, "true"));
 
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
-
-  // TODO: Move to /http/api/server/HttpServerProperties.java class defined in the Runtime
-  private static final String MAX_REQUEST_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_REQUEST_HEADERS";
-  private static final String MAX_RESPONSE_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS";
-  private static final int DEFAULT_MAX_REQUEST_HEADERS = 100;
-  private static final int DEFAULT_MAX_RESPONSE_HEADERS = 100;
-
-  private static final String RESPONSE_CONTENT_TYPE_KEY = SYSTEM_PROPERTY_PREFIX + "http.RESPONSE_CONTENT_TYPE";
-  private static final String DEFAULT_RESPONSE_CONTENT_TYPE = "text/plain";
 
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
   protected final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
@@ -333,16 +328,20 @@ public class GrizzlyServerManager implements HttpServerManager {
   private HttpServerFilter createHttpServerFilter(int connectionIdleTimeout, boolean usePersistentConnections,
                                                   DelayedExecutor delayedExecutor, ServerIdentifier identifier) {
     KeepAlive ka = null;
+    int maxRequestHeaders = retrieveMaximumRequestHeaders();
+    int maxResponseHeaders = retrieveMaximumResponseHeaders();
+    ka = new KeepAlive();
     if (usePersistentConnections) {
-      ka = new KeepAlive();
       ka.setMaxRequestsCount(MAX_KEEP_ALIVE_REQUESTS);
       ka.setIdleTimeoutInSeconds(convertToSeconds(connectionIdleTimeout));
     }
-    LOGGER.debug("Setting http filter with maxRequestsHeaders {} and maxResponseHeaders {}", retrieveMaximumRequestHeaders(),
-                 retrieveMaximumResponseHeaders());
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Setting http filter with maxRequestsHeaders {} and maxResponseHeaders {}", maxRequestHeaders,
+                   maxResponseHeaders);
+    }
     HttpServerFilter httpServerFilter =
-        new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), retrieveDefaultContentType(), ka, delayedExecutor,
-                             retrieveMaximumRequestHeaders(), retrieveMaximumResponseHeaders());
+        new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), DEFAULT_RESPONSE_TYPE, ka, delayedExecutor,
+                             maxRequestHeaders, maxResponseHeaders);
     httpServerFilter.getMonitoringConfig()
         .addProbes(new HttpMessageLogger(LISTENER, identifier.getName(), currentThread().getContextClassLoader()));
     httpServerFilter.setAllowPayloadForUndefinedHttpMethods(ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS);
@@ -376,28 +375,24 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   private int retrieveMaximumRequestHeaders() {
     try {
-      return valueOf(getProperty(MAX_REQUEST_HEADERS_KEY, String.valueOf(DEFAULT_MAX_REQUEST_HEADERS)));
+      return getInteger(MAX_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
     } catch (NumberFormatException e) {
       throw new MuleRuntimeException(createStaticMessage(format("Invalid value %s for %s configuration",
                                                                 getProperty(MAX_REQUEST_HEADERS_KEY),
-                                                                DEFAULT_MAX_REQUEST_HEADERS)),
+                                                                MAX_REQUEST_HEADERS_KEY)),
                                      e);
     }
   }
 
   private int retrieveMaximumResponseHeaders() {
     try {
-      return valueOf(getProperty(MAX_RESPONSE_HEADERS_KEY, String.valueOf(DEFAULT_MAX_RESPONSE_HEADERS)));
+      return getInteger(MAX_RESPONSE_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
     } catch (NumberFormatException e) {
       throw new MuleRuntimeException(createStaticMessage(format("Invalid value %s for %s configuration",
                                                                 getProperty(MAX_RESPONSE_HEADERS_KEY),
-                                                                DEFAULT_MAX_RESPONSE_HEADERS)),
+                                                                MAX_RESPONSE_HEADERS_KEY)),
                                      e);
     }
-  }
-
-  private String retrieveDefaultContentType() {
-    return getProperty(RESPONSE_CONTENT_TYPE_KEY, DEFAULT_RESPONSE_CONTENT_TYPE);
   }
 
   /**
