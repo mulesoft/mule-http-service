@@ -357,8 +357,8 @@ public class GrizzlyServerManager implements HttpServerManager {
   private HttpServerFilter createHttpServerFilter(int connectionIdleTimeout, boolean usePersistentConnections,
                                                   DelayedExecutor delayedExecutor, ServerIdentifier identifier) {
     KeepAlive ka = null;
-    ka = new KeepAlive();
     if (usePersistentConnections) {
+      ka = new KeepAlive();
       ka.setMaxRequestsCount(MAX_KEEP_ALIVE_REQUESTS);
       ka.setIdleTimeoutInSeconds(convertToSeconds(connectionIdleTimeout));
     }
