@@ -10,25 +10,25 @@ import io.qameta.allure.Issue;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.apache.http.HttpVersion.HTTP_1_1;
+import static org.apache.http.impl.client.HttpClients.createDefault;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mule.runtime.http.api.domain.message.response.HttpResponse.builder;
 
 public class HttpServerAfterCompletionTestCase extends AbstractHttpServerTestCase {
 
@@ -49,7 +49,7 @@ public class HttpServerAfterCompletionTestCase extends AbstractHttpServerTestCas
 
     // Registers a request handler that will delegate to a test-case-local handler after having sent the response
     server.addRequestHandler(PATH, (requestContext, responseCallback) -> {
-      responseCallback.responseReady(HttpResponse.builder().build(), new IgnoreResponseStatusCallback());
+      responseCallback.responseReady(builder().build(), new IgnoreResponseStatusCallback());
       afterResponseRequestHandler.handleRequest(requestContext);
     });
   }
@@ -73,7 +73,7 @@ public class HttpServerAfterCompletionTestCase extends AbstractHttpServerTestCas
     });
 
     // Just sends a request with a chunked transfer encoding
-    try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+    try (CloseableHttpClient httpClient = createDefault()) {
       HttpPut httpPut = new HttpPut(getUri());
       httpPut.setProtocolVersion(HTTP_1_1);
 
@@ -101,7 +101,7 @@ public class HttpServerAfterCompletionTestCase extends AbstractHttpServerTestCas
     });
 
     // Just sends a request with a chunked transfer encoding
-    try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+    try (CloseableHttpClient httpClient = createDefault()) {
       HttpPut httpPut = new HttpPut(getUri());
       httpPut.setProtocolVersion(HTTP_1_1);
 
@@ -176,7 +176,7 @@ public class HttpServerAfterCompletionTestCase extends AbstractHttpServerTestCas
     }
 
     private Future<?> future;
-    private final ExecutorService es = Executors.newSingleThreadExecutor();
+    private final ExecutorService es = newSingleThreadExecutor();
     private final ThrowingConsumer<HttpRequestContext> throwingConsumer;
     private final CountDownLatch handleRequestCalledLatch = new CountDownLatch(1);
 

@@ -11,7 +11,6 @@ import org.glassfish.grizzly.ReadResult;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpHeader;
-import org.glassfish.grizzly.memory.Buffers;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -20,10 +19,13 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Stream.generate;
+import static org.glassfish.grizzly.ReadResult.create;
+import static org.glassfish.grizzly.http.HttpContent.builder;
+import static org.glassfish.grizzly.memory.Buffers.wrap;
 import static org.glassfish.grizzly.memory.MemoryManager.DEFAULT_MEMORY_MANAGER;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -151,8 +153,8 @@ public class BlockingTransferInputStreamTestCase extends AbstractMuleTestCase {
 
     // Creates another iterator with the remaining chunks converted into ReadResult, suitable for read responses
     final Iterator<? extends ReadResult<HttpContent, ?>> readResults =
-        Stream.generate(() -> readResultFromString(chunksIterator.next(), chunksIterator.hasNext())).limit(chunks.length - 1)
-            .collect(Collectors.toList()).iterator();
+        generate(() -> readResultFromString(chunksIterator.next(), chunksIterator.hasNext())).limit(chunks.length - 1)
+            .collect(toList()).iterator();
 
     // The first chunk is returned from getMessage
     when(fccMock.getMessage()).thenReturn(httpContent);
@@ -169,7 +171,7 @@ public class BlockingTransferInputStreamTestCase extends AbstractMuleTestCase {
 
   private HttpContent httpContentFromString(String content, boolean last) {
     final HttpHeader httpHeaderMock = mock(HttpHeader.class);
-    return HttpContent.builder(httpHeaderMock).last(last).content(Buffers.wrap(DEFAULT_MEMORY_MANAGER, content)).build();
+    return builder(httpHeaderMock).last(last).content(wrap(DEFAULT_MEMORY_MANAGER, content)).build();
   }
 
   private ReadResult<HttpContent, ?> readResultFromString(String content, boolean last) {
@@ -177,6 +179,6 @@ public class BlockingTransferInputStreamTestCase extends AbstractMuleTestCase {
 
     // ReadResult can't be mocked because most of its methods are final, so we just create a dummy instance
     // We don't care about the connection and address parameters, only the content to be returned
-    return ReadResult.create(null, httpContent, null, 0);
+    return create(null, httpContent, null, 0);
   }
 }
