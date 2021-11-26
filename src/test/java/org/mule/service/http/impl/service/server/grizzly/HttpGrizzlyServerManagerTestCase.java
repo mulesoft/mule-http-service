@@ -6,7 +6,6 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.lang.Integer.getInteger;
 import static java.lang.Integer.parseInt;
 import static java.lang.Runtime.getRuntime;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -15,7 +14,6 @@ import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAUL
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -23,11 +21,10 @@ import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PRE
 import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
-import static org.mule.runtime.http.api.server.HttpServerProperties.MAX_RESPONSE_HEADERS_KEY;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
+import static org.mule.tck.junit4.rule.SystemProperty.callWithProperty;
 
-import org.mule.runtime.api.security.Authentication;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
@@ -37,59 +34,24 @@ import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.ServerAddressMap;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
-import org.mule.tck.junit4.rule.SystemProperty;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.concurrent.ExecutorService;
 
-import org.glassfish.grizzly.http.HttpClientFilter;
+import io.qameta.allure.Description;
+import io.qameta.allure.Issue;
 import org.glassfish.grizzly.http.HttpServerFilter;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.junit.MockitoJUnitRunner;
 
 @Feature(HTTP_SERVICE)
 @Story(SERVER_MANAGEMENT)
-@RunWith(MockitoJUnitRunner.class)
 public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManagerTestCase {
 
   private final TlsContextFactory tlsContextFactory = TlsContextFactory.builder().buildDefault();
-
-  GrizzlyServerManager grizzlyServerManager;
-
-  @Rule
-  public SystemProperty maxRequestHeadersProperty = new SystemProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_REQUEST_HEADERS", "10");
-
-  @Rule
-  public SystemProperty maxResponseHeadersProperty =
-      new SystemProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS", "8");
-
-  @Before
-  public void setUp() {
-    grizzlyServerManager = new GrizzlyServerManager(newCachedThreadPool(), newCachedThreadPool(),
-                                                    newCachedThreadPool(), new HttpListenerRegistry(),
-                                                    new DefaultTcpServerSocketProperties(),
-                                                    getRuntime().availableProcessors());
-  }
-
-  @After
-  public void tearDown() {
-    grizzlyServerManager.dispose();
-    maxRequestHeadersProperty = new SystemProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_REQUEST_HEADERS", String.valueOf(MAX_NUM_HEADERS_DEFAULT));
-    maxResponseHeadersProperty = new SystemProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS", String.valueOf(MAX_NUM_HEADERS_DEFAULT));
-  }
 
   @Override
   protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
@@ -151,18 +113,20 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
            times(removes)).removeExecutor(any());
   }
 
+  @Issue("MULE-19837")
+  @Description("When the max number of request and response headers are NOT set by System Properties, they should be " +
+      "assigned correctly by default. We check that the variables are properly set because we are delegating the max headers" +
+      " amount check to Grizzly")
   @Test
-  public void testMaxRequestAndResponseHeadersCanBeSetBySystemProperty()
+  public void testMaxRequestAndResponseHeadersIfNotSetBySystemPropertyIsSetByDefault()
       throws ServerCreationException, NoSuchFieldException, IllegalAccessException {
     ServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
-    grizzlyServerManager.createServerFor(serverAddress, () -> muleContext.getSchedulerService().ioScheduler(), true,
-                                         (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-                                         new ServerIdentifier("context", "name"),
-                                         () -> muleContext.getConfiguration().getShutdownTimeout());
 
+    getServer(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
+        new ServerIdentifier("context", "name"));
     Field httpServerFilterDelegate = GrizzlyServerManager.class.getDeclaredField("httpServerFilterDelegate");
     httpServerFilterDelegate.setAccessible(true);
-    GrizzlyAddressDelegateFilter grizzlyAddressDelegateFilter = (GrizzlyAddressDelegateFilter) httpServerFilterDelegate.get(grizzlyServerManager);
+    GrizzlyAddressDelegateFilter grizzlyAddressDelegateFilter = (GrizzlyAddressDelegateFilter) httpServerFilterDelegate.get(serverManager);
 
     Field filters = GrizzlyAddressDelegateFilter.class.getDeclaredField("filters");
     filters.setAccessible(true);
@@ -177,8 +141,82 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
     maxResponseHeadersField.setAccessible(true);
     int maxResponseHeaders = (int) maxResponseHeadersField.get(httpServerFilter);
 
-    assertThat(maxRequestHeaders, is(parseInt(maxRequestHeadersProperty.getValue())));
-    assertThat(maxResponseHeaders, is(parseInt(maxResponseHeadersProperty.getValue())));
+    assertThat(maxRequestHeaders, is(MAX_NUM_HEADERS_DEFAULT));
+    assertThat(maxResponseHeaders, is(MAX_NUM_HEADERS_DEFAULT));
+  }
+
+  @Issue("MULE-19837")
+  @Description("When the max number of request headers are set by System Properties, they should be " +
+      "assigned correctly. We check that the variables are properly set because we are delegating the max headers" +
+      " amount check to Grizzly")
+  @Test
+  public void testMaxRequestHeadersCanBeSetBySystemProperty()
+      throws Throwable {
+    String maxSetRequestHeaders = "80";
+    ServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
+
+    GrizzlyServerManager grizzlyServerManager = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_REQUEST_HEADERS", maxSetRequestHeaders, this::refreshSystemPropertiesAndCreateServerManager);
+
+    grizzlyServerManager.createServerFor(serverAddress, () -> muleContext.getSchedulerService().ioScheduler(), true,
+        (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
+        new ServerIdentifier("context", "name"),
+        () -> muleContext.getConfiguration().getShutdownTimeout());
+
+    Field httpServerFilterDelegate = GrizzlyServerManager.class.getDeclaredField("httpServerFilterDelegate");
+    httpServerFilterDelegate.setAccessible(true);
+    GrizzlyAddressDelegateFilter grizzlyAddressDelegateFilter = (GrizzlyAddressDelegateFilter) httpServerFilterDelegate.get(grizzlyServerManager);
+
+    Field filters = GrizzlyAddressDelegateFilter.class.getDeclaredField("filters");
+    filters.setAccessible(true);
+    ServerAddressMap serverAddressMap = (ServerAddressMap) filters.get(grizzlyAddressDelegateFilter);
+
+    HttpServerFilter httpServerFilter = (HttpServerFilter) serverAddressMap.get(serverAddress);
+    Field maxRequestHeadersField = HttpServerFilter.class.getDeclaredField("maxRequestHeaders");
+    maxRequestHeadersField.setAccessible(true);
+    int maxRequestHeaders = (int) maxRequestHeadersField.get(httpServerFilter);
+
+    assertThat(maxRequestHeaders, is(parseInt(maxSetRequestHeaders)));
+  }
+
+  @Issue("MULE-19837")
+  @Description("When the max number of response headers are set by System Properties, they should be " +
+      "assigned correctly. We check that the variables are properly set because we are delegating the max headers" +
+      " amount check to Grizzly")
+  @Test
+  public void testMaxResponseHeadersCanBeSetBySystemProperty()
+      throws Throwable {
+    String maxSetResponseHeaders = "70";
+    ServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
+
+    GrizzlyServerManager grizzlyServerManager = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS", maxSetResponseHeaders, this::refreshSystemPropertiesAndCreateServerManager);
+
+    grizzlyServerManager.createServerFor(serverAddress, () -> muleContext.getSchedulerService().ioScheduler(), true,
+        (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
+        new ServerIdentifier("context", "name"),
+        () -> muleContext.getConfiguration().getShutdownTimeout());
+
+    Field httpServerFilterDelegate = GrizzlyServerManager.class.getDeclaredField("httpServerFilterDelegate");
+    httpServerFilterDelegate.setAccessible(true);
+    GrizzlyAddressDelegateFilter grizzlyAddressDelegateFilter = (GrizzlyAddressDelegateFilter) httpServerFilterDelegate.get(grizzlyServerManager);
+
+    Field filters = GrizzlyAddressDelegateFilter.class.getDeclaredField("filters");
+    filters.setAccessible(true);
+    ServerAddressMap serverAddressMap = (ServerAddressMap) filters.get(grizzlyAddressDelegateFilter);
+
+    HttpServerFilter httpServerFilter = (HttpServerFilter) serverAddressMap.get(serverAddress);
+    Field maxResponseHeadersField = HttpServerFilter.class.getDeclaredField("maxResponseHeaders");
+    maxResponseHeadersField.setAccessible(true);
+    int maxResponseHeaders = (int) maxResponseHeadersField.get(httpServerFilter);
+
+    assertThat(maxResponseHeaders, is(parseInt(maxSetResponseHeaders)));
+  }
+
+  private GrizzlyServerManager refreshSystemPropertiesAndCreateServerManager(){
+    GrizzlyServerManager.refreshSystemProperties();
+    return new GrizzlyServerManager(newCachedThreadPool(), newCachedThreadPool(),
+        newCachedThreadPool(), new HttpListenerRegistry(),
+        new DefaultTcpServerSocketProperties(),
+        getRuntime().availableProcessors());
   }
 
   @Override
