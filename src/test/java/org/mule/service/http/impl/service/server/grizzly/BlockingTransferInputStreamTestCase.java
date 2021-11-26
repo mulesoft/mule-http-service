@@ -7,6 +7,8 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 
+import io.qameta.allure.Description;
+import io.qameta.allure.Issue;
 import org.glassfish.grizzly.ReadResult;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpContent;
@@ -46,6 +48,7 @@ public class BlockingTransferInputStreamTestCase extends AbstractMuleTestCase {
   public void setUp() {}
 
   @Test
+  @Description("When there is a single chunk, reading returns the correct contents, including after the chunk is consumed.")
   public void basicRead() throws IOException {
     final BlockingTransferInputStream inputStream = createStreamWithChunks("Some content");
 
@@ -66,6 +69,7 @@ public class BlockingTransferInputStreamTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Description("When there are multiple chunks, reading returns the correct contents, including after the chunk is consumed.")
   public void basicReadMultipleChunks() throws IOException {
     final BlockingTransferInputStream inputStream = createStreamWithChunks("Some content", ", ", "Other content");
 
@@ -92,6 +96,8 @@ public class BlockingTransferInputStreamTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("MULE-19951")
+  @Description("When reading after blocking reads are not allowed, the proper exception is thrown if a read that requires blocking is performed.")
   public void whenReadAfterNotAllowedReturnsIllegalStateException() throws IOException {
     final BlockingTransferInputStream inputStream = createStreamWithChunks("Some content", ", ", "More content");
 
@@ -122,6 +128,8 @@ public class BlockingTransferInputStreamTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("MULE-19951")
+  @Description("When reading after blocking reads are not allowed, no exception is thrown if all contents are available.")
   public void whenContentIsBufferedAndReadAfterNotAllowedSucceeds() throws IOException {
     final BlockingTransferInputStream inputStream = createStreamWithChunks("Some content");
 

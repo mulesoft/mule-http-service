@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.functional.server;
 
+import io.qameta.allure.Description;
 import io.qameta.allure.Issue;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.InputStreamEntity;
@@ -61,6 +62,7 @@ public class HttpServerAfterCompletionTestCase extends AbstractHttpServerTestCas
 
   @Test
   @Issue("MULE-19951")
+  @Description("When reading the request after sending the response, it fails with a meaningful exception.")
   public void failsGracefullyWhenReadAfterCompletion() throws Exception {
     // It is necessary to use a big streamed payload to make it fail, so that it doesn't fit inside the internal buffers.
     AlphabetGeneratorInputStream infiniteAlphabet = new AlphabetGeneratorInputStream(1 << 20);
@@ -89,6 +91,7 @@ public class HttpServerAfterCompletionTestCase extends AbstractHttpServerTestCas
 
   @Test
   @Issue("MULE-19951")
+  @Description("When reading the request after sending the response and the request is available because it fitted in memory buffers, succeeds. This is important for backwards compatibility.")
   public void whenDataBufferedAndReadAfterCompletionSucceeds() throws Exception {
     // It is necessary to use a big streamed payload to make it fail, so that it doesn't fit inside the internal buffers.
     AlphabetGeneratorInputStream infiniteAlphabet = new AlphabetGeneratorInputStream(2048);
