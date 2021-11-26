@@ -132,12 +132,18 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
                 }
                 response = new HttpResponseBuilder(response).entity(new EmptyHttpEntity()).build();
               }
+
+              // We need to notify the request adapter when the response has been sent, this way it can be protected
+              // against further reading attempts
+              final ResponseStatusCallback requestAdapterNotifyingResponseStatusCallback =
+                  new RequestAdapterNotifyingResponseStatusCallback(httpRequest, responseStatusCallback);
+
               if (response.getEntity().isStreaming()) {
                 new ResponseStreamingCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                                       responseStatusCallback).start();
+                                                       requestAdapterNotifyingResponseStatusCallback).start();
               } else {
                 new ResponseCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                              responseStatusCallback).start();
+                                              requestAdapterNotifyingResponseStatusCallback).start();
               }
             } catch (Exception e) {
               responseStatusCallback.responseSendFailure(e);
@@ -208,5 +214,39 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
   private boolean isWebSocketUpgrade(HttpHeader header) {
     final String upgrade = header.getHeader("upgrade");
     return "WebSocket".equalsIgnoreCase(upgrade);
+  }
+
+  /**
+   * Wrapper for a {@link ResponseStatusCallback} which will notify the given {@link GrizzlyHttpRequestAdapter} about the response
+   * having been sent (either successfully or unsuccessfully).
+   */
+  private static class RequestAdapterNotifyingResponseStatusCallback implements ResponseStatusCallback {
+
+    private final GrizzlyHttpRequestAdapter httpRequestAdapter;
+    private final ResponseStatusCallback delegate;
+
+    public RequestAdapterNotifyingResponseStatusCallback(GrizzlyHttpRequestAdapter httpRequestAdapter,
+                                                         ResponseStatusCallback delegate) {
+      this.httpRequestAdapter = httpRequestAdapter;
+      this.delegate = delegate;
+    }
+
+    @Override
+    public void responseSendFailure(Throwable throwable) {
+      httpRequestAdapter.responseSent();
+      delegate.responseSendFailure(throwable);
+    }
+
+    @Override
+    public void responseSendSuccessfully() {
+      httpRequestAdapter.responseSent();
+      delegate.responseSendSuccessfully();
+    }
+
+    @Override
+    public void onErrorSendingResponse(Throwable throwable) {
+      httpRequestAdapter.responseSent();
+      delegate.onErrorSendingResponse(throwable);
+    }
   }
 }
