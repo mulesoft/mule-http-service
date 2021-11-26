@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.server.grizzly;
 
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
@@ -25,6 +26,7 @@ import org.glassfish.grizzly.utils.BufferInputStream;
 public class GrizzlyHttpRequestAdapter extends GrizzlyHttpMessage implements HttpRequest {
 
   private static final String PROTOCOL = "http";
+  private static final String RESPONSE_ALREADY_SENT = "Response already sent";
 
   private final InputStream requestContent;
   private HttpEntity body;
@@ -73,5 +75,15 @@ public class GrizzlyHttpRequestAdapter extends GrizzlyHttpMessage implements Htt
       }
     }
     return this.body;
+  }
+
+  /**
+   * Signals that the response has been sent. By doing this we make sure we take appropriate actions to prevent errors when trying
+   * to operate on the request contents.
+   */
+  public void responseSent() {
+    if (requestContent instanceof BlockingTransferInputStream) {
+      ((BlockingTransferInputStream) requestContent).preventFurtherBlockingReading(RESPONSE_ALREADY_SENT);
+    }
   }
 }
