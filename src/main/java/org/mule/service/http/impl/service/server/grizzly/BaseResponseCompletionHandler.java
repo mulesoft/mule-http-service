@@ -19,6 +19,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.BOUNDARY;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.MULTIPART_FORM_DATA;
+import static org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager.MAX_RESPONSE_HEADERS;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -44,7 +45,8 @@ public abstract class BaseResponseCompletionHandler extends EmptyCompletionHandl
 
   protected HttpResponsePacket buildHttpResponsePacket(HttpRequestPacket sourceRequest, HttpResponse httpResponse) {
     final HttpResponsePacket.Builder responsePacketBuilder = HttpResponsePacket.builder(sourceRequest)
-        .status(httpResponse.getStatusCode()).reasonPhrase(httpResponse.getReasonPhrase());
+        .status(httpResponse.getStatusCode()).reasonPhrase(httpResponse.getReasonPhrase())
+        .maxNumHeaders(MAX_RESPONSE_HEADERS);
 
     String contentType = null;
     String connectionHeaderValue = null;

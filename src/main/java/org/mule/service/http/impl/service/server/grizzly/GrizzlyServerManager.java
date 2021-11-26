@@ -87,7 +87,7 @@ public class GrizzlyServerManager implements HttpServerManager {
   private static int MAX_REQUEST_HEADERS =
       getInteger(MAX_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
   private static final String MAX_RESPONSE_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS";
-  private static int MAX_RESPONSE_HEADERS =
+  public static int MAX_RESPONSE_HEADERS =
       getInteger(MAX_RESPONSE_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
 
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
@@ -342,7 +342,7 @@ public class GrizzlyServerManager implements HttpServerManager {
     }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Setting http filter with maxRequestsHeaders {} and maxResponseHeaders {}", MAX_REQUEST_HEADERS,
-          MAX_RESPONSE_HEADERS);
+                   MAX_RESPONSE_HEADERS);
     }
     HttpServerFilter httpServerFilter =
         new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), DEFAULT_RESPONSE_TYPE, ka, delayedExecutor,
