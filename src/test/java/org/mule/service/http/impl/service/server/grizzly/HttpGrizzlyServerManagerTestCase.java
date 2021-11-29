@@ -175,7 +175,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
 
     GrizzlyServerManager grizzlyServerManager =
         callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_REQUEST_HEADERS", maxSetRequestHeaders,
-            this::refreshSystemPropertiesAndCreateServerManager);
+                         this::refreshSystemPropertiesAndCreateServerManager);
     HttpServerFilter httpServerFilter = getHttpServerFilter(grizzlyServerManager);
 
     assertThat(getMaxHeaders(httpServerFilter, "maxRequestHeaders"), is(parseInt(maxSetRequestHeaders)));
@@ -192,7 +192,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
 
     GrizzlyServerManager grizzlyServerManager =
         callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS", maxSetResponseHeaders,
-            this::refreshSystemPropertiesAndCreateServerManager);
+                         this::refreshSystemPropertiesAndCreateServerManager);
     HttpServerFilter httpServerFilter = getHttpServerFilter(grizzlyServerManager);
 
     assertThat(getMaxHeaders(httpServerFilter, "maxResponseHeaders"), is(parseInt(maxSetResponseHeaders)));
@@ -210,9 +210,9 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
     ServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
 
     grizzlyServerManager.createServerFor(serverAddress, () -> muleContext.getSchedulerService().ioScheduler(), true,
-        (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
-        new ServerIdentifier("context", "name"),
-        () -> muleContext.getConfiguration().getShutdownTimeout());
+                                         (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
+                                         new ServerIdentifier("context", "name"),
+                                         () -> muleContext.getConfiguration().getShutdownTimeout());
 
     Field httpServerFilterDelegate = GrizzlyServerManager.class.getDeclaredField("httpServerFilterDelegate");
     httpServerFilterDelegate.setAccessible(true);
@@ -221,11 +221,12 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
 
     Field filters = GrizzlyAddressDelegateFilter.class.getDeclaredField("filters");
     filters.setAccessible(true);
-    ServerAddressMap serverAddressMap =  (ServerAddressMap) filters.get(grizzlyAddressDelegateFilter);
+    ServerAddressMap serverAddressMap = (ServerAddressMap) filters.get(grizzlyAddressDelegateFilter);
     return (HttpServerFilter) serverAddressMap.get(serverAddress);
   }
 
-  private int getMaxHeaders(HttpServerFilter httpServerFilter, String maxHeaders) throws NoSuchFieldException, IllegalAccessException {
+  private int getMaxHeaders(HttpServerFilter httpServerFilter, String maxHeaders)
+      throws NoSuchFieldException, IllegalAccessException {
     Field maxRequestHeadersField = HttpServerFilter.class.getDeclaredField(maxHeaders);
     maxRequestHeadersField.setAccessible(true);
     return (int) maxRequestHeadersField.get(httpServerFilter);
@@ -237,6 +238,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
     return new HttpGrizzlyServerManagerTestDecorator(selectorPool, workerPool, idleTimeoutExecutorService, registry,
                                                      socketProperties, getRuntime().availableProcessors());
   }
+
   private static class HttpGrizzlyServerManagerTestDecorator extends GrizzlyServerManager {
 
 
