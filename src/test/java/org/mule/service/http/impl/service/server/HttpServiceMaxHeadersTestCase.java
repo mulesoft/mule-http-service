@@ -68,6 +68,7 @@ public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
     request.addHeader("header1", "someValue");
     request.addHeader("header2", "someValue");
     request.addHeader("header3", "someValue");
+    request.addHeader("header4", "someValue");
 
     org.apache.http.HttpResponse response = request.execute().returnResponse();
     StatusLine statusLine = response.getStatusLine();
