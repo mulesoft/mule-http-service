@@ -156,7 +156,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
       "assigned correctly by default. We check that the variables are properly set because we are delegating the max headers" +
       " amount check to Grizzly")
   @Test
-  public void testMaxRequestAndResponseHeadersIfNotSetBySystemPropertyIsSetByDefault()
+  public void testMaxRequestAndResponseHeadersIfNotSetBySystemPropertyAreSetByDefault()
       throws Throwable {
     HttpServerFilter httpServerFilter = getHttpServerFilter(serverManager);
 

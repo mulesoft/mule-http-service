@@ -82,12 +82,12 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
 
-  private static final String MAX_REQUEST_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_REQUEST_HEADERS";
-  private static int MAX_REQUEST_HEADERS =
-      getInteger(MAX_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
-  private static final String MAX_RESPONSE_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS";
-  public static int MAX_RESPONSE_HEADERS =
-      getInteger(MAX_RESPONSE_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+  private static final String MAX_SERVER_REQUEST_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_SERVER_REQUEST_HEADERS";
+  private static int MAX_SERVER_REQUEST_HEADERS =
+      getInteger(MAX_SERVER_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+  private static final String MAX_SERVER_RESPONSE_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_SERVER_RESPONSE_HEADERS";
+  public static int MAX_SERVER_RESPONSE_HEADERS =
+      getInteger(MAX_SERVER_RESPONSE_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
 
   public static final long DEFAULT_READ_TIMEOUT_MILLIS = 30000L;
 
@@ -363,12 +363,12 @@ public class GrizzlyServerManager implements HttpServerManager {
       ka.setIdleTimeoutInSeconds(convertToSeconds(connectionIdleTimeout));
     }
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Setting http filter with maxRequestsHeaders {} and maxResponseHeaders {}", MAX_REQUEST_HEADERS,
-                   MAX_RESPONSE_HEADERS);
+      LOGGER.debug("Setting http filter with maxRequestsHeaders {} and maxResponseHeaders {}", MAX_SERVER_REQUEST_HEADERS,
+                   MAX_SERVER_RESPONSE_HEADERS);
     }
     HttpServerFilter httpServerFilter =
         new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), DEFAULT_RESPONSE_TYPE, ka, delayedExecutor,
-                             MAX_REQUEST_HEADERS, MAX_RESPONSE_HEADERS);
+                             MAX_SERVER_REQUEST_HEADERS, MAX_SERVER_RESPONSE_HEADERS);
     httpServerFilter.getMonitoringConfig()
         .addProbes(new HttpMessageLogger(LISTENER, identifier.getName(), currentThread().getContextClassLoader()));
     httpServerFilter.setAllowPayloadForUndefinedHttpMethods(ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS);
@@ -401,8 +401,8 @@ public class GrizzlyServerManager implements HttpServerManager {
   }
 
   public static void refreshSystemProperties() {
-    MAX_REQUEST_HEADERS = getInteger(MAX_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
-    MAX_RESPONSE_HEADERS = getInteger(MAX_RESPONSE_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+    MAX_SERVER_REQUEST_HEADERS = getInteger(MAX_SERVER_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+    MAX_SERVER_RESPONSE_HEADERS = getInteger(MAX_SERVER_RESPONSE_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
   }
 
   /**
