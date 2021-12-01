@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.client;
 
 import static java.lang.Integer.getInteger;
 import static java.lang.Runtime.getRuntime;
+import static java.util.Arrays.asList;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
