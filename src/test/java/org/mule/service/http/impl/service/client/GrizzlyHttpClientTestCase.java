@@ -35,10 +35,10 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
   SchedulerConfig schedulerConfig2;
 
   @Before
-  public void setUp(){
-    schedulerService =  mock(SchedulerService.class);
-    schedulerConfig =  mock(SchedulerConfig.class);
-    schedulerConfig2 =  mock(SchedulerConfig.class);
+  public void setUp() {
+    schedulerService = mock(SchedulerService.class);
+    schedulerConfig = mock(SchedulerConfig.class);
+    schedulerConfig2 = mock(SchedulerConfig.class);
 
     when(schedulerService.customScheduler(any())).thenReturn(mock(Scheduler.class));
     when(schedulerService.ioScheduler(any())).thenReturn(mock(Scheduler.class));
@@ -67,13 +67,13 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
 
   @Issue("MULE-19837")
   @Description("When the max number of request headers are set by System Properties, they should be " +
-      "assigned correctly to Grizzly's AsyncHttpClient. We check that the variables are properly set because we are delegating the max headers" +
-      " amount check to Grizzly")
+      "assigned correctly to Grizzly's AsyncHttpClient. We check that the variables are properly set because we are delegating the max headers"
+      + " amount check to Grizzly")
   @Test
   public void testMaxClientRequestHeadersCanBeSetBySystemProperty() throws Throwable {
     String maxSetRequestHeaders = "150";
     HttpClient client = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_CLIENT_REQUEST_HEADERS", maxSetRequestHeaders,
-        this::refreshSystemPropertiesAndCreateGrizzlyHttpClient);
+                                         this::refreshSystemPropertiesAndCreateGrizzlyHttpClient);
 
     client.start();
 
@@ -88,7 +88,7 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
   private GrizzlyHttpClient refreshSystemPropertiesAndCreateGrizzlyHttpClient() {
     GrizzlyHttpClient.refreshSystemProperties();
     return new GrizzlyHttpClient(mock(HttpClientConfiguration.class, RETURNS_DEEP_STUBS),
-        schedulerService,
-        schedulerConfig);
+                                 schedulerService,
+                                 schedulerConfig);
   }
 }
