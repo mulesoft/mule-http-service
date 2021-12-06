@@ -59,7 +59,7 @@ public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
       "assigned correctly. If this max number is exceeded, a 413 status code should be returned.")
   @Test
   public void whenRequestHasMoreHeadersThanMaxNumberThen413ShouldBeReturned() throws Throwable {
-    HttpServer httpServer = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_REQUEST_HEADERS", "3",
+    HttpServer httpServer = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_SERVER_REQUEST_HEADERS", "3",
                                              this::refreshSystemPropertiesAndCreateServer);
     registerHandler(GET, SIMPLE_ENDPOINT, PAYLOAD1, httpServer);
 
@@ -84,7 +84,7 @@ public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
       "assigned correctly. If this max number is exceeded, a NoHttpResponseException should be thrown")
   @Test(expected = NoHttpResponseException.class)
   public void whenResponseHasMoreHeadersThanMaxNumberThenExceptionShouldBeThrown() throws Throwable {
-    HttpServer httpServer = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS", "2",
+    HttpServer httpServer = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_SERVER_RESPONSE_HEADERS", "2",
                                              this::refreshSystemPropertiesAndCreateServer);
     registerHandler(GET, SIMPLE_ENDPOINT, PAYLOAD1, httpServer);
     Request request =

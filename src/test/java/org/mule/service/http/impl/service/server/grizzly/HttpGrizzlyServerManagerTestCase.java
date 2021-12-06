@@ -158,6 +158,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   @Test
   public void testMaxRequestAndResponseHeadersIfNotSetBySystemPropertyAreSetByDefault()
       throws Throwable {
+    GrizzlyServerManager.refreshSystemProperties();
     HttpServerFilter httpServerFilter = getHttpServerFilter(serverManager);
 
     assertThat(getMaxHeaders(httpServerFilter, "maxRequestHeaders"), is(MAX_NUM_HEADERS_DEFAULT));
@@ -174,7 +175,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
     String maxSetRequestHeaders = "80";
 
     GrizzlyServerManager grizzlyServerManager =
-        callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_REQUEST_HEADERS", maxSetRequestHeaders,
+        callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_SERVER_REQUEST_HEADERS", maxSetRequestHeaders,
                          this::refreshSystemPropertiesAndCreateServerManager);
     HttpServerFilter httpServerFilter = getHttpServerFilter(grizzlyServerManager);
 
@@ -191,7 +192,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
     String maxSetResponseHeaders = "70";
 
     GrizzlyServerManager grizzlyServerManager =
-        callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_RESPONSE_HEADERS", maxSetResponseHeaders,
+        callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_SERVER_RESPONSE_HEADERS", maxSetResponseHeaders,
                          this::refreshSystemPropertiesAndCreateServerManager);
     HttpServerFilter httpServerFilter = getHttpServerFilter(grizzlyServerManager);
 
