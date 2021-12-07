@@ -15,6 +15,8 @@ import static java.lang.System.getProperty;
 import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
+import static org.glassfish.grizzly.http.util.Constants.DEFAULT_RESPONSE_TYPE;
+import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
@@ -79,6 +81,15 @@ public class GrizzlyServerManager implements HttpServerManager {
       parseBoolean(getProperty(ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS_PROPERTY, "true"));
 
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;
+
+  private static final String MAX_SERVER_REQUEST_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_SERVER_REQUEST_HEADERS";
+  private static int MAX_SERVER_REQUEST_HEADERS =
+      getInteger(MAX_SERVER_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+  private static final String MAX_SERVER_RESPONSE_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_SERVER_RESPONSE_HEADERS";
+  public static int MAX_SERVER_RESPONSE_HEADERS =
+      getInteger(MAX_SERVER_RESPONSE_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+
+  public static final long DEFAULT_READ_TIMEOUT_MILLIS = 30000L;
 
   private final GrizzlyAddressDelegateFilter<IdleTimeoutFilter> timeoutFilterDelegate;
   protected final GrizzlyAddressDelegateFilter<SSLFilter> sslFilterDelegate;
@@ -276,6 +287,7 @@ public class GrizzlyServerManager implements HttpServerManager {
                                                                                    shutdownTimeout);
     servers.put(serverAddress, grizzlyServer);
     serversByIdentifier.put(identifier, grizzlyServer);
+
     return grizzlyServer;
   }
 
@@ -329,8 +341,13 @@ public class GrizzlyServerManager implements HttpServerManager {
       ka.setMaxRequestsCount(MAX_KEEP_ALIVE_REQUESTS);
       ka.setIdleTimeoutInSeconds(convertToSeconds(connectionIdleTimeout));
     }
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Setting http filter with maxRequestsHeaders {} and maxResponseHeaders {}", MAX_SERVER_REQUEST_HEADERS,
+                   MAX_SERVER_RESPONSE_HEADERS);
+    }
     HttpServerFilter httpServerFilter =
-        new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), ka, delayedExecutor);
+        new HttpServerFilter(true, retrieveMaximumHeaderSectionSize(), DEFAULT_RESPONSE_TYPE, ka, delayedExecutor,
+                             MAX_SERVER_REQUEST_HEADERS, MAX_SERVER_RESPONSE_HEADERS);
     httpServerFilter.getMonitoringConfig()
         .addProbes(new HttpMessageLogger(LISTENER, identifier.getName(), currentThread().getContextClassLoader()));
     httpServerFilter.setAllowPayloadForUndefinedHttpMethods(ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS);
@@ -360,6 +377,11 @@ public class GrizzlyServerManager implements HttpServerManager {
                                                                 MAXIMUM_HEADER_SECTION_SIZE_PROPERTY_KEY)),
                                      e);
     }
+  }
+
+  public static void refreshSystemProperties() {
+    MAX_SERVER_REQUEST_HEADERS = getInteger(MAX_SERVER_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+    MAX_SERVER_RESPONSE_HEADERS = getInteger(MAX_SERVER_RESPONSE_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
   }
 
   /**
