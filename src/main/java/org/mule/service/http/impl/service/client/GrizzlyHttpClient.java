@@ -144,6 +144,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private final boolean decompressionEnabled;
   private Scheduler selectorScheduler;
   private Scheduler workerScheduler;
+  private Scheduler redirectScheduler;
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
   protected AsyncHttpClient asyncHttpClient;
@@ -176,6 +177,11 @@ public class GrizzlyHttpClient implements HttpClient {
         .withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
         .withName(name), DEFAULT_SELECTOR_THREAD_COUNT);
     workerScheduler = getWorkerScheduler(schedulersConfig.withName(name + ".requester.workers"));
+
+    redirectScheduler = schedulerService.customScheduler(schedulersConfig
+        .withDirectRunCpuLightWhenTargetBusy(true)
+        .withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
+        .withName(name + ".requester.redirect.workers"), DEFAULT_SELECTOR_THREAD_COUNT);
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
     builder.setAllowPoolingConnections(true);
@@ -290,8 +296,8 @@ public class GrizzlyHttpClient implements HttpClient {
     GrizzlyAsyncHttpProviderConfig providerConfig = new GrizzlyAsyncHttpProviderConfig();
     CompositeTransportCustomizer compositeTransportCustomizer = new CompositeTransportCustomizer();
     compositeTransportCustomizer
-        .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler, streamingEnabled,
-                                                                  DEFAULT_SELECTOR_THREAD_COUNT));
+        .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler, redirectScheduler,
+                                                                  streamingEnabled, DEFAULT_SELECTOR_THREAD_COUNT));
     compositeTransportCustomizer.addTransportCustomizer(new LoggerTransportCustomizer(name));
 
     if (clientSocketProperties != null) {

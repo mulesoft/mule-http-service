@@ -24,12 +24,15 @@ public class IOStrategyTransportCustomizer implements TransportCustomizer {
   private final boolean streamingEnabled;
   private ExecutorService selectorPool;
   private ExecutorService workerPool;
+  private ExecutorService redirectWorkerPool;
   private int selectorCount;
 
-  public IOStrategyTransportCustomizer(ExecutorService selectorPool, ExecutorService workerPool, boolean streamingEnabled,
-                                       int selectorCount) {
+  public IOStrategyTransportCustomizer(ExecutorService selectorPool, ExecutorService workerPool,
+                                       ExecutorService redirectWorkerPool,
+                                       boolean streamingEnabled, int selectorCount) {
     this.selectorPool = selectorPool;
     this.workerPool = workerPool;
+    this.redirectWorkerPool = redirectWorkerPool;
     this.streamingEnabled = streamingEnabled;
     this.selectorCount = selectorCount;
   }
@@ -40,6 +43,7 @@ public class IOStrategyTransportCustomizer implements TransportCustomizer {
     transport.setIOStrategy(streamingEnabled ? WorkerThreadIOStrategy.getInstance() : SameThreadIOStrategy.getInstance());
     transport.setKernelThreadPool(selectorPool);
     transport.setWorkerThreadPool(workerPool);
+    transport.setRedirectPool(redirectWorkerPool);
     transport.setSelectorRunnersCount(selectorCount);
   }
 }

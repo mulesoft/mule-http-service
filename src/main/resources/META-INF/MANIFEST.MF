@@ -1,0 +1,32 @@
+Manifest-Version: 1.0
+Build-Date: 
+Built-By: jgrethe
+Specification-Title: HTTP Service Implementation
+Implementation-Vendor-Id: org.mule.services
+Description: Mule Runtime and Integration Platform
+Git-commit-id: 3a342ea1d2f62d3eb21dabe623a58f6ec3f4d8a7
+Recommended-Jdks: [1.8.0_181,9),[11,12)
+Product-Url: https://developer.mulesoft.com/
+Build-Revision: 3a342ea1
+Dev-List-Email: mule-esb@mulesoft.com
+Git-commit-time: 2021-12-07T11:36:31-0300
+Git-tags: 
+Implementation-Title: HTTP Service Implementation
+Git-remote-origin-url: https://github.com/mulesoft/mule-http-service.g
+ it
+Implementation-Version: 1.7.0-SNAPSHOT
+Specification-Vendor: MuleSoft, Inc.
+Supported-Jdks: [1.8.0,12)
+Implementation-Vendor: MuleSoft, Inc.
+Git-branch: master
+Git-commit-id-describe: 3a342ea-dirty
+License: CPAL v1.0 http://www.mulesoft.com/CPAL/
+More-Info: For more information go to https://developer.mulesoft.com/
+Vendor-Url: http://www.mulesoft.com
+Support: Get commercial support: http://www.mulesoft.com/support
+Created-By: Apache Maven 3.8.3
+Build-Jdk: 1.8.0_292
+Specification-Version: 1.7
+Implementation-URL: https://developer.mulesoft.com/mule-core-services-
+ parent/mule-service-http/
+
