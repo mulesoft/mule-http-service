@@ -23,6 +23,7 @@ import static java.lang.String.valueOf;
 import static java.lang.System.getProperties;
 import static java.lang.System.getProperty;
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
+import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
@@ -135,6 +136,10 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String ENABLE_MULE_REDIRECT_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.enableMuleRedirect";
   private static final boolean enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY_NAME, "false"));
 
+  private static final String MAX_CLIENT_REQUEST_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_CLIENT_REQUEST_HEADERS";
+  private static int MAX_CLIENT_REQUEST_HEADERS =
+      getInteger(MAX_CLIENT_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
   private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
@@ -191,6 +196,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
     builder.setAllowPoolingConnections(true);
+    builder.setMaxRequestHeaders(MAX_CLIENT_REQUEST_HEADERS);
 
     configureTransport(builder);
     configureTlsContext(builder);
@@ -638,6 +644,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   public static void refreshSystemProperties() {
     DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
+    MAX_CLIENT_REQUEST_HEADERS = getInteger(MAX_CLIENT_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
   }
 
   private static boolean isRequestStreamingEnabled() {
