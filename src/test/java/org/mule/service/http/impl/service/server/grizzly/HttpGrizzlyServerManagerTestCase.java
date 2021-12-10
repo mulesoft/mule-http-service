@@ -36,6 +36,7 @@ import org.mule.service.http.impl.service.server.ServerAddressMap;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.concurrent.ExecutorService;
 
 import io.qameta.allure.Description;
