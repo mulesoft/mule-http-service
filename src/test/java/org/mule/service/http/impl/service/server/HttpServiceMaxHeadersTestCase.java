@@ -30,6 +30,7 @@ import io.qameta.allure.Issue;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.StatusLine;
 import org.apache.http.client.fluent.Request;
+import org.junit.After;
 import org.junit.Test;
 
 public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
@@ -52,6 +53,11 @@ public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
           .addHeader(CONTENT_TYPE, TEXT.toRfcString())
           .build(), new IgnoreResponseStatusCallback());
     });
+  }
+
+  @After
+  public void tearDown() {
+    GrizzlyServerManager.refreshSystemProperties();
   }
 
   @Issue("MULE-19837")

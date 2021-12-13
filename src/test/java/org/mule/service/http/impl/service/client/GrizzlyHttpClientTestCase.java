@@ -24,6 +24,7 @@ import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
+import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import java.lang.reflect.Field;
@@ -31,6 +32,7 @@ import java.lang.reflect.Field;
 import com.ning.http.client.AsyncHttpClient;
 import io.qameta.allure.Description;
 import io.qameta.allure.Issue;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,6 +53,11 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
     when(schedulerConfig.withDirectRunCpuLightWhenTargetBusy(anyBoolean())).thenReturn(schedulerConfig2);
     when(schedulerConfig2.withMaxConcurrentTasks(anyInt())).thenReturn(mock(SchedulerConfig.class));
     when(schedulerConfig.withName(any())).thenReturn(mock(SchedulerConfig.class));
+  }
+
+  @After
+  public void tearDown() {
+    GrizzlyServerManager.refreshSystemProperties();
   }
 
   @Issue("MULE-19837")
