@@ -81,7 +81,8 @@ public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
 
     assertThat(statusLine.getStatusCode(), is(REQUEST_TOO_LONG.getStatusCode()));
 
-
+    httpServer.stop();
+    httpServer.dispose();
   }
 
   @Issue("MULE-19837")
