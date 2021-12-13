@@ -57,7 +57,7 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   private final TlsContextFactory tlsContextFactory = TlsContextFactory.builder().buildDefault();
 
   @After
-  public void tearDown(){
+  public void tearDown() {
     GrizzlyServerManager.refreshSystemProperties();
   }
 

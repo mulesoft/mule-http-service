@@ -56,7 +56,7 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
   }
 
   @After
-  public void tearDown(){
+  public void tearDown() {
     GrizzlyServerManager.refreshSystemProperties();
   }
 
