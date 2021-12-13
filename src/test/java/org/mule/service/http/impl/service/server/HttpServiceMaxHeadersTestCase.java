@@ -30,6 +30,7 @@ import io.qameta.allure.Issue;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.StatusLine;
 import org.apache.http.client.fluent.Request;
+import org.junit.After;
 import org.junit.Test;
 
 public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
@@ -54,6 +55,11 @@ public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
     });
   }
 
+  @After
+  public void tearDown(){
+    GrizzlyServerManager.refreshSystemProperties();
+  }
+
   @Issue("MULE-19837")
   @Description("When the max number of request headers are set by System Properties, they should be " +
       "assigned correctly. If this max number is exceeded, a 413 status code should be returned.")
@@ -75,8 +81,7 @@ public class HttpServiceMaxHeadersTestCase extends AbstractHttpServerTestCase {
 
     assertThat(statusLine.getStatusCode(), is(REQUEST_TOO_LONG.getStatusCode()));
 
-    httpServer.stop();
-    httpServer.dispose();
+
   }
 
   @Issue("MULE-19837")
