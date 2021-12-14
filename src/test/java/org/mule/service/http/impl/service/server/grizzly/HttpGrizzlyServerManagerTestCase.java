@@ -44,6 +44,7 @@ import io.qameta.allure.Description;
 import io.qameta.allure.Issue;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.http.HttpServerFilter;
+import org.junit.After;
 import org.junit.Test;
 
 import io.qameta.allure.Feature;
@@ -54,6 +55,11 @@ import io.qameta.allure.Story;
 public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManagerTestCase {
 
   private final TlsContextFactory tlsContextFactory = TlsContextFactory.builder().buildDefault();
+
+  @After
+  public void tearDown() {
+    GrizzlyServerManager.refreshSystemProperties();
+  }
 
   @Override
   protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
