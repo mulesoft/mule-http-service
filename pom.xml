@@ -21,7 +21,7 @@
         <grizzlyVersion>2.3.36-MULE-024</grizzlyVersion>
         <javax.activation.version>1.2.0</javax.activation.version>
         <sun.mailapi.version>1.6.5</sun.mailapi.version>
-        <bouncycastle.version>1.69</bouncycastle.version>
+        <bouncycastle.version>1.70</bouncycastle.version>
 
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
