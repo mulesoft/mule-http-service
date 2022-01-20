@@ -424,7 +424,7 @@ public class GrizzlyHttpClient implements HttpClient {
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options) {
     try {
       return sendAsync(request, createGrizzlyRequest(request, options), options, 0);
-    } catch (IOException e) {
+    } catch (Throwable e) {
       CompletableFuture ex = new CompletableFuture();
       ex.completeExceptionally(e);
       return ex;
@@ -451,7 +451,7 @@ public class GrizzlyHttpClient implements HttpClient {
           if (redirectUtils.shouldFollowRedirect(response, options, enableMuleRedirect)) {
             try {
               handleRedirectAsync(request, response, options, currentRedirects, future);
-            } catch (IOException e) {
+            } catch (Throwable e) {
               future.completeExceptionally(e);
             }
           } else {

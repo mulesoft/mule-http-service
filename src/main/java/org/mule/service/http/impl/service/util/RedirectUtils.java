@@ -71,7 +71,7 @@ public class RedirectUtils {
    * @param statusCode
    * @return false if the status code is 301, 307 or 308, or true if it is 302 or 303.
    */
-  private boolean mustSendAsGet(int statusCode) {
+  private boolean mustBeSendAsGet(int statusCode) {
     return !(statusCode < 302 || statusCode > 303) && !(statusCode == 302 && isStrict302Handling);
   }
 
@@ -91,7 +91,7 @@ public class RedirectUtils {
     headers.remove(ContentLength.toString());
     String redirectMethod;
 
-    if (mustSendAsGet(response.getStatusCode())) {
+    if (mustBeSendAsGet(response.getStatusCode())) {
       redirectMethod = GET.name();
       headers.remove(ContentType.toString());
     } else {
