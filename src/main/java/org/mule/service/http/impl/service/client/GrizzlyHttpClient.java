@@ -422,6 +422,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options) {
+    checkState(asyncHttpClient != null, "The client must be started before use.");
     try {
       return sendAsync(request, createGrizzlyRequest(request, options), options, 0);
     } catch (Throwable e) {
@@ -433,7 +434,6 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private CompletableFuture<HttpResponse> sendAsync(HttpRequest request, Request grizzlyRequest,
                                                     HttpRequestOptions options, int currentRedirects) {
-    checkState(asyncHttpClient != null, "The client must be started before use.");
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
