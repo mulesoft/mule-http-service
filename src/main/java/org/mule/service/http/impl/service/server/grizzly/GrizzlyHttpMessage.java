@@ -129,12 +129,12 @@ public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements Http
 
   private void initializeHeaders() {
     this.headers = new CaseInsensitiveMultiMap(!PRESERVE_HEADER_CASE);
-    MimeHeaders headers = requestPacket.getHeaders();
+    MimeHeaders grizzlyHeaders = requestPacket.getHeaders();
     // For performance reasons we don't want to use Grizzly's MimeHeaders iterators because they are O(N^2)
     // The downside is that we are potentially decoding a header more than once if there are repetitions
-    for (int i = 0; i < headers.size(); i++) {
-      String header = headers.getName(i).toString();
-      String value = headers.getValue(i).toString();
+    for (int i = 0; i < grizzlyHeaders.size(); i++) {
+      String header = grizzlyHeaders.getName(i).toString();
+      String value = grizzlyHeaders.getValue(i).toString();
       this.headers.put(header, value);
     }
     this.headers = this.headers.toImmutableMultiMap();
