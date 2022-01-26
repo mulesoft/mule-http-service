@@ -12,6 +12,8 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
 import static org.mule.runtime.http.api.utils.HttpEncoderDecoderUtils.decodeQueryString;
 import static org.mule.runtime.http.api.utils.UriCache.getUriFromString;
+
+import org.glassfish.grizzly.http.util.MimeHeaders;
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.domain.CaseInsensitiveMultiMap;
 import org.mule.runtime.http.api.domain.HttpProtocol;
@@ -127,11 +129,13 @@ public abstract class GrizzlyHttpMessage extends BaseHttpMessage implements Http
 
   private void initializeHeaders() {
     this.headers = new CaseInsensitiveMultiMap(!PRESERVE_HEADER_CASE);
-    for (String grizzlyHeaderName : requestPacket.getHeaders().names()) {
-      final Iterable<String> headerValues = requestPacket.getHeaders().values(grizzlyHeaderName);
-      for (String headerValue : headerValues) {
-        this.headers.put(grizzlyHeaderName, headerValue);
-      }
+    MimeHeaders grizzlyHeaders = requestPacket.getHeaders();
+    // For performance reasons we don't want to use Grizzly's MimeHeaders iterators because they are O(N^2)
+    // The downside is that we are potentially decoding a header more than once if there are repetitions
+    for (int i = 0; i < grizzlyHeaders.size(); i++) {
+      String header = grizzlyHeaders.getName(i).toString();
+      String value = grizzlyHeaders.getValue(i).toString();
+      this.headers.put(header, value);
     }
     this.headers = this.headers.toImmutableMultiMap();
   }
