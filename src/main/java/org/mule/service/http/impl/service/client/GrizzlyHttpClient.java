@@ -115,7 +115,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final int DEFAULT_STREAMING_WORKERS_QUEUE_SIZE = getDefaultStreamingWorkersQueueSize();
 
   public static final String CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE = SYSTEM_PROPERTY_PREFIX + "http.client.headerSectionSize";
-  
+
   private static boolean enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY, "false"));
 
   private static final String MAX_CLIENT_REQUEST_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_CLIENT_REQUEST_HEADERS";
