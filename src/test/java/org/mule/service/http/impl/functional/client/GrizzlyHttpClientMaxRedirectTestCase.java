@@ -15,6 +15,7 @@ import static org.mule.runtime.http.api.HttpConstants.HttpStatus.MOVED_PERMANENT
 import static org.mule.runtime.http.api.HttpHeaders.Names.LOCATION;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.service.client.GrizzlyHttpClient.MAX_REDIRECTS;
+import static org.mule.service.http.impl.service.client.GrizzlyHttpClient.refreshSystemProperties;
 
 import com.ning.http.client.MaxRedirectException;
 import io.qameta.allure.Feature;
@@ -68,6 +69,7 @@ public class GrizzlyHttpClientMaxRedirectTestCase extends AbstractHttpClientTest
 
   @Before
   public void before() {
+    refreshSystemProperties();
     currentRedirects = 0;
     client = service.getClientFactory().create(clientBuilder.setStreaming(streamingMode).build());
     client.start();
