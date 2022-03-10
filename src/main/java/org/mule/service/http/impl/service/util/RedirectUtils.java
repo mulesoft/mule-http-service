@@ -6,7 +6,6 @@
  */
 package org.mule.service.http.impl.service.util;
 
-import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultStrict302Handling;
 import static com.ning.http.client.uri.Uri.create;
 import static org.glassfish.grizzly.http.util.Header.Authorization;
 import static org.glassfish.grizzly.http.util.Header.ContentLength;
@@ -32,9 +31,11 @@ import com.ning.http.client.uri.Uri;
 public class RedirectUtils {
 
   private final boolean isStrict302Handling;
+  private final boolean preserveHeaderCase;
 
-  public RedirectUtils(boolean isStrict302Handling) {
+  public RedirectUtils(boolean isStrict302Handling, boolean preserveHeaderCase) {
     this.isStrict302Handling = isStrict302Handling;
+    this.preserveHeaderCase = preserveHeaderCase;
   }
 
   /**
@@ -105,7 +106,7 @@ public class RedirectUtils {
       }
     });
 
-    return builder().uri(path.toUrl()).method(redirectMethod)
+    return builder(preserveHeaderCase).uri(path.toUrl()).method(redirectMethod)
         .protocol(request.getProtocol()).headers(headers).entity(request.getEntity()).build();
   }
 

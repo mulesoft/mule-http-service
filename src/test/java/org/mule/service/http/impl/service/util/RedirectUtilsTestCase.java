@@ -13,6 +13,7 @@ import static org.glassfish.grizzly.http.util.Header.Authorization;
 import static org.glassfish.grizzly.http.util.Header.ContentLength;
 import static org.glassfish.grizzly.http.util.Header.Host;
 import static org.glassfish.grizzly.http.util.Header.ProxyAuthorization;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
@@ -42,6 +43,7 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
+import java.util.Map;
 
 @RunWith(Parameterized.class)
 @Feature(HTTP_SERVICE)
@@ -99,48 +101,48 @@ public class RedirectUtilsTestCase {
   @Test
   public void redirectedRequestWithHostUsesQueryParamsFromResponseLocation() {
     when(response.getStatusCode()).thenReturn(301);
-    testRedirectRequest("http://redirecthost/redirectPath?param=redirect", method, false);
+    testRedirectRequest("http://redirecthost/redirectPath?param=redirect", method, false, false);
   }
 
   @Test
   public void redirectedRequestWithoutHostUsesQueryParamsFromResponseLocation() {
     when(response.getStatusCode()).thenReturn(301);
-    testRedirectRequest("/redirectPath?param=redirect", method, false);
+    testRedirectRequest("/redirectPath?param=redirect", method, false, false);
   }
 
   @Test
   public void redirectedRequestWith302AndPostMethod() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(302);
-    testRedirectRequest("/redirectPath?param=redirect", "GET", false);
+    testRedirectRequest("/redirectPath?param=redirect", "GET", false, false);
   }
 
   @Test
   public void redirectedRequestWith302AndPostMethodWithStrict302Handling() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(302);
-    testRedirectRequest("/redirectPath?param=redirect", "POST", true);
+    testRedirectRequest("/redirectPath?param=redirect", "POST", true, false);
   }
 
   @Test
   public void redirectedRequestWith303AndPostMethod() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(303);
-    testRedirectRequest("/redirectPath?param=redirect", "GET", false);
+    testRedirectRequest("/redirectPath?param=redirect", "GET", false, false);
   }
 
   @Test
   public void redirectedRequestWithHostHeader() {
     when(response.getStatusCode()).thenReturn(301);
     originalRequestHeaders.put(Host.toString(), "HOST");
-    testRedirectRequest("/redirectPath?param=redirect", method, false);
+    testRedirectRequest("/redirectPath?param=redirect", method, false, false);
   }
 
   @Test
   public void redirectedRequestWithContentLengthHeader() {
     when(response.getStatusCode()).thenReturn(301);
     originalRequestHeaders.put(ContentLength.toString(), "ContentLength");
-    testRedirectRequest("/redirectPath?param=redirect", method, false);
+    testRedirectRequest("/redirectPath?param=redirect", method, false, false);
   }
 
   @Test
@@ -154,15 +156,25 @@ public class RedirectUtilsTestCase {
     originalRequestHeaders.put(Authorization.toString(), "Authorization");
     originalRequestHeaders.put(ProxyAuthorization.toString(), "ProxyAuthorization");
 
-    HttpRequest redirectedRequest = testRedirectRequest("/redirectPath?param=redirect", method, false);
+    HttpRequest redirectedRequest = testRedirectRequest("/redirectPath?param=redirect", method, false, false);
 
     assertThat(redirectedRequest.getHeaders().containsKey(Authorization.toString()), is(false));
     assertThat(redirectedRequest.getHeaders().containsKey(ProxyAuthorization.toString()), is(false));
   }
 
-  private HttpRequest testRedirectRequest(String path, String method, boolean isStrict302Handling) {
+  @Test
+  public void caseSensitivity() {
+    when(response.getStatusCode()).thenReturn(301);
+    originalRequestHeaders.put("CaseSensitive", "CaseSensitive");
+
+    HttpRequest redirectedRequest = testRedirectRequest("/redirectPath?param=redirect", method, false, true);
+
+    assertThat(redirectedRequest.getHeaders().entryList().get(0).getKey(), is("CaseSensitive"));
+  }
+
+  private HttpRequest testRedirectRequest(String path, String method, boolean isStrict302Handling, boolean preserveHeaderCase) {
     setLocationHeader(path);
-    RedirectUtils redirectUtils = new RedirectUtils(isStrict302Handling);
+    RedirectUtils redirectUtils = new RedirectUtils(isStrict302Handling, preserveHeaderCase);
     HttpRequest redirectedRequest = redirectUtils.createRedirectRequest(response, originalRequest, options);
 
     assertThat(redirectedRequest.getUri().getRawQuery(), is("param=redirect"));
