@@ -161,13 +161,15 @@ public class RedirectUtilsTestCase {
   }
 
   @Test
+  @Issue("W-10822777")
   public void caseSensitivity() {
     when(response.getStatusCode()).thenReturn(301);
-    originalRequestHeaders.put("CaseSensitive", "CaseSensitive");
+    String testString = "CaseSensitive";
+    originalRequestHeaders.put(testString, testString);
 
     HttpRequest redirectedRequest = testRedirectRequest("/redirectPath?param=redirect", method, false, true);
 
-    assertThat(redirectedRequest.getHeaders().entryList().get(0).getKey(), is("CaseSensitive"));
+    assertThat(redirectedRequest.getHeaders().entryList().get(0).getKey(), is(testString));
   }
 
   private HttpRequest testRedirectRequest(String path, String method, boolean isStrict302Handling, boolean preserveHeaderCase) {
