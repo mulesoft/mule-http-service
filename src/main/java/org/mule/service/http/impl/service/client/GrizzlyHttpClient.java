@@ -116,7 +116,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   public static final String CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE = SYSTEM_PROPERTY_PREFIX + "http.client.headerSectionSize";
 
-  private static final boolean enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY, "false"));
+  private static boolean enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY, "false"));
 
   private static final String MAX_CLIENT_REQUEST_HEADERS_KEY = SYSTEM_PROPERTY_PREFIX + "http.MAX_CLIENT_REQUEST_HEADERS";
   private static int MAX_CLIENT_REQUEST_HEADERS =
@@ -600,6 +600,7 @@ public class GrizzlyHttpClient implements HttpClient {
   public static void refreshSystemProperties() {
     DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
     MAX_CLIENT_REQUEST_HEADERS = getInteger(MAX_CLIENT_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
+    enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY, "false"));
   }
 
   private static boolean isRequestStreamingEnabled() {
