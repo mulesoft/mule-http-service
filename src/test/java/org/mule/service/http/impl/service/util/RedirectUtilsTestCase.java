@@ -13,7 +13,6 @@ import static org.glassfish.grizzly.http.util.Header.Authorization;
 import static org.glassfish.grizzly.http.util.Header.ContentLength;
 import static org.glassfish.grizzly.http.util.Header.Host;
 import static org.glassfish.grizzly.http.util.Header.ProxyAuthorization;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
@@ -43,7 +42,6 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
-import java.util.Map;
 
 @RunWith(Parameterized.class)
 @Feature(HTTP_SERVICE)
