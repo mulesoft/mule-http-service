@@ -289,10 +289,11 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private void configureTransport(AsyncHttpClientConfig.Builder builder) {
     GrizzlyAsyncHttpProviderConfig providerConfig = new GrizzlyAsyncHttpProviderConfig();
+    boolean tlsEnabled = tlsContextFactory != null;
     CompositeTransportCustomizer compositeTransportCustomizer = new CompositeTransportCustomizer();
     compositeTransportCustomizer
         .addTransportCustomizer(new IOStrategyTransportCustomizer(selectorScheduler, workerScheduler, streamingEnabled,
-                                                                  DEFAULT_SELECTOR_THREAD_COUNT));
+                                                                  DEFAULT_SELECTOR_THREAD_COUNT, tlsEnabled));
     compositeTransportCustomizer.addTransportCustomizer(new LoggerTransportCustomizer(name));
 
     if (clientSocketProperties != null) {
