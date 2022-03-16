@@ -99,48 +99,48 @@ public class RedirectUtilsTestCase {
   @Test
   public void redirectedRequestWithHostUsesQueryParamsFromResponseLocation() {
     when(response.getStatusCode()).thenReturn(301);
-    testRedirectRequest("http://redirecthost/redirectPath?param=redirect", method, false);
+    testRedirectRequest("http://redirecthost/redirectPath?param=redirect", method, false, false);
   }
 
   @Test
   public void redirectedRequestWithoutHostUsesQueryParamsFromResponseLocation() {
     when(response.getStatusCode()).thenReturn(301);
-    testRedirectRequest("/redirectPath?param=redirect", method, false);
+    testRedirectRequest("/redirectPath?param=redirect", method, false, false);
   }
 
   @Test
   public void redirectedRequestWith302AndPostMethod() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(302);
-    testRedirectRequest("/redirectPath?param=redirect", "GET", false);
+    testRedirectRequest("/redirectPath?param=redirect", "GET", false, false);
   }
 
   @Test
   public void redirectedRequestWith302AndPostMethodWithStrict302Handling() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(302);
-    testRedirectRequest("/redirectPath?param=redirect", "POST", true);
+    testRedirectRequest("/redirectPath?param=redirect", "POST", true, false);
   }
 
   @Test
   public void redirectedRequestWith303AndPostMethod() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(303);
-    testRedirectRequest("/redirectPath?param=redirect", "GET", false);
+    testRedirectRequest("/redirectPath?param=redirect", "GET", false, false);
   }
 
   @Test
   public void redirectedRequestWithHostHeader() {
     when(response.getStatusCode()).thenReturn(301);
     originalRequestHeaders.put(Host.toString(), "HOST");
-    testRedirectRequest("/redirectPath?param=redirect", method, false);
+    testRedirectRequest("/redirectPath?param=redirect", method, false, false);
   }
 
   @Test
   public void redirectedRequestWithContentLengthHeader() {
     when(response.getStatusCode()).thenReturn(301);
     originalRequestHeaders.put(ContentLength.toString(), "ContentLength");
-    testRedirectRequest("/redirectPath?param=redirect", method, false);
+    testRedirectRequest("/redirectPath?param=redirect", method, false, false);
   }
 
   @Test
@@ -154,15 +154,27 @@ public class RedirectUtilsTestCase {
     originalRequestHeaders.put(Authorization.toString(), "Authorization");
     originalRequestHeaders.put(ProxyAuthorization.toString(), "ProxyAuthorization");
 
-    HttpRequest redirectedRequest = testRedirectRequest("/redirectPath?param=redirect", method, false);
+    HttpRequest redirectedRequest = testRedirectRequest("/redirectPath?param=redirect", method, false, false);
 
     assertThat(redirectedRequest.getHeaders().containsKey(Authorization.toString()), is(false));
     assertThat(redirectedRequest.getHeaders().containsKey(ProxyAuthorization.toString()), is(false));
   }
 
-  private HttpRequest testRedirectRequest(String path, String method, boolean isStrict302Handling) {
+  @Test
+  @Issue("W-10822777")
+  public void caseSensitivity() {
+    when(response.getStatusCode()).thenReturn(301);
+    String testString = "CaseSensitive";
+    originalRequestHeaders.put(testString, testString);
+
+    HttpRequest redirectedRequest = testRedirectRequest("/redirectPath?param=redirect", method, false, true);
+
+    assertThat(redirectedRequest.getHeaders().entryList().get(0).getKey(), is(testString));
+  }
+
+  private HttpRequest testRedirectRequest(String path, String method, boolean isStrict302Handling, boolean preserveHeaderCase) {
     setLocationHeader(path);
-    RedirectUtils redirectUtils = new RedirectUtils(isStrict302Handling);
+    RedirectUtils redirectUtils = new RedirectUtils(isStrict302Handling, preserveHeaderCase);
     HttpRequest redirectedRequest = redirectUtils.createRedirectRequest(response, originalRequest, options);
 
     assertThat(redirectedRequest.getUri().getRawQuery(), is("param=redirect"));
