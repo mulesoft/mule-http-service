@@ -169,7 +169,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
     this.schedulerService = schedulerService;
     this.schedulersConfig = schedulersConfig;
-    this.redirectUtils = new RedirectUtils(isStrict302Handling);
+    this.redirectUtils = new RedirectUtils(isStrict302Handling, PRESERVE_HEADER_CASE);
   }
 
   @Override
