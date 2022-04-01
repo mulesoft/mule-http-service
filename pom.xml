@@ -133,8 +133,14 @@
         <dependency>
             <groupId>org.mule.tests</groupId>
             <artifactId>mule-tests-unit</artifactId>
-            <version>${mule.version}</version>
+            <version>${mule.version}</version> 
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-slf4j-impl</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.mule.services</groupId>
@@ -183,6 +189,12 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bctls-jdk15on</artifactId>
             <version>${bouncycastle.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.valfirst</groupId>
+            <artifactId>slf4j-test</artifactId>
+            <version>2.6.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
