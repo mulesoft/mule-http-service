@@ -13,12 +13,15 @@ import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
+import static org.mule.runtime.http.api.domain.message.response.HttpResponse.builder;
 
 import static java.lang.String.format;
 import static java.lang.Thread.currentThread;
+import static java.lang.Thread.interrupted;
 import static java.util.Collections.singletonList;
 
 import static com.github.valfirst.slf4jtest.TestLoggerFactory.getTestLogger;
+import static org.apache.http.client.fluent.Request.Post;
 import static org.apache.http.entity.ContentType.DEFAULT_TEXT;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -26,7 +29,6 @@ import static org.junit.Assert.fail;
 
 import org.mule.runtime.core.internal.util.CompositeClassLoader;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
-import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
@@ -36,12 +38,12 @@ import org.mule.tck.probe.JUnitLambdaProbe;
 import org.mule.tck.probe.PollingProber;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.CountDownLatch;
 
 import com.github.valfirst.slf4jtest.TestLogger;
 import io.qameta.allure.Description;
-import org.apache.http.client.fluent.Request;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,7 +53,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
   private CountDownLatch responseLatch;
   private ClassLoader requestHandlerClassLoader;
 
-  TestLogger testLogger = getTestLogger(BaseResponseCompletionHandler.class);
+  private TestLogger testLogger = getTestLogger(BaseResponseCompletionHandler.class);
 
   public HttpBrokenPipeLoggingConfigTestCase(String serviceToLoad) {
     super(serviceToLoad);
@@ -84,18 +86,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
   @Test
   @Description("Verifies that HTTP broken pipe errors are logged in the app log for an app endpoint by checking the TCCL when the log was created")
   public void brokenPipeErrorOnAppEndpointShouldBeLoggedOnTheAppLog() throws Exception {
-    try {
-      Request.Post(format("http://localhost:%s/%s", port.getValue(), "brokenPipe"))
-          .bodyString("That is not dead which can eternal lie, And with strange aeons even death may die.", DEFAULT_TEXT)
-          .socketTimeout(1)
-          .addHeader(CONNECTION, CLOSE)
-          .execute()
-          .returnResponse();
-      fail();
-    } catch (SocketTimeoutException ste) {
-      // Expected
-      requestLatch.countDown();
-    }
+    sendRequest("brokenPipe");
 
     responseLatch.await();
 
@@ -109,16 +100,9 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
   @Test
   @Description("Verifies that HTTP broken pipe errors are logged in the runtime log for unmapped paths by checking the TCCL when the log was created")
   public void brokenPipeErrorOnUnmappedEndpointShouldBeLoggedOnTheRuntimeLog() throws Exception {
-    try {
-      Request.Post(format("http://localhost:%s/%s", port.getValue(), "unmapped"))
-          .bodyString("That is not dead which can eternal lie, And with strange aeons even death may die.", DEFAULT_TEXT)
-          .socketTimeout(1)
-          .execute()
-          .returnResponse();
-      fail();
-    } catch (SocketTimeoutException ste) {
-      // Expected
-    }
+    sendRequest("unmapped");
+
+    // The responseLatch is not used here since there is no custom test handler for this endpoint
 
     new PollingProber(getTestTimeoutSecs() * 1000, 100).check(new JUnitLambdaProbe(() -> {
       assertThat(testLogger.getAllLoggingEvents().size(), is(1));
@@ -126,6 +110,21 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
                  is(currentThread().getContextClassLoader()));
       return true;
     }));
+  }
+
+  private void sendRequest(String endpoint) throws IOException {
+    try {
+      Post(format("http://localhost:%s/%s", port.getValue(), endpoint))
+          .bodyString("That is not dead which can eternal lie, And with strange aeons even death may die.", DEFAULT_TEXT)
+          .socketTimeout(1)
+          .addHeader(CONNECTION, CLOSE)
+          .execute()
+          .returnResponse();
+      fail();
+    } catch (SocketTimeoutException ste) {
+      // Expected
+      requestLatch.countDown();
+    }
   }
 
   private void addRequestHandler() {
@@ -140,10 +139,10 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
         requestLatch.await();
       } catch (InterruptedException e) {
         // Nothing to do
-        Thread.interrupted();
+        interrupted();
       }
 
-      responseCallback.responseReady(HttpResponse.builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode())
+      responseCallback.responseReady(builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode())
           .entity(new InputStreamHttpEntity(new ByteArrayInputStream("test".getBytes())))
           .addHeader(CONTENT_TYPE, TEXT.toRfcString())
           .build(), getResponseCallback());
