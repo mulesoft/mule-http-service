@@ -54,6 +54,8 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
   private CountDownLatch responseLatch;
   private ClassLoader requestHandlerClassLoader;
 
+  private final int PROBER_TIMEOUT = (getTestTimeoutSecs() - 15) * 1000;
+
   private TestLogger testLogger = getTestLogger(BaseResponseCompletionHandler.class);
 
   public HttpBrokenPipeLoggingConfigTestCase(String serviceToLoad) {
@@ -93,7 +95,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
 
     responseLatch.await();
 
-    new PollingProber(40000, 100).check(new JUnitLambdaProbe(() -> {
+    new PollingProber(PROBER_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
       assertThat(testLogger.getAllLoggingEvents().size(), is(1));
       assertThat(testLogger.getAllLoggingEvents().get(0).getThreadContextClassLoader(), is(requestHandlerClassLoader));
       return true;
@@ -107,7 +109,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
 
     // The responseLatch is not used here since there is no custom test handler for this endpoint
 
-    new PollingProber(40000, 100).check(new JUnitLambdaProbe(() -> {
+    new PollingProber(PROBER_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
       assertThat(testLogger.getAllLoggingEvents().size(), is(1));
       assertThat(testLogger.getAllLoggingEvents().get(0).getThreadContextClassLoader(),
                  is(currentThread().getContextClassLoader()));
