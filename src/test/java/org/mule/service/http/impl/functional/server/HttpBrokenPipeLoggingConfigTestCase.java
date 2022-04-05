@@ -14,6 +14,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.domain.message.response.HttpResponse.builder;
+import static org.mule.service.http.impl.service.server.grizzly.GrizzlyHttpServer.refreshSystemProperties;
 
 import static java.lang.String.format;
 import static java.lang.Thread.currentThread;
@@ -61,6 +62,8 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
 
   @Before
   public void setUp() throws Exception {
+    refreshSystemProperties();
+
     requestLatch = new CountDownLatch(1);
     responseLatch = new CountDownLatch(1);
 
