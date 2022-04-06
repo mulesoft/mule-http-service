@@ -280,4 +280,12 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
   public static void setReplaceCtxClassloader(boolean replaceContextClassloader) {
     REPLACE_CONTEXT_CLASSLOADER = replaceContextClassloader;
   }
+
+  /**
+   * @deprecated Used only for testing
+   */
+  @Deprecated
+  public static void refreshSystemProperties() {
+    REPLACE_CONTEXT_CLASSLOADER = getProperty(MULE_LOG_SEPARATION_DISABLED) == null;
+  }
 }
