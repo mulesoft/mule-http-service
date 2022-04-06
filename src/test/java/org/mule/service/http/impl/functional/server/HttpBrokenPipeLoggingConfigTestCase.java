@@ -28,20 +28,34 @@ import static org.apache.http.entity.ContentType.DEFAULT_TEXT;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 import org.mule.runtime.core.internal.util.CompositeClassLoader;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
+import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
+import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
+import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
+import org.mule.service.http.impl.service.server.HttpListenerRegistry;
+import org.mule.service.http.impl.service.server.HttpServerDelegate;
+import org.mule.service.http.impl.service.server.NoListenerRequestHandler;
 import org.mule.service.http.impl.service.server.grizzly.BaseResponseCompletionHandler;
+import org.mule.service.http.impl.service.server.grizzly.GrizzlyHttpServer;
 import org.mule.tck.probe.JUnitLambdaProbe;
 import org.mule.tck.probe.PollingProber;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.Writer;
+import java.lang.reflect.Field;
 import java.net.SocketTimeoutException;
+import java.nio.charset.Charset;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import com.github.valfirst.slf4jtest.TestLogger;
@@ -54,6 +68,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
   private CountDownLatch requestLatch;
   private CountDownLatch responseLatch;
   private ClassLoader requestHandlerClassLoader;
+  private RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry;
 
   private TestLogger testLogger = getTestLogger(BaseResponseCompletionHandler.class);
 
@@ -76,10 +91,11 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
     requestHandlerClassLoader = CompositeClassLoader.from(currentThread().getContextClassLoader());
     setContextClassLoader(currentThread, originalClassLoader, requestHandlerClassLoader);
     try {
-      addRequestHandler();
+      server.addRequestHandler(singletonList(POST.name()), "/brokenPipe", new ServerErrorResponseHandler());
     } finally {
       setContextClassLoader(currentThread, requestHandlerClassLoader, originalClassLoader);
     }
+    createRequestMatcherRegistrySpy();
   }
 
   @Override
@@ -104,9 +120,11 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
   @Test
   @Description("Verifies that HTTP broken pipe errors are logged in the runtime log for unmapped paths by checking the TCCL when the log was created")
   public void brokenPipeErrorOnUnmappedEndpointShouldBeLoggedOnTheRuntimeLog() throws Exception {
+    doReturn(new NotFoundResponseHandler()).when(serverAddressRequestHandlerRegistry).find(any());
+
     sendRequest("unmapped");
 
-    // The responseLatch is not used here since there is no custom test handler for this endpoint
+    responseLatch.await();
 
     new PollingProber(LOCK_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
       assertThat(testLogger.getAllLoggingEvents().size(), is(1));
@@ -114,6 +132,20 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
                  is(currentThread().getContextClassLoader()));
       return true;
     }));
+  }
+
+  private void createRequestMatcherRegistrySpy() throws NoSuchFieldException, IllegalAccessException {
+    Field listenerRegistryField = GrizzlyHttpServer.class.getDeclaredField("listenerRegistry");
+    listenerRegistryField.setAccessible(true);
+    HttpServer serverDelegate = ((HttpServerDelegate) server).getDelegate();
+    HttpListenerRegistry httpListenerRegistry = (HttpListenerRegistry) listenerRegistryField.get(serverDelegate);
+    Field requestHandlerPerServerAddressField = HttpListenerRegistry.class.getDeclaredField("requestHandlerPerServerAddress");
+    requestHandlerPerServerAddressField.setAccessible(true);
+    Map<HttpServer, RequestMatcherRegistry<RequestHandler>> requestHandlerPerServerAddress =
+        (Map<HttpServer, RequestMatcherRegistry<RequestHandler>>) requestHandlerPerServerAddressField.get(httpListenerRegistry);
+    serverAddressRequestHandlerRegistry = requestHandlerPerServerAddress.get(serverDelegate);
+    serverAddressRequestHandlerRegistry = spy(serverAddressRequestHandlerRegistry);
+    requestHandlerPerServerAddress.put(serverDelegate, serverAddressRequestHandlerRegistry);
   }
 
   private void sendRequest(String endpoint) throws IOException {
@@ -131,11 +163,8 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
     }
   }
 
-  private void addRequestHandler() {
-    server.addRequestHandler(singletonList(POST.name()), "/brokenPipe", new BrokenPipeCausingHandler());
-  }
-
   private class BrokenPipeCausingHandler implements RequestHandler {
+
 
     @Override
     public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
@@ -145,30 +174,75 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
         // Nothing to do
         interrupted();
       }
+    }
+  }
+
+  private class ServerErrorResponseHandler extends BrokenPipeCausingHandler {
+
+    @Override
+    public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
+      super.handleRequest(requestContext, responseCallback);
 
       responseCallback.responseReady(builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode())
           .entity(new InputStreamHttpEntity(new ByteArrayInputStream("test".getBytes())))
           .addHeader(CONTENT_TYPE, TEXT.toRfcString())
-          .build(), getResponseCallback());
+          .build(), getCountDownLatchResponseStatusCallbackWrapper(null));
     }
   }
 
-  private ResponseStatusCallback getResponseCallback() {
+  private class NotFoundResponseHandler extends BrokenPipeCausingHandler {
+
+    @Override
+    public void handleRequest(HttpRequestContext requestContext, HttpResponseReadyCallback responseCallback) {
+      super.handleRequest(requestContext, responseCallback);
+
+      NoListenerRequestHandler.getInstance().handleRequest(requestContext,
+                                                           getCountDownLatchHttpResponseReadyCallbackWrapper(responseCallback));
+    }
+  }
+
+  private ResponseStatusCallback getCountDownLatchResponseStatusCallbackWrapper(ResponseStatusCallback responseStatusCallback) {
     return new ResponseStatusCallback() {
 
       @Override
       public void responseSendFailure(Throwable throwable) {
+        if (responseStatusCallback != null) {
+          responseStatusCallback.responseSendFailure(throwable);
+        }
         responseLatch.countDown();
       }
 
       @Override
       public void responseSendSuccessfully() {
+        if (responseStatusCallback != null) {
+          responseStatusCallback.responseSendSuccessfully();
+        }
         responseLatch.countDown();
       }
 
       @Override
       public void onErrorSendingResponse(Throwable throwable) {
+        if (responseStatusCallback != null) {
+          responseStatusCallback.onErrorSendingResponse(throwable);
+        }
         responseLatch.countDown();
+      }
+    };
+  }
+
+
+  private HttpResponseReadyCallback getCountDownLatchHttpResponseReadyCallbackWrapper(HttpResponseReadyCallback responseCallback) {
+    return new HttpResponseReadyCallback() {
+
+      @Override
+      public void responseReady(HttpResponse response, ResponseStatusCallback responseStatusCallback) {
+        responseCallback.responseReady(response, getCountDownLatchResponseStatusCallbackWrapper(responseStatusCallback));
+      }
+
+      @Override
+      public Writer startResponse(HttpResponse response, ResponseStatusCallback responseStatusCallback, Charset encoding) {
+        return responseCallback.startResponse(response, getCountDownLatchResponseStatusCallbackWrapper(responseStatusCallback),
+                                              encoding);
       }
     };
   }
