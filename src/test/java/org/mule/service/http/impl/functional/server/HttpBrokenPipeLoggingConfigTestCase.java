@@ -15,6 +15,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.domain.message.response.HttpResponse.builder;
 import static org.mule.service.http.impl.service.server.grizzly.GrizzlyHttpServer.refreshSystemProperties;
+import static org.mule.tck.junit4.AbstractMuleContextTestCase.LOCK_TIMEOUT;
 
 import static java.lang.String.format;
 import static java.lang.Thread.currentThread;
@@ -53,8 +54,6 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
   private CountDownLatch requestLatch;
   private CountDownLatch responseLatch;
   private ClassLoader requestHandlerClassLoader;
-
-  private final int PROBER_TIMEOUT = (getTestTimeoutSecs() - 15) * 1000;
 
   private TestLogger testLogger = getTestLogger(BaseResponseCompletionHandler.class);
 
@@ -95,7 +94,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
 
     responseLatch.await();
 
-    new PollingProber(PROBER_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
+    new PollingProber(LOCK_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
       assertThat(testLogger.getAllLoggingEvents().size(), is(1));
       assertThat(testLogger.getAllLoggingEvents().get(0).getThreadContextClassLoader(), is(requestHandlerClassLoader));
       return true;
@@ -109,7 +108,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
 
     // The responseLatch is not used here since there is no custom test handler for this endpoint
 
-    new PollingProber(PROBER_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
+    new PollingProber(LOCK_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
       assertThat(testLogger.getAllLoggingEvents().size(), is(1));
       assertThat(testLogger.getAllLoggingEvents().get(0).getThreadContextClassLoader(),
                  is(currentThread().getContextClassLoader()));
