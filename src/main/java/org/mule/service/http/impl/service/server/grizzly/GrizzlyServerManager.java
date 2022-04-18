@@ -34,6 +34,7 @@ import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 import org.mule.runtime.http.api.tcp.TcpServerSocketProperties;
 import org.mule.service.http.impl.service.HttpMessageLogger;
+import org.mule.service.http.impl.service.TraceData;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.HttpServerDelegate;
 import org.mule.service.http.impl.service.server.HttpServerManager;
@@ -339,6 +340,16 @@ public class GrizzlyServerManager implements HttpServerManager {
       transport.shutdown();
       servers.clear();
       serversByIdentifier.clear();
+    }
+  }
+
+  @Override
+  public TraceData getServerTraceData(ServerIdentifier serverIdentifier) throws ServerNotFoundException {
+    HttpServer server = serversByIdentifier.get(serverIdentifier);
+    if (server != null) {
+      return new TraceData(server.getReceivedBytesAmount(), server.getSentBytesAmount());
+    } else {
+      throw new ServerNotFoundException(serverIdentifier.getName());
     }
   }
 

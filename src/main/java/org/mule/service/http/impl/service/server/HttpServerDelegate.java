@@ -86,6 +86,16 @@ public class HttpServerDelegate implements HttpServer {
   }
 
   @Override
+  public long getReceivedBytesAmount() {
+    return delegate.getReceivedBytesAmount();
+  }
+
+  @Override
+  public long getSentBytesAmount() {
+    return delegate.getSentBytesAmount();
+  }
+
+  @Override
   public void enableTls(TlsContextFactory tlsContextFactory) {
     delegate.enableTls(tlsContextFactory);
   }

@@ -50,7 +50,14 @@ import com.ning.http.client.Response;
 import com.ning.http.client.filter.FilterException;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
 import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
+import com.ning.http.client.providers.grizzly.TransportCustomizer;
 import com.ning.http.client.uri.Uri;
+import org.glassfish.grizzly.Buffer;
+import org.glassfish.grizzly.Connection;
+import org.glassfish.grizzly.ConnectionProbe;
+import org.glassfish.grizzly.IOEvent;
+import org.glassfish.grizzly.filterchain.FilterChainBuilder;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -302,6 +309,25 @@ public class GrizzlyHttpClient implements HttpClient {
       compositeTransportCustomizer.addTransportCustomizer(new SocketConfigTransportCustomizer(clientSocketProperties));
       builder.setConnectTimeout(clientSocketProperties.getConnectionTimeout());
     }
+
+    compositeTransportCustomizer.addTransportCustomizer(new TransportCustomizer() {
+
+      @Override
+      public void customize(TCPNIOTransport tcpnioTransport, FilterChainBuilder filterChainBuilder) {
+        tcpnioTransport.getConnectionMonitoringConfig().addProbes(new ConnectionProbe.Adapter() {
+
+          @Override
+          public void onReadEvent(Connection connection, Buffer buffer, int size) {
+            logger.debug("Bytes read: {}", size);
+          }
+
+          @Override
+          public void onWriteEvent(Connection connection, Buffer buffer, long size) {
+            logger.debug("Bytes written: {}", size);
+          }
+        });
+      }
+    });
 
     providerConfig.addProperty(TRANSPORT_CUSTOMIZER, compositeTransportCustomizer);
     providerConfig.addProperty(DECOMPRESS_RESPONSE, this.decompressionEnabled);

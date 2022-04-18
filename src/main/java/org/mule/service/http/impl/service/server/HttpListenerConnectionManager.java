@@ -16,10 +16,8 @@ import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.core.api.util.ClassUtils.getMethod;
 import static org.mule.runtime.core.api.util.NetworkUtils.getLocalHostAddress;
 import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.loadTcpServerSocketProperties;
-import static org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager.DEFAULT_READ_TIMEOUT_MILLIS;
 import static org.mule.service.http.impl.service.server.grizzly.IdleExecutor.IDLE_TIMEOUT_THREADS_PREFIX_NAME;
 import org.mule.runtime.api.exception.MuleException;
-import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
@@ -34,10 +32,9 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerAlreadyExistsException;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
+import org.mule.runtime.module.troubleshooting.api.TroubleshootingService;
 import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.UnknownHostException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -56,6 +53,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
 
   private final SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
+  private final TroubleshootingService troubleshootingService;
   protected Scheduler selectorScheduler;
   protected Scheduler workerScheduler;
   protected Scheduler idleTimeoutScheduler;
@@ -64,9 +62,11 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
 
   private AtomicBoolean initialized = new AtomicBoolean(false);
 
-  public HttpListenerConnectionManager(SchedulerService schedulerService, SchedulerConfig schedulersConfig) {
+  public HttpListenerConnectionManager(SchedulerService schedulerService, SchedulerConfig schedulersConfig,
+                                       TroubleshootingService troubleshootingService) {
     this.schedulerService = schedulerService;
     this.schedulersConfig = schedulersConfig;
+    this.troubleshootingService = troubleshootingService;
   }
 
   @Override
@@ -81,6 +81,7 @@ public class HttpListenerConnectionManager implements ContextHttpServerFactory, 
     idleTimeoutScheduler =
         schedulerService.ioScheduler(schedulersConfig.withName(LISTENER_THREAD_NAME_PREFIX + IDLE_TIMEOUT_THREADS_PREFIX_NAME));
     httpServerManager = createServerManager();
+    troubleshootingService.registerOperation(new MeasureHttpServerTraffic(httpServerManager));
   }
 
   @Override

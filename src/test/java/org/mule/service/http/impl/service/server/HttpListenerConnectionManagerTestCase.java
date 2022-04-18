@@ -17,6 +17,7 @@ import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
+import org.mule.runtime.module.troubleshooting.api.TroubleshootingService;
 import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 
 import io.qameta.allure.Description;
@@ -87,7 +88,7 @@ public class HttpListenerConnectionManagerTestCase {
   class TestHttpListenerConnectionManager extends HttpListenerConnectionManager {
 
     public TestHttpListenerConnectionManager(SchedulerService schedulerService, SchedulerConfig schedulersConfig) {
-      super(schedulerService, schedulersConfig);
+      super(schedulerService, schedulersConfig, mock(TroubleshootingService.class));
     }
 
     @Override

@@ -13,6 +13,7 @@ import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ServerCreationException;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
+import org.mule.service.http.impl.service.TraceData;
 
 import java.util.Optional;
 import java.util.concurrent.Executor;
@@ -131,4 +132,6 @@ public interface HttpServerManager {
    * dispose.
    */
   void dispose();
+
+  TraceData getServerTraceData(ServerIdentifier serverIdentifier) throws ServerNotFoundException;
 }

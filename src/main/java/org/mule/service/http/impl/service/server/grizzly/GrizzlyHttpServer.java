@@ -18,6 +18,9 @@ import static org.mule.runtime.api.util.MuleSystemProperties.MULE_LOG_SEPARATION
 import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.runtime.http.api.server.MethodRequestMatcher.acceptAll;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.createSslFilter;
+
+import org.glassfish.grizzly.Buffer;
+import org.glassfish.grizzly.IOEvent;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.HttpConstants.Protocol;
@@ -36,6 +39,8 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import org.glassfish.grizzly.CloseListener;
@@ -71,6 +76,8 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
   /** Used to track client connections so we know if we have to wait on stop. */
   private final List<Connection<?>> clientConnections = synchronizedList(new LinkedList<>());
+  private final AtomicLong receivedBytesAmount = new AtomicLong();
+  private final AtomicLong sentBytesAmount = new AtomicLong();
 
   public GrizzlyHttpServer(ServerAddress serverAddress,
                            TCPNIOTransport transport,
@@ -229,11 +236,16 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
     return format("%s://%s:%d", getProtocol().getScheme(), serverAddress.getIp(), serverAddress.getPort());
   }
 
+  public long getReceivedBytesAmount() {
+    return receivedBytesAmount.get();
+  }
+
+  public long getSentBytesAmount() {
+    return sentBytesAmount.get();
+  }
+
   private class CountAcceptedConnectionsProbe extends ConnectionProbe.Adapter {
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onAcceptEvent(Connection serverConnection, Connection clientConnection) {
       clientConnections.add(clientConnection);
@@ -247,14 +259,23 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
           }
         }
       });
+      clientConnection.getMonitoringConfig().addProbes(new ConnectionProbe.Adapter() {
+
+        @Override
+        public void onReadEvent(Connection connection, Buffer buffer, int size) {
+          receivedBytesAmount.addAndGet(size);
+        }
+
+        @Override
+        public void onWriteEvent(Connection connection, Buffer buffer, long size) {
+          sentBytesAmount.addAndGet(size);
+        }
+      });
     }
   }
 
   private class OnCloseConnectionListener implements Connection.CloseListener {
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void onClosed(Connection closeable, Connection.CloseType type) throws IOException {
       try {

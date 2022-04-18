@@ -35,6 +35,7 @@ import org.mule.runtime.http.api.client.HttpClientFactory;
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
+import org.mule.runtime.module.troubleshooting.api.TroubleshootingService;
 import org.mule.service.http.impl.service.client.HttpClientConnectionManager;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactory;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
@@ -69,13 +70,14 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   protected final SchedulerService schedulerService;
 
-  private final HttpListenerConnectionManager listenerConnectionManager;
-  private final HttpClientConnectionManager clientConnectionManager;
+  private HttpListenerConnectionManager listenerConnectionManager;
+  private HttpClientConnectionManager clientConnectionManager;
+
+  @Inject
+  private TroubleshootingService troubleshootingService;
 
   public HttpServiceImplementation(SchedulerService schedulerService) {
     this.schedulerService = schedulerService;
-    listenerConnectionManager = createListenerConnectionManager(schedulerService);
-    clientConnectionManager = createClientConnectionManager();
   }
 
   @Override
@@ -117,7 +119,7 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
           break;
       }
     } catch (ServerFactoryCreationException e) {
-      logger.warn(e.getMessage() + ". Using muleContext Id as context");
+      logger.warn("{}. Using muleContext Id as context", e.getMessage());
     }
     // We should never get to this point. In case we do, fallback to old behaviour.
     return new ContextHttpServerFactoryAdapter(muleContext.getId(), empty(), listenerConnectionManager, shutdownTimeout);
@@ -162,7 +164,11 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
   }
 
   protected HttpListenerConnectionManager createListenerConnectionManager(SchedulerService schedulerService) {
-    return new HttpListenerConnectionManager(schedulerService, config());
+    return new HttpListenerConnectionManager(schedulerService, config(), getTroubleshootingService());
+  }
+
+  protected TroubleshootingService getTroubleshootingService() {
+    return troubleshootingService;
   }
 
   @Override
@@ -177,6 +183,8 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   @Override
   public void start() throws MuleException {
+    listenerConnectionManager = createListenerConnectionManager(schedulerService);
+    clientConnectionManager = createClientConnectionManager();
     initialiseIfNeeded(listenerConnectionManager);
   }
 
