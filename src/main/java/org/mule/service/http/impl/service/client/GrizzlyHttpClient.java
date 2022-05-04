@@ -513,10 +513,10 @@ public class GrizzlyHttpClient implements HttpClient {
                                                           requestStreamingEnabled, requestStreamingBufferSize));
     URI uri = request.getUri();
     if (uri.getHost() == null) {
-      throw new IllegalArgumentException("The uri provided (" + uri + ") must contain a host.");
+      throw new IllegalArgumentException("The uri provided '" + uri + "' must contain a host.");
     }
     if (uri.getScheme() == null) {
-      throw new IllegalArgumentException("The uri provided ( " + uri + " )must contain a scheme.");
+      throw new IllegalArgumentException("The uri provided '" + uri + "' must contain a scheme.");
     }
     reqBuilder.setUri(new Uri(uri.getScheme(), uri.getRawUserInfo(), uri.getHost(), uri.getPort(), uri.getRawPath(),
                               uri.getRawQuery() != null ? uri.getRawQuery() + (request.getQueryParams().isEmpty() ? "" : "&")
