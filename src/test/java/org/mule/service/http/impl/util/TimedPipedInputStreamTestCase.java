@@ -6,6 +6,9 @@
  */
 package org.mule.service.http.impl.util;
 
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
+
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -13,13 +16,13 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.fail;
 import static org.junit.rules.ExpectedException.none;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
+
+import org.mule.runtime.api.util.concurrent.Latch;
+import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.qameta.allure.Issue;
 import io.qameta.allure.Stories;
@@ -29,12 +32,12 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 @Stories({@Story(RESPONSES), @Story(STREAMING)})
-public class TimedPipedInputStreamTestCase {
+public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
 
   @Rule
   public ExpectedException expectedException = none();
 
-  private ExecutorService writerExecutor = newSingleThreadExecutor();
+  private final ExecutorService writerExecutor = newSingleThreadExecutor();
 
   @Test
   public void itBehavesInAFIFOWayWhenWritingBytes() throws IOException {
@@ -131,7 +134,8 @@ public class TimedPipedInputStreamTestCase {
   }
 
   @Test
-  public void readerAndWriterInDifferentThreadsWithAPayloadThatDoesNotFitIntoTheBuffer() throws IOException {
+  public void readerAndWriterInDifferentThreadsWithAPayloadThatDoesNotFitIntoTheBuffer()
+      throws IOException, InterruptedException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
     TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
     String testData = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut " +
@@ -139,12 +143,12 @@ public class TimedPipedInputStreamTestCase {
         "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in " +
         "voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat" +
         " non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
-    AtomicBoolean dataWritten = new AtomicBoolean(false);
+    Latch dataWritten = new Latch();
 
     writerExecutor.submit(() -> {
       try {
         out.write(testData.getBytes());
-        dataWritten.set(true);
+        dataWritten.release();
       } catch (IOException e) {
         fail(e.getMessage());
       }
@@ -157,7 +161,7 @@ public class TimedPipedInputStreamTestCase {
       sb.append(new String(buffer, 0, currentRead));
     }
 
-    assertThat(dataWritten.get(), is(true));
+    dataWritten.await();
     assertThat(sb.toString(), is(testData));
   }
 
