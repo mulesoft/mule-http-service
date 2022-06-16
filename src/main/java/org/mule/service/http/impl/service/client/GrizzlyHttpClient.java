@@ -122,9 +122,6 @@ public class GrizzlyHttpClient implements HttpClient {
   private static int MAX_CLIENT_REQUEST_HEADERS =
       getInteger(MAX_CLIENT_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
 
-  private static final String SET_PROXY_AUTHORIZATION_PROPERLY = SYSTEM_PROPERTY_PREFIX + "http.setProperProxyAuthorization";
-  private static boolean properProxyAuthorization = parseBoolean(getProperty(SET_PROXY_AUTHORIZATION_PROPERLY, "true"));
-
   private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
   private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
@@ -186,7 +183,6 @@ public class GrizzlyHttpClient implements HttpClient {
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
     builder.setAllowPoolingConnections(true);
     builder.setMaxRequestHeaders(MAX_CLIENT_REQUEST_HEADERS);
-    builder.setProperProxyAuthentication(properProxyAuthorization);
 
     configureTransport(builder);
     configureTlsContext(builder);
@@ -614,7 +610,6 @@ public class GrizzlyHttpClient implements HttpClient {
     DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
     MAX_CLIENT_REQUEST_HEADERS = getInteger(MAX_CLIENT_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
     enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY, "true"));
-    properProxyAuthorization = parseBoolean(getProperty(SET_PROXY_AUTHORIZATION_PROPERLY, "true"));
   }
 
   private static boolean isRequestStreamingEnabled() {

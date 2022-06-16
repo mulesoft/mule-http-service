@@ -98,38 +98,6 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
     assertThat(asyncHttpClient.getConfig().getMaxRequestHeaders(), is(parseInt(maxSetRequestHeaders)));
   }
 
-  @Issue("W-10863931")
-  @Description("When the proper Proxy Authorization is NOT set by System Properties, it should be assigned by default as true.")
-  @Test
-  public void properProxyAuthenticationSetByDefault() throws Throwable {
-    HttpClient client = refreshSystemPropertiesAndCreateGrizzlyHttpClient();
-
-    client.start();
-
-    Field asyncHttpClientField = GrizzlyHttpClient.class.getDeclaredField("asyncHttpClient");
-    asyncHttpClientField.setAccessible(true);
-    AsyncHttpClient asyncHttpClient = (AsyncHttpClient) asyncHttpClientField.get(client);
-
-    assertThat(asyncHttpClient.getConfig().getProperProxyAuthorization(), is(true));
-  }
-
-  @Issue("W-10863931")
-  @Description("When the proper Proxy Authorization is set by System Properties, it should be assigned correctly to Grizzly's AsyncHttpClient.")
-  @Test
-  public void properProxyAuthenticationSetBySystemProperty() throws Throwable {
-    String properProxyAuthorization = "false";
-    HttpClient client = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.setProperProxyAuthorization", properProxyAuthorization,
-                                         this::refreshSystemPropertiesAndCreateGrizzlyHttpClient);
-
-    client.start();
-
-    Field asyncHttpClientField = GrizzlyHttpClient.class.getDeclaredField("asyncHttpClient");
-    asyncHttpClientField.setAccessible(true);
-    AsyncHttpClient asyncHttpClient = (AsyncHttpClient) asyncHttpClientField.get(client);
-
-    assertThat(asyncHttpClient.getConfig().getProperProxyAuthorization(), is(false));
-  }
-
   private GrizzlyHttpClient refreshSystemPropertiesAndCreateGrizzlyHttpClient() {
     GrizzlyHttpClient.refreshSystemProperties();
     return new GrizzlyHttpClient(mock(HttpClientConfiguration.class, RETURNS_DEEP_STUBS),
