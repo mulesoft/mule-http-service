@@ -10,6 +10,7 @@ import static java.security.Security.insertProviderAt;
 
 import static com.ning.http.client.AsyncHttpClientConfigDefaults.ASYNC_CLIENT;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 import org.mule.rules.BouncyCastleProviderCleaner;
@@ -37,6 +38,7 @@ import org.junit.Test;
 public class GrizzlyHttpsClientProxyTestCase extends AbstractHttpClientTestCase {
 
   private static final String PASS = "mulepassword";
+  private static final String PROXY_AUTHORIZATION_HEADER = "Proxy-Authorization";
 
   @Rule
   public DynamicPort proxyPort = new DynamicPort("proxyPort");
@@ -47,7 +49,7 @@ public class GrizzlyHttpsClientProxyTestCase extends AbstractHttpClientTestCase 
   @Rule
   public SystemProperty proxyPortProperty = new SystemProperty("http.proxyPort", proxyPort.getValue());
 
-  private TestProxyServer proxyServer = new TestProxyServer(proxyPort.getNumber(), port.getNumber(), false);
+  private TestProxyServer proxyServer = new TestProxyServer(proxyPort.getNumber(), port.getNumber(), true);
   private HttpClient client;
 
   @Rule
@@ -88,6 +90,7 @@ public class GrizzlyHttpsClientProxyTestCase extends AbstractHttpClientTestCase 
 
   @Override
   protected HttpResponse setUpHttpResponse(HttpRequest request) {
+    assertNull(request.getHeaderValue(PROXY_AUTHORIZATION_HEADER));
     HttpResponseBuilder response = HttpResponse.builder();
     try {
       return response.statusCode(OK.getStatusCode()).build();
