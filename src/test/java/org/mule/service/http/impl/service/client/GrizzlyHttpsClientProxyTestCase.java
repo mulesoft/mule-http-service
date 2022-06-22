@@ -117,13 +117,10 @@ public class GrizzlyHttpsClientProxyTestCase extends AbstractHttpClientTestCase 
   @Issue("W-10863931")
   @Description("An HTTPS request with a basic proxy does not have to add an NTLM header.")
   public void basicHttpsRequestDoesNotSendNtlmProxyHeader() throws Exception {
-    final HttpResponse response = client.send(
-        HttpRequest.builder()
-            .method(POST)
-            .uri(getUri())
-            .build(),
-        getDefaultOptions(TIMEOUT)
-    );
+    final HttpResponse response = client.send(HttpRequest.builder()
+        .method(POST)
+        .uri(getUri())
+        .build(), getDefaultOptions(TIMEOUT));
 
     assertThat(response.getStatusCode(), is(OK.getStatusCode()));
   }
