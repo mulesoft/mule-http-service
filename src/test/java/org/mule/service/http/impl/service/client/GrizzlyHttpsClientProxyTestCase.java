@@ -26,6 +26,7 @@ import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.tck.junit4.rule.SystemProperty;
 
 import io.qameta.allure.Description;
+import io.qameta.allure.Issue;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.junit.After;
@@ -95,20 +96,6 @@ public class GrizzlyHttpsClientProxyTestCase extends AbstractHttpClientTestCase 
     }
   }
 
-  @Test
-  @Description("Send request using custom TLS provider (BC).")
-  public void basicHttpsRequestDoesNotSendNtlmProxyHeader() throws Exception {
-    final HttpResponse response = client.send(
-        HttpRequest.builder()
-            .method(POST)
-            .uri(getUri())
-            .build(),
-        getDefaultOptions(TIMEOUT)
-    );
-
-    assertThat(response.getStatusCode(), is(OK.getStatusCode()));
-  }
-
   @Override
   protected HttpServerConfiguration.Builder getServerConfigurationBuilder() throws Exception {
     return super.getServerConfigurationBuilder().setTlsContextFactory(TlsContextFactory.builder()
@@ -121,5 +108,20 @@ public class GrizzlyHttpsClientProxyTestCase extends AbstractHttpClientTestCase 
   @Override
   protected String getUri() {
     return super.getUri().replace(HTTP.getScheme(), HTTPS.getScheme());
+  }
+
+  @Test
+  @Issue("W-10863931")
+  @Description("An HTTPS request with a basic proxy does not have to add an NTLM header.")
+  public void basicHttpsRequestDoesNotSendNtlmProxyHeader() throws Exception {
+    final HttpResponse response = client.send(
+        HttpRequest.builder()
+            .method(POST)
+            .uri(getUri())
+            .build(),
+        getDefaultOptions(TIMEOUT)
+    );
+
+    assertThat(response.getStatusCode(), is(OK.getStatusCode()));
   }
 }
