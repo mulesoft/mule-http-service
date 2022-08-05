@@ -40,7 +40,7 @@ public class GrizzlyHttpRequestAdapterTestCase extends AbstractMuleTestCase {
     when(requestPacket.getRequestURI()).thenReturn("/song");
 
     request = new GrizzlyHttpRequestAdapter(mock(FilterChainContext.class), content, requestPacket,
-                                            new InetSocketAddress("hidden", 29));
+                                            new InetSocketAddress("hidden", 29), false);
   }
 
   @Test

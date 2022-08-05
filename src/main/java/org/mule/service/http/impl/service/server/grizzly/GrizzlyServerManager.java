@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static java.lang.Boolean.getBoolean;
 import static java.lang.Boolean.parseBoolean;
 import static java.lang.Integer.getInteger;
 import static java.lang.Integer.valueOf;
@@ -103,6 +104,7 @@ public class GrizzlyServerManager implements HttpServerManager {
   private final Map<ServerAddress, HttpServer> servers = new ConcurrentHashMap<>();
   private final Map<ServerIdentifier, HttpServer> serversByIdentifier = new ConcurrentHashMap<>();
   private final Map<ServerAddress, IdleExecutor> idleExecutorPerServerAddressMap = new ConcurrentHashMap<>();
+  private final boolean consumePayload;
 
   private boolean transportStarted;
   private int serverTimeout;
@@ -116,7 +118,8 @@ public class GrizzlyServerManager implements HttpServerManager {
     this.httpListenerRegistry = httpListenerRegistry;
     // TODO - MULE-14960: Remove system property once this can be configured through a file
     this.serverTimeout = getInteger("mule.http.server.timeout", DEFAULT_SERVER_TIMEOUT_MILLIS);
-    requestHandlerFilter = new GrizzlyRequestDispatcherFilter(httpListenerRegistry);
+    this.consumePayload = getBoolean("mule.http.server.consumePayload");
+    requestHandlerFilter = new GrizzlyRequestDispatcherFilter(httpListenerRegistry, workerPool, consumePayload);
     timeoutFilterDelegate = new GrizzlyAddressDelegateFilter<>();
     sslFilterDelegate = new GrizzlyAddressDelegateFilter<>();
     webSocketFilter = new GrizzlyAddressDelegateFilter<>();
