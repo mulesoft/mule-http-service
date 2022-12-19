@@ -120,7 +120,11 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         future.completeExceptionally(exception);
       } else {
         if (t.getMessage() != null && t.getMessage().contains("Pipe closed")) {
-          LOGGER.warn("HTTP response stream was closed before being read but response streams must always be consumed.");
+          // This class is reading the content of the response, and writing it to an internal stream. Reaching this code means
+          // that the internal stream is closed, and we're reading more data. This may cause some truncated response payload in
+          // the reader side of the internal stream.
+          LOGGER
+              .error("HTTP response stream was closed before being read but response streams must always be consumed. Set log level to DEBUG for details.");
         } else {
           LOGGER.warn("Error handling HTTP response stream. Set log level to DEBUG for details.");
         }
