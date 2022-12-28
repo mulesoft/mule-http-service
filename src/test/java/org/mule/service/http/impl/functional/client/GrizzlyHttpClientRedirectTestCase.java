@@ -128,7 +128,10 @@ public class GrizzlyHttpClientRedirectTestCase extends AbstractHttpRedirectClien
         .reasonPhrase(MOVED_PERMANENTLY.getReasonPhrase())
         .addHeader(LOCATION, getUri())
         .addHeader(SET_COOKIE, "test1=test1")
+        .addHeader(SET_COOKIE, "test2=test2thisShouldBeReplaced")
         .addHeader(SET_COOKIE, "test2=test2")
+        .addHeader(SET_COOKIE, "test3=test3thisShouldBeRemoved")
+        .addHeader(SET_COOKIE, "test3=test3; Expires=Sat, 02 Oct 1993 14:20:00 GMT")
         .build();
   }
 }
