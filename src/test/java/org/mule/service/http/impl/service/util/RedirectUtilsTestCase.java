@@ -231,6 +231,7 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("W-12161504")
   public void setCookieHeaderInResponseIsAddedAsCookieInNextRequest() {
     RedirectUtils redirectUtils = new RedirectUtils(false, false);
     addSetCookieHeader("TheCookieName=TheCookieValue");
@@ -243,6 +244,7 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("W-12161504")
   public void setTwoCookiesWithSameName() {
     RedirectUtils redirectUtils = new RedirectUtils(false, false);
     addSetCookieHeader("TheCookieName=OldCookieValue");
@@ -256,6 +258,7 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("W-12161504")
   public void setCookieWithDateInThePastRemovesIt() {
     RedirectUtils redirectUtils = new RedirectUtils(false, false);
     addSetCookieHeader("TheCookieName=TheCookieValue");
