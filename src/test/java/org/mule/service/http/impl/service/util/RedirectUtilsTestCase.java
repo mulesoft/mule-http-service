@@ -6,23 +6,44 @@
  */
 package org.mule.service.http.impl.service.util;
 
-import static java.util.Arrays.asList;
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
-import static org.glassfish.grizzly.http.util.Header.Authorization;
-import static org.glassfish.grizzly.http.util.Header.ContentLength;
-import static org.glassfish.grizzly.http.util.Header.Host;
-import static org.glassfish.grizzly.http.util.Header.ProxyAuthorization;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.junit.MockitoJUnit.rule;
+import static org.mule.runtime.api.util.MultiMap.emptyMultiMap;
 import static org.mule.runtime.http.api.HttpHeaders.Names.LOCATION;
+import static org.mule.runtime.http.api.HttpHeaders.Names.SET_COOKIE;
 import static org.mule.runtime.http.api.client.auth.HttpAuthenticationType.NTLM;
 import static org.mule.runtime.http.api.domain.HttpProtocol.HTTP_1_1;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 
+import static java.util.Arrays.asList;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+
+import static org.glassfish.grizzly.http.util.Header.Authorization;
+import static org.glassfish.grizzly.http.util.Header.ContentLength;
+import static org.glassfish.grizzly.http.util.Header.Host;
+import static org.glassfish.grizzly.http.util.Header.ProxyAuthorization;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.junit.MockitoJUnit.rule;
+
+import org.mule.runtime.api.util.MultiMap;
+import org.mule.runtime.http.api.client.HttpRequestOptions;
+import org.mule.runtime.http.api.client.auth.HttpAuthentication;
+import org.mule.runtime.http.api.domain.entity.HttpEntity;
+import org.mule.runtime.http.api.domain.message.request.HttpRequest;
+import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.tck.junit4.AbstractMuleTestCase;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.stream.Collectors;
+
+import com.ning.http.client.RequestBuilder;
+import com.ning.http.client.cookie.Cookie;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Issue;
 import org.junit.Before;
@@ -32,21 +53,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoRule;
-import org.mule.runtime.api.util.MultiMap;
-import org.mule.runtime.http.api.client.HttpRequestOptions;
-import org.mule.runtime.http.api.client.auth.HttpAuthentication;
-import org.mule.runtime.http.api.domain.entity.HttpEntity;
-import org.mule.runtime.http.api.domain.message.request.HttpRequest;
-import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Collection;
 
 @RunWith(Parameterized.class)
 @Feature(HTTP_SERVICE)
 @Issue("MULE-19908")
-public class RedirectUtilsTestCase {
+public class RedirectUtilsTestCase extends AbstractMuleTestCase {
 
   @Rule
   public MockitoRule mockitorule = rule();
@@ -92,6 +103,8 @@ public class RedirectUtilsTestCase {
     when(options.getAuthentication()).thenReturn(empty());
 
     when(response.getHeaders()).thenReturn(responseHeaders);
+    when(response.getHeaderValues(anyString()))
+        .thenAnswer(invocationOnMock -> responseHeaders.getAll(invocationOnMock.getArgument(0, String.class)));
 
     responseHeaders.put(LOCATION, "http://redirecthost/redirectPath");
   }
@@ -170,6 +183,93 @@ public class RedirectUtilsTestCase {
     HttpRequest redirectedRequest = testRedirectRequest("/redirectPath?param=redirect", method, false, true);
 
     assertThat(redirectedRequest.getHeaders().entryList().get(0).getKey(), is(testString));
+  }
+
+  @Test
+  public void whenMuleRedirectIsDisabledTheShouldFollowRedirectMethodReturnsFalse() {
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    boolean shouldFollowRedirect = redirectUtils.shouldFollowRedirect(null, null, false);
+    assertThat(shouldFollowRedirect, is(false));
+  }
+
+  @Test
+  public void whenResponseIs200OKItShouldNotFollowRedirect() {
+    when(response.getStatusCode()).thenReturn(200);
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    boolean shouldFollowRedirect = redirectUtils.shouldFollowRedirect(response, options, true);
+    assertThat(shouldFollowRedirect, is(false));
+  }
+
+  @Test
+  public void whenResponseIs301ButLocationHeaderIsAbsentItShouldNotFollowRedirect() {
+    when(response.getStatusCode()).thenReturn(301);
+    when(response.getHeaders()).thenReturn(emptyMultiMap());
+
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    boolean shouldFollowRedirect = redirectUtils.shouldFollowRedirect(response, options, true);
+    assertThat(shouldFollowRedirect, is(false));
+  }
+
+  @Test
+  public void whenOptionHasTheFlagDisabledThenItShouldNotFollowRedirect() {
+    when(response.getStatusCode()).thenReturn(301);
+    when(options.isFollowsRedirect()).thenReturn(false);
+
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    boolean shouldFollowRedirect = redirectUtils.shouldFollowRedirect(response, options, true);
+    assertThat(shouldFollowRedirect, is(false));
+  }
+
+  @Test
+  public void whenStatusCode301LocationPresentAndOptionEnabledItFollowsRedirects() {
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    when(response.getStatusCode()).thenReturn(301);
+    when(options.isFollowsRedirect()).thenReturn(true);
+
+    boolean shouldFollowRedirect = redirectUtils.shouldFollowRedirect(response, options, true);
+    assertThat(shouldFollowRedirect, is(true));
+  }
+
+  @Test
+  public void setCookieHeaderInResponseIsAddedAsCookieInNextRequest() {
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    addSetCookieHeader("TheCookieName=TheCookieValue");
+
+    RequestBuilder requestBuilder = new RequestBuilder();
+    redirectUtils.handleResponseCookies(requestBuilder, response);
+    Collection<String> cookiesInRequestAsString =
+        requestBuilder.build().getCookies().stream().map(Cookie::toString).collect(Collectors.toList());
+    assertThat(cookiesInRequestAsString, contains("TheCookieName=TheCookieValue"));
+  }
+
+  @Test
+  public void setTwoCookiesWithSameName() {
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    addSetCookieHeader("TheCookieName=OldCookieValue");
+    addSetCookieHeader("TheCookieName=NewCookieValue");
+
+    RequestBuilder requestBuilder = new RequestBuilder();
+    redirectUtils.handleResponseCookies(requestBuilder, response);
+    Collection<String> cookiesInRequestAsString =
+        requestBuilder.build().getCookies().stream().map(Cookie::toString).collect(Collectors.toList());
+    assertThat(cookiesInRequestAsString, contains("TheCookieName=NewCookieValue"));
+  }
+
+  @Test
+  public void setCookieWithDateInThePastRemovesIt() {
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    addSetCookieHeader("TheCookieName=TheCookieValue");
+    addSetCookieHeader("TheCookieName=NewCookieValue; Expires=Wed, 21 Oct 2015 07:28:00 GMT");
+
+    RequestBuilder requestBuilder = new RequestBuilder();
+    redirectUtils.handleResponseCookies(requestBuilder, response);
+    Collection<String> cookiesInRequestAsString =
+        requestBuilder.build().getCookies().stream().map(Cookie::toString).collect(Collectors.toList());
+    assertThat(cookiesInRequestAsString.isEmpty(), is(true));
+  }
+
+  private void addSetCookieHeader(String setCookieHeader) {
+    responseHeaders.put(SET_COOKIE, setCookieHeader);
   }
 
   private HttpRequest testRedirectRequest(String path, String method, boolean isStrict302Handling, boolean preserveHeaderCase) {
