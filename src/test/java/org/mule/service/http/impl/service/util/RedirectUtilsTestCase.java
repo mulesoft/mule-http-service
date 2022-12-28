@@ -259,7 +259,7 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
   public void setCookieWithDateInThePastRemovesIt() {
     RedirectUtils redirectUtils = new RedirectUtils(false, false);
     addSetCookieHeader("TheCookieName=TheCookieValue");
-    addSetCookieHeader("TheCookieName=NewCookieValue; Expires=Wed, 21 Oct 2015 07:28:00 GMT");
+    addSetCookieHeader("TheCookieName=NewCookieValue; Expires=Sat, 02 Oct 1993 14:20:00 GMT");
 
     RequestBuilder requestBuilder = new RequestBuilder();
     redirectUtils.handleResponseCookies(requestBuilder, response);
