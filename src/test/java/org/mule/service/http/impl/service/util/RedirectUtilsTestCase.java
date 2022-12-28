@@ -16,6 +16,7 @@ import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVIC
 import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static java.util.stream.Collectors.toList;
 
 import static org.glassfish.grizzly.http.util.Header.Authorization;
 import static org.glassfish.grizzly.http.util.Header.ContentLength;
@@ -238,8 +239,7 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
 
     RequestBuilder requestBuilder = new RequestBuilder();
     redirectUtils.handleResponseCookies(requestBuilder, response);
-    Collection<String> cookiesInRequestAsString =
-        requestBuilder.build().getCookies().stream().map(Cookie::toString).collect(Collectors.toList());
+    Collection<String> cookiesInRequestAsString = getCookiesAsStrings(requestBuilder);
     assertThat(cookiesInRequestAsString, contains("TheCookieName=TheCookieValue"));
   }
 
@@ -252,9 +252,12 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
 
     RequestBuilder requestBuilder = new RequestBuilder();
     redirectUtils.handleResponseCookies(requestBuilder, response);
-    Collection<String> cookiesInRequestAsString =
-        requestBuilder.build().getCookies().stream().map(Cookie::toString).collect(Collectors.toList());
+    Collection<String> cookiesInRequestAsString = getCookiesAsStrings(requestBuilder);
     assertThat(cookiesInRequestAsString, contains("TheCookieName=NewCookieValue"));
+  }
+
+  private static Collection<String> getCookiesAsStrings(RequestBuilder requestBuilder) {
+    return requestBuilder.build().getCookies().stream().map(Cookie::toString).collect(toList());
   }
 
   @Test
@@ -266,8 +269,7 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
 
     RequestBuilder requestBuilder = new RequestBuilder();
     redirectUtils.handleResponseCookies(requestBuilder, response);
-    Collection<String> cookiesInRequestAsString =
-        requestBuilder.build().getCookies().stream().map(Cookie::toString).collect(Collectors.toList());
+    Collection<String> cookiesInRequestAsString = getCookiesAsStrings(requestBuilder);
     assertThat(cookiesInRequestAsString.isEmpty(), is(true));
   }
 
