@@ -6,12 +6,15 @@
  */
 package org.mule.service.http.impl.service.util;
 
+import static com.ning.http.client.cookie.CookieDecoder.decode;
 import static com.ning.http.client.uri.Uri.create;
 import static org.glassfish.grizzly.http.util.Header.Authorization;
 import static org.glassfish.grizzly.http.util.Header.ContentLength;
 import static org.glassfish.grizzly.http.util.Header.ContentType;
 import static org.glassfish.grizzly.http.util.Header.Host;
 import static org.glassfish.grizzly.http.util.Header.ProxyAuthorization;
+import static org.glassfish.grizzly.http.util.Header.SetCookie;
+
 import static org.mule.runtime.http.api.HttpHeaders.Names.LOCATION;
 import static org.mule.runtime.http.api.client.auth.HttpAuthenticationType.NTLM;
 import static org.mule.runtime.http.api.domain.message.request.HttpRequest.builder;
@@ -23,6 +26,7 @@ import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
+import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.uri.Uri;
 
 /**
@@ -110,4 +114,15 @@ public class RedirectUtils {
         .protocol(request.getProtocol()).headers(headers).entity(request.getEntity()).build();
   }
 
+  /**
+   * Sets the values present in the response set-cookies header to the next request builder cookies.
+   *
+   * @param requestBuilder partial {@link RequestBuilder} without cookies set by the server response.
+   * @param response       the {@link HttpResponse} from the server.
+   */
+  public void handleResponseCookies(RequestBuilder requestBuilder, HttpResponse response) {
+    for (String cookieStr : response.getHeaderValues(SetCookie.toString())) {
+      requestBuilder.addOrReplaceCookie(decode(cookieStr));
+    }
+  }
 }
