@@ -6,13 +6,19 @@
  */
 package org.mule.service.http.impl.service.client;
 
-import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultMaxRedirects;
-import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultStrict302Handling;
-import static com.ning.http.client.Realm.AuthScheme.NTLM;
-import static com.ning.http.client.cookie.CookieDecoder.decode;
-import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
-import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
-import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
+import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.api.util.MuleSystemProperties.ENABLE_MULE_REDIRECT_PROPERTY;
+import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
+import static org.mule.runtime.api.util.Preconditions.checkState;
+import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
+import static org.mule.runtime.http.api.HttpHeaders.Names.COOKIE;
+import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
+import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
+import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
+
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Boolean.parseBoolean;
 import static java.lang.Integer.getInteger;
@@ -22,35 +28,17 @@ import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static java.lang.System.getProperty;
-import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
-import static org.glassfish.grizzly.http.util.Header.SetCookie;
-import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
-import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
-import static org.mule.runtime.api.util.DataUnit.KB;
-import static org.mule.runtime.api.util.MuleSystemProperties.ENABLE_MULE_REDIRECT_PROPERTY;
-import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
-import static org.mule.runtime.api.util.Preconditions.checkState;
-import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
-import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
-import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
-import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
 
-import com.ning.http.client.AsyncHandler;
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.AsyncHttpClientConfig;
-import com.ning.http.client.BodyDeferringAsyncHandler;
-import com.ning.http.client.ListenableFuture;
-import com.ning.http.client.MaxRedirectException;
-import com.ning.http.client.ProxyServer;
-import com.ning.http.client.Request;
-import com.ning.http.client.RequestBuilder;
-import com.ning.http.client.Response;
-import com.ning.http.client.filter.FilterException;
-import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
-import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
-import com.ning.http.client.uri.Uri;
+import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultMaxRedirects;
+import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultStrict302Handling;
+import static com.ning.http.client.Realm.AuthScheme.NTLM;
+import static com.ning.http.client.cookie.CookieDecoder.decode;
+import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
+import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
+import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
+import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
+import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
+
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -68,19 +56,36 @@ import org.mule.service.http.impl.service.client.async.PreservingClassLoaderAsyn
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
 import org.mule.service.http.impl.service.util.RedirectUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+
+import javax.net.ssl.SSLContext;
+
+import com.ning.http.client.AsyncHandler;
+import com.ning.http.client.AsyncHttpClient;
+import com.ning.http.client.AsyncHttpClientConfig;
+import com.ning.http.client.BodyDeferringAsyncHandler;
+import com.ning.http.client.ListenableFuture;
+import com.ning.http.client.MaxRedirectException;
+import com.ning.http.client.ProxyServer;
+import com.ning.http.client.Request;
+import com.ning.http.client.RequestBuilder;
+import com.ning.http.client.Response;
+import com.ning.http.client.filter.FilterException;
+import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProvider;
+import com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig;
+import com.ning.http.client.uri.Uri;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GrizzlyHttpClient implements HttpClient {
 
@@ -93,6 +98,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
   private static final String ENABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.enable";
+  private static final String COOKIE_SEPARATOR = ";";
   private static boolean requestStreamingEnabled = parseBoolean(getProperty(ENABLE_REQUEST_STREAMING_PROPERTY_NAME, "false"));
 
   private static final int DEFAULT_REQUEST_STREAMING_BUFFER_SIZE = 8 * 1024;
@@ -127,6 +133,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
   private static final String HEADER_CONTENT_LENGTH = CONTENT_LENGTH.toLowerCase();
   private static final String HEADER_TRANSFER_ENCODING = TRANSFER_ENCODING.toLowerCase();
+  private static final String HEADER_COOKIE = COOKIE.toLowerCase();
 
   private static boolean DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
 
@@ -494,9 +501,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private Request createGrizzlyRedirectRequest(HttpRequest request, HttpResponse response, HttpRequestOptions options)
       throws IOException {
     RequestBuilder reqBuilder = createGrizzlyRequestBuilder(request, options);
-    for (String cookieStr : response.getHeaderValues(SetCookie.toString())) {
-      reqBuilder.addOrReplaceCookie(decode(cookieStr));
-    }
+    redirectUtils.handleResponseCookies(reqBuilder, response);
     return reqBuilder.build();
   }
 
@@ -564,6 +569,10 @@ public class GrizzlyHttpClient implements HttpClient {
         specialHeader = true;
         builder.addHeader(PRESERVE_HEADER_CASE ? CONNECTION : HEADER_CONNECTION, request.getHeaderValue(headerName));
       }
+      if (headerName.equalsIgnoreCase(HEADER_COOKIE)) {
+        specialHeader = true;
+        parseCookieHeaderAndAddCookies(builder, request.getHeaderValues(headerName));
+      }
 
       if (!specialHeader) {
         for (String headerValue : request.getHeaderValues(headerName)) {
@@ -588,6 +597,14 @@ public class GrizzlyHttpClient implements HttpClient {
             + "will be sent instead.", request.getHeaderValue(HEADER_CONNECTION));
       }
       builder.setHeader(PRESERVE_HEADER_CASE ? CONNECTION : HEADER_CONNECTION, CLOSE);
+    }
+  }
+
+  private void parseCookieHeaderAndAddCookies(RequestBuilder builder, Collection<String> headerValues) {
+    for (String cookieHeader : headerValues) {
+      for (String eachCookie : cookieHeader.split(COOKIE_SEPARATOR)) {
+        builder.addOrReplaceCookie(decode(eachCookie.trim()));
+      }
     }
   }
 
