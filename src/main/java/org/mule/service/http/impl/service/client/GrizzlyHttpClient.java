@@ -12,11 +12,6 @@ import static org.mule.runtime.api.util.MuleSystemProperties.ENABLE_MULE_REDIREC
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.api.util.Preconditions.checkState;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
-import static org.mule.runtime.http.api.HttpHeaders.Names.COOKIE;
-import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
-import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
 
 import static java.lang.Boolean.getBoolean;
@@ -32,7 +27,6 @@ import static java.lang.System.getProperty;
 import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultMaxRedirects;
 import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultStrict302Handling;
 import static com.ning.http.client.Realm.AuthScheme.NTLM;
-import static com.ning.http.client.cookie.CookieDecoder.decode;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.DECOMPRESS_RESPONSE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.MAX_HTTP_PACKET_HEADER_SIZE;
 import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderConfig.Property.TRANSPORT_CUSTOMIZER;
@@ -63,7 +57,6 @@ import java.io.PipedOutputStream;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -98,7 +91,6 @@ public class GrizzlyHttpClient implements HttpClient {
   private static final String DEFAULT_DECOMPRESS_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.client.decompress";
 
   private static final String ENABLE_REQUEST_STREAMING_PROPERTY_NAME = SYSTEM_PROPERTY_PREFIX + "http.requestStreaming.enable";
-  private static final String COOKIE_SEPARATOR = ";";
   private static boolean requestStreamingEnabled = parseBoolean(getProperty(ENABLE_REQUEST_STREAMING_PROPERTY_NAME, "true"));
 
   private static final int DEFAULT_REQUEST_STREAMING_BUFFER_SIZE = 8 * 1024;
@@ -128,12 +120,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private static int MAX_CLIENT_REQUEST_HEADERS =
       getInteger(MAX_CLIENT_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
 
-  private static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpClient.class);
-
-  private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
-  private static final String HEADER_CONTENT_LENGTH = CONTENT_LENGTH.toLowerCase();
-  private static final String HEADER_TRANSFER_ENCODING = TRANSFER_ENCODING.toLowerCase();
-  private static final String HEADER_COOKIE = COOKIE.toLowerCase();
+  private static final Logger LOGGER = LoggerFactory.getLogger(GrizzlyHttpClient.class);
 
   private static boolean DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
 
@@ -161,6 +148,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
   private final RedirectUtils redirectUtils;
   private static final boolean isStrict302Handling = defaultStrict302Handling();
+  private final RequestHeaderPopulator headerPopulator;
 
   public GrizzlyHttpClient(HttpClientConfiguration config, SchedulerService schedulerService, SchedulerConfig schedulersConfig) {
     this.tlsContextFactory = config.getTlsContextFactory();
@@ -177,6 +165,7 @@ public class GrizzlyHttpClient implements HttpClient {
     this.schedulerService = schedulerService;
     this.schedulersConfig = schedulersConfig;
     this.redirectUtils = new RedirectUtils(isStrict302Handling, PRESERVE_HEADER_CASE);
+    this.headerPopulator = new RequestHeaderPopulator(usePersistentConnections);
   }
 
   @Override
@@ -243,7 +232,7 @@ public class GrizzlyHttpClient implements HttpClient {
       TlsContextTrustStoreConfiguration trustStoreConfiguration = tlsContextFactory.getTrustStoreConfiguration();
 
       if (trustStoreConfiguration != null && trustStoreConfiguration.isInsecure()) {
-        logger
+        LOGGER
             .warn(format("TLS configuration for client %s has been set to use an insecure trust store. This means no certificate validations will be performed, rendering connections vulnerable to attacks. Use at own risk.",
                          name));
         // This disables hostname verification
@@ -397,8 +386,8 @@ public class GrizzlyHttpClient implements HttpClient {
 
       // Under high load, sometimes the get() method returns null. Retrying once fixes the problem (see MULE-8712).
       if (response == null) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("Null response returned by async client");
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Null response returned by async client");
         }
         response = future.get();
       }
@@ -538,74 +527,14 @@ public class GrizzlyHttpClient implements HttpClient {
     return requestBuilder;
   }
 
+  protected void populateHeaders(HttpRequest request, RequestBuilder builder) {
+    headerPopulator.populateHeaders(request, builder);
+  }
+
   @FunctionalInterface
   protected interface RequestConfigurer {
 
     void configure(RequestBuilder reqBuilder) throws IOException;
-  }
-
-  protected void populateHeaders(HttpRequest request, RequestBuilder builder) {
-    boolean hasTransferEncoding = false;
-    boolean hasContentLength = false;
-    boolean hasConnection = false;
-
-    for (String headerName : request.getHeaderNames()) {
-      // This is a workaround for https://github.com/javaee/grizzly/issues/1994
-      boolean specialHeader = false;
-
-      if (!hasTransferEncoding && headerName.equalsIgnoreCase(HEADER_TRANSFER_ENCODING)) {
-        hasTransferEncoding = true;
-        specialHeader = true;
-        builder.addHeader(PRESERVE_HEADER_CASE ? TRANSFER_ENCODING : HEADER_TRANSFER_ENCODING,
-                          request.getHeaderValue(headerName));
-      }
-      if (!hasContentLength && headerName.equalsIgnoreCase(HEADER_CONTENT_LENGTH)) {
-        hasContentLength = true;
-        specialHeader = true;
-        builder.addHeader(PRESERVE_HEADER_CASE ? CONTENT_LENGTH : HEADER_CONTENT_LENGTH, request.getHeaderValue(headerName));
-      }
-      if (!hasContentLength && headerName.equalsIgnoreCase(HEADER_CONNECTION)) {
-        hasConnection = true;
-        specialHeader = true;
-        builder.addHeader(PRESERVE_HEADER_CASE ? CONNECTION : HEADER_CONNECTION, request.getHeaderValue(headerName));
-      }
-      if (headerName.equalsIgnoreCase(HEADER_COOKIE)) {
-        specialHeader = true;
-        parseCookieHeaderAndAddCookies(builder, request.getHeaderValues(headerName));
-      }
-
-      if (!specialHeader) {
-        for (String headerValue : request.getHeaderValues(headerName)) {
-          builder.addHeader(headerName, headerValue);
-        }
-      }
-    }
-
-    // If there's no transfer type specified, check the entity length to prioritize content length transfer
-    if (!hasTransferEncoding && !hasContentLength && request.getEntity().getBytesLength().isPresent()) {
-      builder.addHeader(PRESERVE_HEADER_CASE ? CONTENT_LENGTH : HEADER_CONTENT_LENGTH,
-                        valueOf(request.getEntity().getBytesLength().getAsLong()));
-    }
-
-    // If persistent connections are disabled, the "Connection: close" header must be explicitly added. AHC will
-    // add "Connection: keep-alive" otherwise. (https://github.com/AsyncHttpClient/async-http-client/issues/885)
-
-    if (!usePersistentConnections) {
-      if (hasConnection && logger.isDebugEnabled() && !CLOSE.equals(request.getHeaderValue(HEADER_CONNECTION))) {
-        logger.debug("Persistent connections are disabled in the HTTP requester configuration, but the request already "
-            + "contains a Connection header with value {}. This header will be ignored, and a Connection: close header "
-            + "will be sent instead.", request.getHeaderValue(HEADER_CONNECTION));
-      }
-      builder.setHeader(PRESERVE_HEADER_CASE ? CONNECTION : HEADER_CONNECTION, CLOSE);
-    }
-  }
-
-  private void parseCookieHeaderAndAddCookies(RequestBuilder builder, Collection<String> headerValues) {
-    for (String cookieHeader : headerValues) {
-      for (String eachCookie : cookieHeader.split(COOKIE_SEPARATOR)) {
-        builder.addOrReplaceCookie(decode(eachCookie.trim()));
-      }
-    }
   }
 
   String getHostName() throws UnknownHostException {
@@ -627,10 +556,6 @@ public class GrizzlyHttpClient implements HttpClient {
     DEFAULT_DECOMPRESS = getBoolean(DEFAULT_DECOMPRESS_PROPERTY_NAME);
     MAX_CLIENT_REQUEST_HEADERS = getInteger(MAX_CLIENT_REQUEST_HEADERS_KEY, MAX_NUM_HEADERS_DEFAULT);
     enableMuleRedirect = parseBoolean(getProperty(ENABLE_MULE_REDIRECT_PROPERTY, "true"));
-  }
-
-  private static boolean isRequestStreamingEnabled() {
-    return requestStreamingEnabled;
   }
 
   private int retrieveMaximumHeaderSectionSize() {
