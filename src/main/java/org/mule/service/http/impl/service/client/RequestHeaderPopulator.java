@@ -26,9 +26,18 @@ import com.ning.http.client.cookie.Cookie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Utility class used to pass the headers present in a {@link HttpRequest} (from Mule HTTP API) to a {@link RequestBuilder} (from
+ * Grizzly AHC).
+ */
 public class RequestHeaderPopulator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RequestHeaderPopulator.class);
+  private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
+  private static final String HEADER_CONTENT_LENGTH = CONTENT_LENGTH.toLowerCase();
+  private static final String HEADER_TRANSFER_ENCODING = TRANSFER_ENCODING.toLowerCase();
+  private static final String HEADER_COOKIE = COOKIE.toLowerCase();
+  private static final String COOKIE_SEPARATOR = ";";
 
   private final boolean usePersistentConnections;
 
@@ -36,12 +45,12 @@ public class RequestHeaderPopulator {
     this.usePersistentConnections = usePersistentConnections;
   }
 
-  private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
-  private static final String HEADER_CONTENT_LENGTH = CONTENT_LENGTH.toLowerCase();
-  private static final String HEADER_TRANSFER_ENCODING = TRANSFER_ENCODING.toLowerCase();
-  private static final String HEADER_COOKIE = COOKIE.toLowerCase();
-  private static final String COOKIE_SEPARATOR = ";";
-
+  /**
+   * Populates the headers in a {@link RequestBuilder} with the ones configured in a {@link HttpRequest}.
+   * 
+   * @param request the {@link HttpRequest} from Mule HTTP API.
+   * @param builder the {@link RequestBuilder} from Grizzly AHC.
+   */
   public void populateHeaders(HttpRequest request, RequestBuilder builder) {
     boolean hasTransferEncoding = false;
     boolean hasContentLength = false;
@@ -87,7 +96,6 @@ public class RequestHeaderPopulator {
 
     // If persistent connections are disabled, the "Connection: close" header must be explicitly added. AHC will
     // add "Connection: keep-alive" otherwise. (https://github.com/AsyncHttpClient/async-http-client/issues/885)
-
     if (!usePersistentConnections) {
       if (hasConnection && LOGGER.isDebugEnabled() && !CLOSE.equals(request.getHeaderValue(HEADER_CONNECTION))) {
         LOGGER.debug("Persistent connections are disabled in the HTTP requester configuration, but the request already "
@@ -101,9 +109,10 @@ public class RequestHeaderPopulator {
   private void parseCookieHeaderAndAddCookies(RequestBuilder builder, Collection<String> headerValues) {
     for (String cookieHeader : headerValues) {
       for (String eachCookie : cookieHeader.split(COOKIE_SEPARATOR)) {
+        eachCookie = eachCookie.trim();
         Cookie decodedCookiePair = decode(eachCookie.trim());
         if (decodedCookiePair == null) {
-          LOGGER.debug("Couldn't decode '' as a cookie-pair. See RFC-6265, section 4.2.1 (Cookie header syntax)");
+          LOGGER.debug("Couldn't decode '{}' as a cookie-pair. See RFC-6265, section 4.2.1 (Cookie header syntax)", eachCookie);
         } else {
           builder.addOrReplaceCookie(decodedCookiePair);
         }
