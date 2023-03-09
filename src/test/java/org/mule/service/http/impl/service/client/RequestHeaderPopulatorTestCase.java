@@ -78,6 +78,7 @@ public class RequestHeaderPopulatorTestCase extends AbstractMuleTestCase {
   @Test
   @Issue("W-12666590")
   public void cookieHeaderWithNullValue() {
+    // Given a null cookie in the collection
     headerNames.add(COOKIE.toLowerCase());
     when(muleRequest.getHeaderValues(COOKIE.toLowerCase())).thenReturn(singletonList(null));
 
@@ -90,6 +91,7 @@ public class RequestHeaderPopulatorTestCase extends AbstractMuleTestCase {
   @Test
   @Issue("W-12666590")
   public void cookieHeadersCollectionWithNullValue() {
+    // Given a null collection
     headerNames.add(COOKIE.toLowerCase());
     when(muleRequest.getHeaderValues(COOKIE.toLowerCase())).thenReturn(null);
 
