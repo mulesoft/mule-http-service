@@ -76,6 +76,30 @@ public class RequestHeaderPopulatorTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("W-12666590")
+  public void cookieHeaderWithNullValue() {
+    headerNames.add(COOKIE.toLowerCase());
+    when(muleRequest.getHeaderValues(COOKIE.toLowerCase())).thenReturn(singletonList(null));
+
+    // When the populator handles the headers
+    populator.populateHeaders(muleRequest, ahcRequestBuilder);
+
+    // Then we don't have a NPE.
+  }
+
+  @Test
+  @Issue("W-12666590")
+  public void cookieHeadersCollectionWithNullValue() {
+    headerNames.add(COOKIE.toLowerCase());
+    when(muleRequest.getHeaderValues(COOKIE.toLowerCase())).thenReturn(null);
+
+    // When the populator handles the headers
+    populator.populateHeaders(muleRequest, ahcRequestBuilder);
+
+    // Then we don't have a NPE.
+  }
+
+  @Test
   @Issue("W-12528819")
   public void cookieWithSecureAndHttpOnly() {
     // NOTE: This tests an invalid Cookie syntax given the RFC-6265: https://www.rfc-editor.org/rfc/rfc6265#section-4.2.1

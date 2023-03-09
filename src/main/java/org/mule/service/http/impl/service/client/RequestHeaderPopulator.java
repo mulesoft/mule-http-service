@@ -107,16 +107,31 @@ public class RequestHeaderPopulator {
   }
 
   private void parseCookieHeaderAndAddCookies(RequestBuilder builder, Collection<String> headerValues) {
-    for (String cookieHeader : headerValues) {
-      for (String eachCookie : cookieHeader.split(COOKIE_SEPARATOR)) {
-        eachCookie = eachCookie.trim();
-        Cookie decodedCookiePair = decode(eachCookie.trim());
-        if (decodedCookiePair == null) {
-          LOGGER.debug("Couldn't decode '{}' as a cookie-pair. See RFC-6265, section 4.2.1 (Cookie header syntax)", eachCookie);
-        } else {
-          builder.addOrReplaceCookie(decodedCookiePair);
+    try {
+      if (headerValues == null) {
+        LOGGER.warn("A null value was retrieved as the collection of cookie headers");
+        return;
+      }
+
+      for (String cookieHeader : headerValues) {
+        if (cookieHeader == null) {
+          LOGGER.warn("Detected a cookie header with a null value");
+          continue;
+        }
+
+        for (String eachCookie : cookieHeader.split(COOKIE_SEPARATOR)) {
+          // String#split() never returns null.
+          eachCookie = eachCookie.trim();
+          Cookie decodedCookiePair = decode(eachCookie.trim());
+          if (decodedCookiePair == null) {
+            LOGGER.warn("Couldn't decode '{}' as a cookie-pair. See RFC-6265, section 4.2.1 (Cookie header syntax)", eachCookie);
+          } else {
+            builder.addOrReplaceCookie(decodedCookiePair);
+          }
         }
       }
+    } catch (NullPointerException npe) {
+      LOGGER.error("This should never happen, but it was added because of repeated problems with NPEs in this code", npe);
     }
   }
 }
