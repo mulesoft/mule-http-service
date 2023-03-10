@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.COOKIE;
@@ -13,6 +14,7 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CLOSE;
 import static org.mule.runtime.http.api.server.HttpServerProperties.PRESERVE_HEADER_CASE;
 
+import static java.lang.Boolean.getBoolean;
 import static java.lang.String.valueOf;
 
 import static com.ning.http.client.cookie.CookieDecoder.decode;
@@ -31,6 +33,10 @@ import org.slf4j.LoggerFactory;
  * Grizzly AHC).
  */
 public class RequestHeaderPopulator {
+
+  private static final String DISABLE_COOKIE_SPECIAL_HANDLING_PROPERTY =
+      SYSTEM_PROPERTY_PREFIX + "http.cookie.special.handling.disable";
+  private static final boolean DISABLE_COOKIE_SPECIAL_HANDLING = getBoolean(DISABLE_COOKIE_SPECIAL_HANDLING_PROPERTY);
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RequestHeaderPopulator.class);
   private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
@@ -76,7 +82,7 @@ public class RequestHeaderPopulator {
         specialHeader = true;
         builder.addHeader(PRESERVE_HEADER_CASE ? CONNECTION : HEADER_CONNECTION, request.getHeaderValue(headerName));
       }
-      if (headerName.equalsIgnoreCase(HEADER_COOKIE)) {
+      if (mustTreatCookieAsASpecialHeader() && headerName.equalsIgnoreCase(HEADER_COOKIE)) {
         specialHeader = true;
         parseCookieHeaderAndAddCookies(builder, request.getHeaderValues(headerName));
       }
@@ -106,17 +112,36 @@ public class RequestHeaderPopulator {
     }
   }
 
+  private boolean mustTreatCookieAsASpecialHeader() {
+    return !DISABLE_COOKIE_SPECIAL_HANDLING;
+  }
+
   private void parseCookieHeaderAndAddCookies(RequestBuilder builder, Collection<String> headerValues) {
-    for (String cookieHeader : headerValues) {
-      for (String eachCookie : cookieHeader.split(COOKIE_SEPARATOR)) {
-        eachCookie = eachCookie.trim();
-        Cookie decodedCookiePair = decode(eachCookie.trim());
-        if (decodedCookiePair == null) {
-          LOGGER.debug("Couldn't decode '{}' as a cookie-pair. See RFC-6265, section 4.2.1 (Cookie header syntax)", eachCookie);
-        } else {
-          builder.addOrReplaceCookie(decodedCookiePair);
+    try {
+      if (headerValues == null) {
+        LOGGER.warn("A null value was retrieved as the collection of cookie headers");
+        return;
+      }
+
+      for (String cookieHeader : headerValues) {
+        if (cookieHeader == null) {
+          LOGGER.warn("Detected a cookie header with a null value");
+          continue;
+        }
+
+        for (String eachCookie : cookieHeader.split(COOKIE_SEPARATOR)) {
+          // String#split() never returns null.
+          eachCookie = eachCookie.trim();
+          Cookie decodedCookiePair = decode(eachCookie.trim());
+          if (decodedCookiePair == null) {
+            LOGGER.warn("Couldn't decode '{}' as a cookie-pair. See RFC-6265, section 4.2.1 (Cookie header syntax)", eachCookie);
+          } else {
+            builder.addOrReplaceCookie(decodedCookiePair);
+          }
         }
       }
+    } catch (NullPointerException npe) {
+      LOGGER.error("This should never happen, but it was added because of repeated problems with NPEs in this code", npe);
     }
   }
 }
