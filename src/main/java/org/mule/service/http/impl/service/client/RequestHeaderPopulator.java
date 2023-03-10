@@ -36,7 +36,7 @@ public class RequestHeaderPopulator {
 
   private static final String DISABLE_COOKIE_SPECIAL_HANDLING_PROPERTY =
       SYSTEM_PROPERTY_PREFIX + "http.cookie.special.handling.disable";
-  private static boolean DISABLE_COOKIE_SPECIAL_HANDLING = getBoolean(DISABLE_COOKIE_SPECIAL_HANDLING_PROPERTY);
+  private static final boolean DISABLE_COOKIE_SPECIAL_HANDLING = getBoolean(DISABLE_COOKIE_SPECIAL_HANDLING_PROPERTY);
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RequestHeaderPopulator.class);
   private static final String HEADER_CONNECTION = CONNECTION.toLowerCase();
