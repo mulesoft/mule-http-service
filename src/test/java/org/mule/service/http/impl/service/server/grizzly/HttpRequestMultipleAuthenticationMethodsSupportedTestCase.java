@@ -7,21 +7,17 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.UNAUTHORIZED;
+import static org.mule.runtime.http.api.HttpConstants.Method.GET;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.CLIENT_AUTHENTICATION;
+
+import static org.apache.http.HttpHeaders.AUTHORIZATION;
+import static org.apache.http.HttpHeaders.WWW_AUTHENTICATE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.IsEqualIgnoringCase.equalToIgnoringCase;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.CLIENT_AUTHENTICATION;
-import static sun.net.www.protocol.http.AuthScheme.NTLM;
-import static sun.net.www.protocol.http.AuthScheme.BASIC;
-import static sun.net.www.protocol.http.AuthScheme.DIGEST;
-import static org.mule.runtime.http.api.HttpConstants.HttpStatus.UNAUTHORIZED;
-import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-import static org.mule.runtime.http.api.HttpConstants.Method.GET;
-import static org.apache.http.HttpHeaders.WWW_AUTHENTICATE;
-import static org.apache.http.HttpHeaders.AUTHORIZATION;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 
-import org.junit.After;
-import org.junit.Before;
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
@@ -33,12 +29,15 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.service.http.impl.functional.ResponseReceivedProbe;
 import org.mule.service.http.impl.functional.client.AbstractHttpClientTestCase;
+import org.mule.tck.probe.PollingProber;
+import org.mule.tck.probe.Probe;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
-import org.junit.Test;
-import org.mule.tck.probe.PollingProber;
-import org.mule.tck.probe.Probe;
 
 @Feature(HTTP_SERVICE)
 @Story(CLIENT_AUTHENTICATION)
@@ -51,10 +50,15 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
   private static final String TEST_USER = "user";
   private static final String TEST_PASS = "password";
 
+  private static final String BASIC_AUTH_METHOD = "BASIC";
+  private static final String DIGEST_AUTH_METHOD = "DIGEST";
+  private static final String NTLM_AUTH_METHOD = "NTLM";
+
+
   private HttpClient client;
   private String chosenAuthMethod = "";
-  private HttpClientConfiguration.Builder clientBuilder = new HttpClientConfiguration.Builder().setName("auth-test");
-  private PollingProber pollingProber = new PollingProber(TIMEOUT_MILLIS, POLL_DELAY_MILLIS);
+  private final HttpClientConfiguration.Builder clientBuilder = new HttpClientConfiguration.Builder().setName("auth-test");
+  private final PollingProber pollingProber = new PollingProber(TIMEOUT_MILLIS, POLL_DELAY_MILLIS);
   private final Reference<HttpResponse> responseReference = new Reference<>();
 
   public HttpRequestMultipleAuthenticationMethodsSupportedTestCase(String serviceToLoad) {
@@ -76,17 +80,17 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
 
   @Test
   public void onMultipleAuthenticationMethodsSupportedLocallySetMethodIsChosenDigest() {
-    sendRequestAssertCorrectAuthMethodChosen(DIGEST.name());
+    sendRequestAssertCorrectAuthMethodChosen(DIGEST_AUTH_METHOD);
   }
 
   @Test
   public void onMultipleAuthenticationMethodsSupportedLocallySetMethodIsChosenNtlm() {
-    sendRequestAssertCorrectAuthMethodChosen(NTLM.name());
+    sendRequestAssertCorrectAuthMethodChosen(NTLM_AUTH_METHOD);
   }
 
   @Test
   public void onMultipleAuthenticationMethodsSupportedLocallySetMethodIsChosenBasic() {
-    sendRequestAssertCorrectAuthMethodChosen(BASIC.name());
+    sendRequestAssertCorrectAuthMethodChosen(BASIC_AUTH_METHOD);
   }
 
   @Override
@@ -97,10 +101,10 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
 
     if (isEmpty(authHeader)) {
       responseBuilder.statusCode(UNAUTHORIZED.getStatusCode())
-          .addHeader(WWW_AUTHENTICATE, BASIC.name())
-          .addHeader(WWW_AUTHENTICATE, NTLM.name())
+          .addHeader(WWW_AUTHENTICATE, BASIC_AUTH_METHOD)
+          .addHeader(WWW_AUTHENTICATE, NTLM_AUTH_METHOD)
           .addHeader(WWW_AUTHENTICATE,
-                     DIGEST.name() + " qop=\"auth\",algorithm=MD5-sess," +
+                     DIGEST_AUTH_METHOD + " qop=\"auth\",algorithm=MD5-sess," +
                          "nonce=\"" + NONCE + "\",charset=utf-8,realm=\"INT\"");
     } else if (chosenAuthMethod.length() > 0) {
       responseBuilder.statusCode(OK.getStatusCode())
@@ -141,7 +145,7 @@ public class HttpRequestMultipleAuthenticationMethodsSupportedTestCase extends A
 
   private class ResponseSuccessProbe implements Probe {
 
-    private String authType;
+    private final String authType;
 
     public ResponseSuccessProbe(String httpAuthType) {
       authType = httpAuthType;
