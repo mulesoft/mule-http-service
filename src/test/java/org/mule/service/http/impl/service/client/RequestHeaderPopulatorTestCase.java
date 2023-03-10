@@ -8,11 +8,14 @@ package org.mule.service.http.impl.service.client;
 
 import static org.mule.runtime.http.api.HttpHeaders.Names.COOKIE;
 
+import static java.lang.Boolean.getBoolean;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeThat;
 import static org.mockito.Mockito.when;
 import static org.mockito.junit.MockitoJUnit.rule;
 
@@ -52,6 +55,8 @@ public class RequestHeaderPopulatorTestCase extends AbstractMuleTestCase {
 
   @Before
   public void setUp() {
+    assumeThat(getBoolean("mule.http.cookie.special.handling.disable"), is(false));
+
     ahcRequestBuilder = new RequestBuilder();
     headerNames = new ArrayList<>();
 
@@ -73,6 +78,32 @@ public class RequestHeaderPopulatorTestCase extends AbstractMuleTestCase {
     // Then the resulting request builder has the corresponding cookie
     Collection<String> cookiesInRequestAsString = getCookiesAsStrings(ahcRequestBuilder);
     assertThat(cookiesInRequestAsString, contains("Name=Value"));
+  }
+
+  @Test
+  @Issue("W-12666590")
+  public void cookieHeaderWithNullValue() {
+    // Given a null cookie in the collection
+    headerNames.add(COOKIE.toLowerCase());
+    when(muleRequest.getHeaderValues(COOKIE.toLowerCase())).thenReturn(singletonList(null));
+
+    // When the populator handles the headers
+    populator.populateHeaders(muleRequest, ahcRequestBuilder);
+
+    // Then we don't have a NPE.
+  }
+
+  @Test
+  @Issue("W-12666590")
+  public void cookieHeadersCollectionWithNullValue() {
+    // Given a null collection
+    headerNames.add(COOKIE.toLowerCase());
+    when(muleRequest.getHeaderValues(COOKIE.toLowerCase())).thenReturn(null);
+
+    // When the populator handles the headers
+    populator.populateHeaders(muleRequest, ahcRequestBuilder);
+
+    // Then we don't have a NPE.
   }
 
   @Test
