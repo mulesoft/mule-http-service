@@ -32,7 +32,6 @@ import org.mule.tck.size.SmallTest;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -388,12 +387,6 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
   }
 
   @Test
-  @Ignore("MULE-15247: Analyse HTTP listener path behavior for catch all")
-  public void removingCatchAllDoesNotAffectParentCatchAll() {
-    removeChildAndCheckParent("/*", "/*", "/a/b/c");
-  }
-
-  @Test
   public void removingSubPathDoesNotAffectParentCatchAll() {
     removeChildAndCheckParent("/*", "/b", "/a/b");
   }
@@ -421,19 +414,6 @@ public class HttpListenerRegistryTestCase extends AbstractMuleTestCase {
   @Test
   public void removingPathParentPathDoesNotAffectCatchAll() {
     removeParentAndCheckChild("/a", "/*", "/a/b/c");
-  }
-
-  @Test
-  @Ignore("MULE-15247: Analyse HTTP listener path behavior for catch all")
-  public void removingParentCatchAllDoesNotAffectCatchAll() {
-    removeParentAndCheckChild("/*", "/*", "/a/b/c");
-  }
-
-
-  @Test
-  @Ignore("MULE-15247: Analyse HTTP listener path behavior for catch all")
-  public void removingParentUriParamDoesNotAffectCatchAll() {
-    removeParentAndCheckChild("/{param}", "/*", "/a/b/c");
   }
 
   @Test
