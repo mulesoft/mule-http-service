@@ -9,10 +9,12 @@ package org.mule.service.http.impl.service.client.async;
 import static java.lang.Thread.currentThread;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.when;
+import static org.mockito.junit.MockitoJUnit.rule;
+
 import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import org.mule.runtime.api.util.Reference;
 import org.mule.tck.junit4.AbstractMuleTestCase;
@@ -20,13 +22,15 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import com.ning.http.client.AsyncHandler;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.MockitoRule;
 
-@RunWith(MockitoJUnitRunner.class)
 public class PreservingClassLoaderAsyncHandlerTestCase extends AbstractMuleTestCase {
+
+  @Rule
+  public MockitoRule rule = rule();
 
   @Mock
   private AsyncHandler<Integer> delegate;
