@@ -76,10 +76,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.geronimo.specs</groupId>
-            <artifactId>geronimo-servlet_3.0_spec</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
             <artifactId>grizzly-http-server</artifactId>
             <version>${grizzlyVersion}</version>
@@ -98,6 +94,13 @@
             <groupId>com.sun.mail</groupId>
             <artifactId>mailapi</artifactId>
             <version>${sun.mailapi.version}</version>
+            <exclusions>
+            	<!-- Already depending on javax.activation -->
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>jakarta.activation</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.sun.activation</groupId>
