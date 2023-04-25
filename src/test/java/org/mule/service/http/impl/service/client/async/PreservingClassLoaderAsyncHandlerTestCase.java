@@ -11,7 +11,6 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.when;
 import static org.mockito.junit.MockitoJUnit.rule;
 
@@ -52,7 +51,7 @@ public class PreservingClassLoaderAsyncHandlerTestCase extends AbstractMuleTestC
     Reference<ClassLoader> classLoaderOnCompleted = new Reference<>();
     when(delegate.onCompleted()).then(invocation -> {
       classLoaderOnCompleted.set(currentThread().getContextClassLoader());
-      return doCallRealMethod();
+      return "completed";
     });
 
     // Call the method with other classloader
@@ -65,7 +64,7 @@ public class PreservingClassLoaderAsyncHandlerTestCase extends AbstractMuleTestC
     Reference<ClassLoader> classLoaderOnThrowable = new Reference<>();
     doAnswer(invocation -> {
       classLoaderOnThrowable.set(currentThread().getContextClassLoader());
-      return doCallRealMethod();
+      return "completed";
     }).when(delegate).onThrowable(any(Throwable.class));
 
     // Call the method with other classloader
