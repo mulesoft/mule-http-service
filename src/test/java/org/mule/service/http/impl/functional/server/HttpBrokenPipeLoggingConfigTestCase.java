@@ -26,6 +26,7 @@ import static com.github.valfirst.slf4jtest.TestLoggerFactory.getTestLogger;
 import static org.apache.http.client.fluent.Request.Post;
 import static org.apache.http.entity.ContentType.DEFAULT_TEXT;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.collection.IsIterableWithSize.iterableWithSize;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,9 +60,11 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import com.github.valfirst.slf4jtest.TestLogger;
-import io.qameta.allure.Description;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import io.qameta.allure.Description;
 
 public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestCase {
 
@@ -70,7 +73,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
   private ClassLoader requestHandlerClassLoader;
   private RequestMatcherRegistry<RequestHandler> serverAddressRequestHandlerRegistry;
 
-  private TestLogger testLogger = getTestLogger(BaseResponseCompletionHandler.class);
+  private final TestLogger testLogger = getTestLogger(BaseResponseCompletionHandler.class);
 
   public HttpBrokenPipeLoggingConfigTestCase(String serviceToLoad) {
     super(serviceToLoad);
@@ -111,7 +114,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
     responseLatch.await();
 
     new PollingProber(LOCK_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
-      assertThat(testLogger.getAllLoggingEvents().size(), is(1));
+      assertThat(testLogger.getAllLoggingEvents(), iterableWithSize(1));
       assertThat(testLogger.getAllLoggingEvents().get(0).getThreadContextClassLoader(), is(requestHandlerClassLoader));
       return true;
     }));
@@ -127,7 +130,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
     responseLatch.await();
 
     new PollingProber(LOCK_TIMEOUT, 100).check(new JUnitLambdaProbe(() -> {
-      assertThat(testLogger.getAllLoggingEvents().size(), is(1));
+      assertThat(testLogger.getAllLoggingEvents(), iterableWithSize(1));
       assertThat(testLogger.getAllLoggingEvents().get(0).getThreadContextClassLoader(),
                  is(currentThread().getContextClassLoader()));
       return true;
