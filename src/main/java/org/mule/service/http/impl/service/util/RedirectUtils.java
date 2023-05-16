@@ -102,7 +102,7 @@ public class RedirectUtils {
     if (mustBeSendAsGet(response.getStatusCode())) {
       redirectMethod = GET.name();
       headers.remove(ContentType.toString());
-      if (!options.isSendBody()) {
+      if (!options.shouldSendBodyAlways()) {
         entity = new EmptyHttpEntity();
       }
     } else {
