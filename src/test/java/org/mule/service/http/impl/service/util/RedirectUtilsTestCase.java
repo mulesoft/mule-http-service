@@ -132,6 +132,7 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("W-12594415")
   public void redirectedRequestWith302AndPostMethodWithoutSendBodyAlways() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(302);
@@ -143,6 +144,7 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("W-12594415")
   public void redirectedRequestWith302AndPostMethodWithSendBodyAlways() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(302);
