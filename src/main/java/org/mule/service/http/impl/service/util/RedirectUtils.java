@@ -23,6 +23,8 @@ import static org.mule.runtime.http.api.HttpConstants.Method.GET;
 import org.mule.runtime.api.util.MultiMap;
 
 import org.mule.runtime.http.api.client.HttpRequestOptions;
+import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
+import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
@@ -95,10 +97,14 @@ public class RedirectUtils {
     headers.remove(Host.toString());
     headers.remove(ContentLength.toString());
     String redirectMethod;
+    HttpEntity entity = request.getEntity();
 
     if (mustBeSendAsGet(response.getStatusCode())) {
       redirectMethod = GET.name();
       headers.remove(ContentType.toString());
+      if (!options.shouldSendBodyAlways()) {
+        entity = new EmptyHttpEntity();
+      }
     } else {
       redirectMethod = request.getMethod();
     }
@@ -111,7 +117,7 @@ public class RedirectUtils {
     });
 
     return builder(preserveHeaderCase).uri(path.toUrl()).method(redirectMethod)
-        .protocol(request.getProtocol()).headers(headers).entity(request.getEntity()).build();
+        .protocol(request.getProtocol()).headers(headers).entity(entity).build();
   }
 
   /**

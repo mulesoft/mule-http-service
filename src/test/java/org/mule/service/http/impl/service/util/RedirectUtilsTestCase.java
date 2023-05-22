@@ -23,6 +23,7 @@ import static org.glassfish.grizzly.http.util.Header.ContentLength;
 import static org.glassfish.grizzly.http.util.Header.Host;
 import static org.glassfish.grizzly.http.util.Header.ProxyAuthorization;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,6 +34,7 @@ import static org.mockito.junit.MockitoJUnit.rule;
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.client.auth.HttpAuthentication;
+import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -127,6 +129,30 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(302);
     testRedirectRequest("/redirectPath?param=redirect", "GET", false, false);
+  }
+
+  @Test
+  @Issue("W-12594415")
+  public void redirectedRequestWith302AndPostMethodWithoutSendBodyAlways() {
+    when(originalRequest.getMethod()).thenReturn("POST");
+    when(response.getStatusCode()).thenReturn(302);
+    when(options.shouldSendBodyAlways()).thenReturn(false);
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    HttpRequest redirectedRequest = redirectUtils.createRedirectRequest(response, originalRequest, options);
+    assertThat(redirectedRequest.getMethod(), is("GET"));
+    assertThat(redirectedRequest.getEntity(), instanceOf(EmptyHttpEntity.class));
+  }
+
+  @Test
+  @Issue("W-12594415")
+  public void redirectedRequestWith302AndPostMethodWithSendBodyAlways() {
+    when(originalRequest.getMethod()).thenReturn("POST");
+    when(response.getStatusCode()).thenReturn(302);
+    when(options.shouldSendBodyAlways()).thenReturn(true);
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    HttpRequest redirectedRequest = redirectUtils.createRedirectRequest(response, originalRequest, options);
+    assertThat(redirectedRequest.getMethod(), is("GET"));
+    assertThat(redirectedRequest.getEntity(), is(originalRequest.getEntity()));
   }
 
   @Test
