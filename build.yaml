@@ -1,4 +1,4 @@
 upstreamProjects:
-  Mule-runtime/mule/support/4.4.x
+  Mule-runtime/mule/4.4.0-JULY-2023
 mavenSettingsXmlId: mule-runtime-maven-settings-MuleSettings
 projectType: runtime
