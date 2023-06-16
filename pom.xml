@@ -15,7 +15,7 @@
 
     <artifactId>mule-service-http</artifactId>
     <packaging>mule-service</packaging>
-    <version>1.6.13-SNAPSHOT</version>
+    <version>1.6.13</version>
 
     <properties>
         <asyncHttpClientVersion>1.14-MULE-023</asyncHttpClientVersion>
