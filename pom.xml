@@ -19,12 +19,14 @@
 
     <properties>
         <javaModuleName>org.mule.service.http</javaModuleName>
+
         <asyncHttpClientVersion>1.14-MULE-023</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-025</grizzlyVersion>
         <javax.activation.version>1.2.0</javax.activation.version>
         <sun.mailapi.version>1.6.5</sun.mailapi.version>
         <bouncycastle.version>1.70</bouncycastle.version>
 
+        <skipExportTests>false</skipExportTests>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
 
@@ -41,18 +43,6 @@
                 <artifactId>mule-service-maven-plugin</artifactId>
                 <version>${mule.app.plugins.maven.plugin.version}</version>
                 <extensions>true</extensions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>attach-test-jar</id>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
