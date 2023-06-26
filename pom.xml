@@ -22,7 +22,7 @@
 
         <asyncHttpClientVersion>1.14-MULE-023</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-025</grizzlyVersion>
-        <javax.activation.version>1.2.0</javax.activation.version>
+        <jakarta.activation.version>1.2.2</jakarta.activation.version>
         <sun.mailapi.version>1.6.5</sun.mailapi.version>
         <bouncycastle.version>1.70</bouncycastle.version>
 
@@ -85,18 +85,11 @@
             <groupId>com.sun.mail</groupId>
             <artifactId>mailapi</artifactId>
             <version>${sun.mailapi.version}</version>
-            <exclusions>
-            	<!-- Already depending on javax.activation -->
-                <exclusion>
-                    <groupId>com.sun.activation</groupId>
-                    <artifactId>jakarta.activation</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.sun.activation</groupId>
-            <artifactId>javax.activation</artifactId>
-            <version>${javax.activation.version}</version>
+            <artifactId>jakarta.activation</artifactId>
+            <version>${jakarta.activation.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
