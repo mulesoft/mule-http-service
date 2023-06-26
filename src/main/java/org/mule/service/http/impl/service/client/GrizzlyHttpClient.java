@@ -137,7 +137,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private final boolean decompressionEnabled;
   private Scheduler selectorScheduler;
   private Scheduler workerScheduler;
-  private final SchedulerService schedulerService;
+  private SchedulerService schedulerService;
   private final SchedulerConfig schedulersConfig;
   protected AsyncHttpClient asyncHttpClient;
   private SSLContext sslContext;
