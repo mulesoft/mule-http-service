@@ -23,7 +23,7 @@
         <asyncHttpClientVersion>1.14-MULE-023</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-025</grizzlyVersion>
         <jakarta.activation.version>1.2.2</jakarta.activation.version>
-        <sun.mailapi.version>1.6.5</sun.mailapi.version>
+        <sun.mailapi.version>2.0.1</sun.mailapi.version>
         <bouncycastle.version>1.70</bouncycastle.version>
 
         <skipExportTests>false</skipExportTests>
