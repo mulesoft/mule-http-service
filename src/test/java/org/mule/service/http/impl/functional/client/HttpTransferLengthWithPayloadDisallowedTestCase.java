@@ -8,7 +8,7 @@ package org.mule.service.http.impl.functional.client;
 
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.TRANSFER_TYPE;
 
-import org.mule.service.http.impl.service.server.grizzly.AbstractHttpTransferLengthTestCase;
+import org.mule.service.http.impl.functional.client.AbstractHttpTransferLengthTestCase;
 
 import io.qameta.allure.Story;
 

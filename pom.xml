@@ -18,6 +18,19 @@
     <version>1.8.0-SNAPSHOT</version>
 
     <properties>
+        <!-- Add visibility required by the tests exclusively -->
+        <surefire.args>
+            -XX:+IgnoreUnrecognizedVMOptions
+            --add-exports=org.mule.service.http/org.mule.service.http.impl.functional=ALL-UNNAMED
+            --add-exports=org.mule.service.http/org.mule.service.http.impl.functional.client=ALL-UNNAMED
+            --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.config.builders=ALL-UNNAMED
+            --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.context=ALL-UNNAMED
+            --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.registry=ALL-UNNAMED
+            --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.serialization=ALL-UNNAMED
+            --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.registry=ALL-UNNAMED
+            --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.security.tls=ALL-UNNAMED
+            ${surefire.args.base}
+        </surefire.args>
         <javaModuleName>org.mule.service.http</javaModuleName>
 
         <asyncHttpClientVersion>1.14-MULE-023</asyncHttpClientVersion>
@@ -43,6 +56,23 @@
                 <artifactId>mule-service-maven-plugin</artifactId>
                 <version>${mule.app.plugins.maven.plugin.version}</version>
                 <extensions>true</extensions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-test-jar</id>
+                        <configuration>
+                            <includes>
+                                <include>org/mule/service/http/*</include>
+                                <include>org/mule/service/http/impl/functional/**</include>
+                                <include>org/mule/service/http/impl/*</include>
+                                <include>tls/**</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

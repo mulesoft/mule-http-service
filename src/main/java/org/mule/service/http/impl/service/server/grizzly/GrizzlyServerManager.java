@@ -77,7 +77,7 @@ public class GrizzlyServerManager implements HttpServerManager {
 
   private static final String ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS_PROPERTY =
       SYSTEM_PROPERTY_PREFIX + "http.allowPayloadForUndefinedMethods";
-  static boolean ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS =
+  public static boolean ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS =
       parseBoolean(getProperty(ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS_PROPERTY, "true"));
 
   private static final long DISPOSE_TIMEOUT_MILLIS = 30000;

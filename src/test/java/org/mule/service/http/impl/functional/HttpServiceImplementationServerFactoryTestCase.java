@@ -4,23 +4,26 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.service.http.impl.service;
+package org.mule.service.http.impl.functional;
 
-import static java.lang.Long.valueOf;
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.rules.ExpectedException.none;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mule.runtime.core.api.config.MuleProperties.APP_NAME_PROPERTY;
 import static org.mule.runtime.core.api.config.MuleProperties.DOMAIN_NAME_PROPERTY;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.APP;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.DOMAIN;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.PLUGIN;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.POLICY;
+
+import static java.lang.Long.valueOf;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.rules.ExpectedException.none;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import org.mule.runtime.api.artifact.Registry;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.config.MuleConfiguration;
@@ -28,7 +31,6 @@ import org.mule.runtime.core.api.config.bootstrap.ArtifactType;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
-import org.mule.service.http.impl.functional.AbstractHttpServiceTestCase;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 
 import java.lang.reflect.Field;
