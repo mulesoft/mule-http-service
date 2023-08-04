@@ -426,8 +426,8 @@ public class GrizzlyHttpClient implements HttpClient {
     }
   }
 
-  private CompletableFuture<HttpResponse> sendAsync(HttpRequest request, Request grizzlyRequest,
-                                                    HttpRequestOptions options, int currentRedirects) {
+  protected CompletableFuture<HttpResponse> sendAsync(HttpRequest request, Request grizzlyRequest,
+                                                      HttpRequestOptions options, int currentRedirects) {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
@@ -462,15 +462,15 @@ public class GrizzlyHttpClient implements HttpClient {
     return future;
   }
 
-  private void handleRedirectAsync(HttpRequest request, HttpResponse response, HttpRequestOptions options,
-                                   int currentRedirects, CompletableFuture<HttpResponse> future)
+  protected void handleRedirectAsync(HttpRequest request, HttpResponse response, HttpRequestOptions options,
+                                     int currentRedirects, CompletableFuture<HttpResponse> future)
       throws IOException {
     if (currentRedirects >= MAX_REDIRECTS) {
       future.completeExceptionally(new MaxRedirectException());
       return;
     }
 
-    HttpRequest redirectRequest = redirectUtils.createRedirectRequest(response, request, options);
+    HttpRequest redirectRequest = getRedirectRequest(request, response, options);
     Request grizzlyRequest = createGrizzlyRedirectRequest(redirectRequest, response, options);
     sendAsync(redirectRequest, grizzlyRequest, options, currentRedirects + 1)
         .whenComplete((redirectResponse, redirectException) -> {
@@ -482,11 +482,21 @@ public class GrizzlyHttpClient implements HttpClient {
         });
   }
 
+  protected HttpRequest getRedirectRequest(HttpRequest request, HttpResponse response, HttpRequestOptions options) {
+    return redirectUtils.createRedirectRequest(response, request, options);
+  }
+
   // In case we receive a 30x response, this method will create a new Grizzly request adding also the cookies present
   // in the set-cookies header in the response.
-  private Request createGrizzlyRedirectRequest(HttpRequest request, HttpResponse response, HttpRequestOptions options)
+  protected Request createGrizzlyRedirectRequest(HttpRequest request, HttpResponse response, HttpRequestOptions options)
       throws IOException {
     RequestBuilder reqBuilder = createGrizzlyRequestBuilder(request, options);
+    return createGrizzlyRedirectRequestWithRequestBuilder(request, response, options, reqBuilder);
+  }
+
+  protected Request createGrizzlyRedirectRequestWithRequestBuilder(HttpRequest request, HttpResponse response,
+                                                                   HttpRequestOptions options, RequestBuilder reqBuilder)
+      throws IOException {
     redirectUtils.handleResponseCookies(reqBuilder, response);
     return reqBuilder.build();
   }
@@ -496,7 +506,7 @@ public class GrizzlyHttpClient implements HttpClient {
     return createGrizzlyRequestBuilder(request, options).build();
   }
 
-  private RequestBuilder createGrizzlyRequestBuilder(HttpRequest request, HttpRequestOptions options)
+  protected RequestBuilder createGrizzlyRequestBuilder(HttpRequest request, HttpRequestOptions options)
       throws IOException {
     RequestBuilder reqBuilder =
         createRequestBuilder(request, options,
