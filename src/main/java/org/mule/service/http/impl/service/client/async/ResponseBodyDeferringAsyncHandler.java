@@ -64,7 +64,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private static final Logger LOGGER = LoggerFactory.getLogger(ResponseBodyDeferringAsyncHandler.class);
   private static final String PIPE_READ_TIMEOUT_PROPERTY_NAME =
       SYSTEM_PROPERTY_PREFIX + "http.responseStreaming.pipeReadTimeoutMillis";
-  private static final long PIPE_READ_TIMEOUT_MILLIS = parseInt(getProperty(PIPE_READ_TIMEOUT_PROPERTY_NAME, "500"));
+  private static final long PIPE_READ_TIMEOUT_MILLIS = parseInt(getProperty(PIPE_READ_TIMEOUT_PROPERTY_NAME, "20000"));
   private static Field responseField;
 
   private volatile Response response;
