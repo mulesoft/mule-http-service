@@ -426,8 +426,8 @@ public class GrizzlyHttpClient implements HttpClient {
     }
   }
 
-  protected CompletableFuture<HttpResponse> sendAsync(HttpRequest request, Request grizzlyRequest,
-                                                      HttpRequestOptions options, int currentRedirects) {
+  private CompletableFuture<HttpResponse> sendAsync(HttpRequest request, Request grizzlyRequest,
+                                                    HttpRequestOptions options, int currentRedirects) {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
