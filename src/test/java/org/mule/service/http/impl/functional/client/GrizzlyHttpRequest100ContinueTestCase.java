@@ -47,7 +47,7 @@ public class GrizzlyHttpRequest100ContinueTestCase extends AbstractHttpClientTes
   }
 
   @Test
-  @Issue(",...")
+  @Issue("W-13806048")
   @Description("If the server sends an 'Expect' header, it should be ignored and not fail")
   public void expect100isIgnored() throws IOException, TimeoutException {
     HttpResponse response = client.send(HttpRequest.builder().uri(getUri()).build());
