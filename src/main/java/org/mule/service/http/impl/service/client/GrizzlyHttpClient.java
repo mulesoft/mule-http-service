@@ -475,7 +475,8 @@ public class GrizzlyHttpClient implements HttpClient {
   /**
    * To execute after handling redirect.
    *
-   * @param redirectRequest the {@link Request} involved in the redirect.
+   * @param redirectRequest the {@link Request} involved in the redirect. If there is an exception during the redirect handling,
+   *                        redirectRequest will be null.
    */
   protected void onCompleteRedirect(HttpRequest redirectRequest) {
     // Nothing to do by default.
