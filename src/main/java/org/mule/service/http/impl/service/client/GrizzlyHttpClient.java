@@ -351,10 +351,15 @@ public class GrizzlyHttpClient implements HttpClient {
         if (currentRedirects >= MAX_REDIRECTS) {
           throw new IOException("Max redirects exceeded", new MaxRedirectException());
         }
-        HttpRequest redirectRequest = redirectUtils.createRedirectRequest(httpResponse, request, options);
-        httpResponse = sendAndDefer(redirectRequest,
-                                    createGrizzlyRedirectRequest(redirectRequest, httpResponse, options), options,
-                                    currentRedirects + 1);
+        HttpRequest redirectRequest = null;
+        try {
+          redirectRequest = redirectUtils.createRedirectRequest(httpResponse, request, options);
+          httpResponse = sendAndDefer(redirectRequest,
+                                      createGrizzlyRedirectRequest(redirectRequest, httpResponse, options), options,
+                                      currentRedirects + 1);
+        } finally {
+          onCompleteRedirect(redirectRequest);
+        }
       }
       return httpResponse;
     } catch (IOException e) {
@@ -393,10 +398,15 @@ public class GrizzlyHttpClient implements HttpClient {
         if (currentRedirects >= MAX_REDIRECTS) {
           throw new IOException("Max redirects exceeded", new MaxRedirectException());
         }
-        HttpRequest redirectRequest = redirectUtils.createRedirectRequest(httpResponse, request, options);
-        httpResponse = sendAndWait(redirectRequest,
-                                   createGrizzlyRedirectRequest(redirectRequest, httpResponse, options), options,
-                                   currentRedirects + 1);
+        HttpRequest redirectRequest = null;
+        try {
+          redirectRequest = redirectUtils.createRedirectRequest(httpResponse, request, options);
+          httpResponse = sendAndWait(redirectRequest,
+                                     createGrizzlyRedirectRequest(redirectRequest, httpResponse, options), options,
+                                     currentRedirects + 1);
+        } finally {
+          onCompleteRedirect(redirectRequest);
+        }
       }
       return httpResponse;
     } catch (InterruptedException e) {
@@ -462,6 +472,16 @@ public class GrizzlyHttpClient implements HttpClient {
     return future;
   }
 
+  /**
+   * To execute after handling redirect.
+   *
+   * @param redirectRequest the {@link Request} involved in the redirect. If there is an exception during the redirect handling,
+   *                        redirectRequest will be null.
+   */
+  protected void onCompleteRedirect(HttpRequest redirectRequest) {
+    // Nothing to do by default.
+  }
+
   private void handleRedirectAsync(HttpRequest request, HttpResponse response, HttpRequestOptions options,
                                    int currentRedirects, CompletableFuture<HttpResponse> future)
       throws IOException {
@@ -479,6 +499,7 @@ public class GrizzlyHttpClient implements HttpClient {
           } else {
             future.completeExceptionally(redirectException);
           }
+          onCompleteRedirect(redirectRequest);
         });
   }
 
