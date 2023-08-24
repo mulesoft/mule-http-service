@@ -22,8 +22,8 @@
 
         <asyncHttpClientVersion>1.14-MULE-023</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
-        <jakarta.activation.version>1.2.2</jakarta.activation.version>
-        <sun.mailapi.version>1.6.5</sun.mailapi.version>
+        <jakarta.activation.version>2.0.1</jakarta.activation.version>
+        <sun.mailapi.version>2.0.1</sun.mailapi.version>
         <bouncycastle.version>1.70</bouncycastle.version>
 
         <skipExportTests>false</skipExportTests>
@@ -192,7 +192,7 @@
         <dependency>
             <groupId>com.github.valfirst</groupId>
             <artifactId>slf4j-test</artifactId>
-            <version>2.9.0</version>
+            <version>3.0.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
