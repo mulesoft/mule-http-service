@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.mule.services</groupId>
         <artifactId>mule-core-services-parent</artifactId>
-        <version>1.6.0-SNAPSHOT</version>
+        <version>1.6.0-20230417</version>
         <relativePath />
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -23,7 +23,7 @@
         <asyncHttpClientVersion>1.14-MULE-023</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
         <jakarta.activation.version>1.2.2</jakarta.activation.version>
-        <sun.mailapi.version>1.6.5</sun.mailapi.version>
+        <sun.mailapi.version>1.6.7</sun.mailapi.version>
         <bouncycastle.version>1.70</bouncycastle.version>
 
         <skipExportTests>false</skipExportTests>
@@ -162,7 +162,7 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpasyncclient</artifactId>
-            <version>4.1.4</version>
+            <version>4.1.5</version>
             <scope>test</scope>
         </dependency>
         <dependency>
