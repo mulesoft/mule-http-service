@@ -33,7 +33,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 
-import org.mule.runtime.core.internal.util.CompositeClassLoader;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.request.HttpRequestContext;
@@ -55,6 +54,8 @@ import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Field;
 import java.net.SocketTimeoutException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -91,7 +92,7 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
     // Changing the classloader in order to imitate the app's behaviour when handling the error
     Thread currentThread = currentThread();
     ClassLoader originalClassLoader = currentThread.getContextClassLoader();
-    requestHandlerClassLoader = CompositeClassLoader.from(currentThread().getContextClassLoader());
+    requestHandlerClassLoader = new URLClassLoader(new URL[0], currentThread().getContextClassLoader());
     setContextClassLoader(currentThread, originalClassLoader, requestHandlerClassLoader);
     try {
       server.addRequestHandler(singletonList(POST.name()), "/brokenPipe", new ServerErrorResponseHandler());

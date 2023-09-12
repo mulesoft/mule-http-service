@@ -6,25 +6,28 @@
  */
 package org.mule.service.http.impl.functional;
 
-import static junit.framework.TestCase.fail;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
-import org.mule.runtime.core.api.util.ClassUtils;
+import static org.mule.service.http.impl.functional.util.ClassUtils.instantiateClass;
+
+import static java.util.Collections.singletonList;
+
+import static com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext.getParameter;
+import static com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext.isParameterSet;
+import static junit.framework.TestCase.fail;
+
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.SimpleUnitTestSupportSchedulerService;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
-import com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext;
-
-import java.util.Collections;
-
-import io.qameta.allure.Feature;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import io.qameta.allure.Feature;
 
 /**
  * Base class for all HTTP service functional tests. The service implementation will be loaded based on it's class name, allowing
@@ -42,10 +45,10 @@ public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
 
   @Parameters(name = "{0}")
   public static Iterable<Object[]> params() {
-    if (ParameterContext.isParameterSet()) {
-      return Collections.singletonList(ParameterContext.getParameter(Object[].class));
+    if (isParameterSet()) {
+      return singletonList(getParameter(Object[].class));
     } else {
-      return Collections.singletonList(new String[] {HttpServiceImplementation.class.getName()});
+      return singletonList(new String[] {HttpServiceImplementation.class.getName()});
     }
   }
 
@@ -56,8 +59,8 @@ public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
   @Before
   public void createServices() throws Exception {
     schedulerService = new SimpleUnitTestSupportSchedulerService();
-    service = (HttpServiceImplementation) ClassUtils.instantiateClass(serviceToLoad, new Object[] {schedulerService},
-                                                                      this.getClass().getClassLoader());
+    service = (HttpServiceImplementation) instantiateClass(serviceToLoad, new Object[] {schedulerService},
+                                                           this.getClass().getClassLoader());
     service.start();
   }
 

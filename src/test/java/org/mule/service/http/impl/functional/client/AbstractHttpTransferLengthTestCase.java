@@ -4,16 +4,8 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.service.http.impl.service.server.grizzly;
+package org.mule.service.http.impl.functional.client;
 
-import static java.lang.Long.valueOf;
-import static java.util.Collections.singletonList;
-import static java.util.OptionalLong.empty;
-import static java.util.OptionalLong.of;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.BAD_REQUEST;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -21,7 +13,16 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.TRANSFER_TYPE;
 import static org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager.ALLOW_PAYLOAD_FOR_UNDEFINED_METHODS;
 
-import org.mule.runtime.extension.api.annotation.param.Parameter;
+import static java.lang.Long.valueOf;
+import static java.util.Collections.singletonList;
+import static java.util.OptionalLong.empty;
+import static java.util.OptionalLong.of;
+
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
@@ -33,24 +34,19 @@ import org.mule.runtime.http.api.domain.entity.multipart.MultipartHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
-import org.mule.service.http.impl.functional.client.AbstractHttpClientTestCase;
-import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
-import com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext;
+import java.io.ByteArrayInputStream;
+import java.util.OptionalLong;
+import java.util.function.Consumer;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.ByteArrayInputStream;
-import java.util.ArrayList;
-import java.util.OptionalLong;
-import java.util.function.Consumer;
-
-import io.qameta.allure.Story;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+
+import io.qameta.allure.Story;
 
 @Story(TRANSFER_TYPE)
 @RunWith(Parameterized.class)
@@ -65,7 +61,7 @@ public abstract class AbstractHttpTransferLengthTestCase extends AbstractHttpCli
 
   private HttpClient client;
 
-  private boolean isAllowPayloadDefault;
+  private final boolean isAllowPayloadDefault;
 
   protected AbstractHttpTransferLengthTestCase(String serviceToLoad, boolean isAllowPayload) {
     super(serviceToLoad);
@@ -80,6 +76,7 @@ public abstract class AbstractHttpTransferLengthTestCase extends AbstractHttpCli
     client.start();
   }
 
+  @Override
   @After
   public void tearDown() {
     if (client != null) {
