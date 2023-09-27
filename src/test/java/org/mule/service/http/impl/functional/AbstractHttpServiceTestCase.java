@@ -15,6 +15,8 @@ import static com.github.peterwippermann.junit4.parameterizedsuite.ParameterCont
 import static com.github.peterwippermann.junit4.parameterizedsuite.ParameterContext.isParameterSet;
 import static junit.framework.TestCase.fail;
 
+import org.mule.runtime.api.lifecycle.Stoppable;
+import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
@@ -41,7 +43,7 @@ public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
   public String serviceToLoad;
 
   protected HttpServiceImplementation service;
-  private SimpleUnitTestSupportSchedulerService schedulerService;
+  private SchedulerService schedulerService;
 
   @Parameters(name = "{0}")
   public static Iterable<Object[]> params() {
@@ -58,10 +60,14 @@ public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
 
   @Before
   public void createServices() throws Exception {
-    schedulerService = new SimpleUnitTestSupportSchedulerService();
+    schedulerService = getSchedulerService();
     service = (HttpServiceImplementation) instantiateClass(serviceToLoad, new Object[] {schedulerService},
                                                            this.getClass().getClassLoader());
     service.start();
+  }
+
+  protected SchedulerService getSchedulerService() {
+    return new SimpleUnitTestSupportSchedulerService();
   }
 
   @After
@@ -69,8 +75,8 @@ public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
     if (service != null) {
       service.stop();
     }
-    if (schedulerService != null) {
-      schedulerService.stop();
+    if (schedulerService instanceof Stoppable) {
+      ((Stoppable) schedulerService).stop();
     }
   }
 
