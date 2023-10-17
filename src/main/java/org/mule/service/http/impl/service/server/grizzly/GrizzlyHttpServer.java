@@ -53,6 +53,8 @@ import org.slf4j.LoggerFactory;
 public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> {
 
   protected static final Logger logger = LoggerFactory.getLogger(GrizzlyHttpServer.class);
+  public static final int WAIT_FOREVER_FOR_CONNECTIONS_TO_CLOSE = -1;
+  public static final int WAIT_FOR_CONNECTIONS_INTERVAL = 50;
   private static boolean REPLACE_CONTEXT_CLASSLOADER = getProperty(MULE_LOG_SEPARATION_DISABLED) == null;
 
   private final TCPNIOTransport transport;
@@ -119,13 +121,13 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
 
       if (shutdownTimeout != 0) {
         synchronized (clientConnections) {
-          long remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
+          long remainingMillis = getRemainingMillisToWait(stopNanos, shutdownTimeout);
           while (!clientConnections.isEmpty() && remainingMillis > 0) {
-            long millisToWait = min(remainingMillis, 50);
+            long millisToWait = min(remainingMillis, WAIT_FOR_CONNECTIONS_INTERVAL);
             logger.debug("There are still {} open connections on server stop. Waiting {} milliseconds",
                          clientConnections.size(), millisToWait);
             clientConnections.wait(millisToWait);
-            remainingMillis = NANOSECONDS.toMillis(stopNanos - nanoTime());
+            remainingMillis = getRemainingMillisToWait(stopNanos, shutdownTimeout);
           }
 
           if (!clientConnections.isEmpty()) {
@@ -144,6 +146,14 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
       stopping = false;
     }
     return this;
+  }
+
+  private static long getRemainingMillisToWait(long stopNanos, Long shutdownTimeout) {
+    if (shutdownTimeout == WAIT_FOREVER_FOR_CONNECTIONS_TO_CLOSE) {
+      return WAIT_FOR_CONNECTIONS_INTERVAL;
+    } else {
+      return NANOSECONDS.toMillis(stopNanos - nanoTime());
+    }
   }
 
   @Override
