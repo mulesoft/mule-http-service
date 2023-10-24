@@ -37,7 +37,7 @@
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
         <jakarta.activation.version>1.2.2</jakarta.activation.version>
         <sun.mailapi.version>1.6.5</sun.mailapi.version>
-        <bouncycastle.version>1.70</bouncycastle.version>
+        <bouncycastle.version>1.74</bouncycastle.version>
 
         <skipExportTests>false</skipExportTests>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
@@ -203,19 +203,19 @@
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
+            <artifactId>bcprov-jdk18on</artifactId>
             <version>${bouncycastle.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
+            <artifactId>bcpkix-jdk18on</artifactId>
             <version>${bouncycastle.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
-            <artifactId>bctls-jdk15on</artifactId>
+            <artifactId>bctls-jdk18on</artifactId>
             <version>${bouncycastle.version}</version>
             <scope>test</scope>
         </dependency>
