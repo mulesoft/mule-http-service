@@ -1,5 +1,5 @@
 upstreamProjects:
-  Mule-runtime/mule/master
+  Mule-runtime/mule/master-NOVEMBER-2023
 mavenSettingsXmlId: mule-runtime-maven-settings-MuleSettings
 projectType: runtime
 jdkTool: OPEN-JDK17
