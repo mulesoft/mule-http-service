@@ -173,7 +173,7 @@
         <dependency>
             <groupId>org.mule.services</groupId>
             <artifactId>mule-service-weave</artifactId>
-            <classifier>mule-service</classifier>
+            <version>${weaveVersion}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
