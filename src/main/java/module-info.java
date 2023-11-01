@@ -23,6 +23,7 @@ module org.mule.service.http {
   requires grizzly.http.client;
   requires grizzly.websockets;
 
+  requires jakarta.activation;
   requires jakarta.mail;
   requires java.inject;
   requires java.logging;
