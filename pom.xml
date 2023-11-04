@@ -15,7 +15,7 @@
 
     <artifactId>mule-service-http</artifactId>
     <packaging>mule-service</packaging>
-    <version>1.7.1-SNAPSHOT</version>
+    <version>1.7.2-SNAPSHOT</version>
 
     <properties>
         <javaModuleName>org.mule.service.http</javaModuleName>
