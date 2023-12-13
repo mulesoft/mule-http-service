@@ -68,7 +68,7 @@ public abstract class HttpClientPostStreamingTestCase extends AbstractHttpClient
 
         @Override
         public boolean isSatisfied() {
-          return payloadAfterDancing != null && payloadAfterDancing.equals(TEST_PAYLOAD);
+          return payloadAfterDancing != null && payloadAfterDancing.equals(expectedPayload());
         }
 
         @Override
@@ -79,6 +79,10 @@ public abstract class HttpClientPostStreamingTestCase extends AbstractHttpClient
     } finally {
       client.stop();
     }
+  }
+
+  protected String expectedPayload() {
+    return TEST_PAYLOAD;
   }
 
 
