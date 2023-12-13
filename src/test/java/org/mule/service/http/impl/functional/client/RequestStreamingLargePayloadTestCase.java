@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
+import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
 import io.qameta.allure.junit4.DisplayName;
 import org.apache.commons.io.FileUtils;
@@ -33,6 +34,7 @@ import org.junit.Before;
 
 @Story(STREAMING)
 @DisplayName("Validates request streaming with a large payload")
+@Issue("W-14543363")
 public class RequestStreamingLargePayloadTestCase extends HttpClientPostStreamingTestCase {
 
 
