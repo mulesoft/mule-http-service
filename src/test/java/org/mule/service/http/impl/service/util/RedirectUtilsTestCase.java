@@ -145,14 +145,14 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
 
   @Test
   @Issue("W-14619216")
-  public void redirectedRequestWith302AndPostMethodRemovesContentLengthInLowercase() {
+  public void redirectedRequestWith302AndPostMethodRemovesContentLength() {
     when(originalRequest.getMethod()).thenReturn("POST");
     when(response.getStatusCode()).thenReturn(302);
     when(options.shouldSendBodyAlways()).thenReturn(false);
-    originalRequestHeaders.put(ContentLength.toString().toLowerCase(), "ContentLength");
+    originalRequestHeaders.put("ConTent-LengTH", "0");
     RedirectUtils redirectUtils = new RedirectUtils(false, false);
     HttpRequest redirectedRequest = redirectUtils.createRedirectRequest(response, originalRequest, options);
-    assertThat(redirectedRequest.getHeaders().containsKey(ContentLength.toString().toLowerCase()), is(false));
+    assertThat(redirectedRequest.getHeaders().containsKey("ConTent-LengTH"), is(false));
   }
 
   @Test

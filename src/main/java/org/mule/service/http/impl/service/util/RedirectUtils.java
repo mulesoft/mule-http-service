@@ -121,8 +121,7 @@ public class RedirectUtils {
   }
 
   private static void removeHeader(MultiMap<String, String> headers, String header) {
-    headers.remove(header);
-    headers.remove(header.toLowerCase());
+    headers.keySet().removeIf(key -> key.equalsIgnoreCase(header));
   }
 
   /**
