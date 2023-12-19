@@ -94,14 +94,14 @@ public class RedirectUtils {
     Uri path = create(create(request.getUri().toString()), response.getHeaders().get(LOCATION));
 
     MultiMap<String, String> headers = new MultiMap<>(request.getHeaders());
-    headers.remove(Host.toString());
-    headers.remove(ContentLength.toString());
+    removeHeader(headers, Host.toString());
+    removeHeader(headers, ContentLength.toString());
     String redirectMethod;
     HttpEntity entity = request.getEntity();
 
     if (mustBeSendAsGet(response.getStatusCode())) {
       redirectMethod = GET.name();
-      headers.remove(ContentType.toString());
+      removeHeader(headers, ContentType.toString());
       if (!options.shouldSendBodyAlways()) {
         entity = new EmptyHttpEntity();
       }
@@ -111,13 +111,18 @@ public class RedirectUtils {
 
     options.getAuthentication().ifPresent(httpAuthentication -> {
       if (httpAuthentication.getType().equals(NTLM)) {
-        headers.remove(Authorization.toString());
-        headers.remove(ProxyAuthorization.toString());
+        removeHeader(headers, Authorization.toString());
+        removeHeader(headers, ProxyAuthorization.toString());
       }
     });
 
     return builder(preserveHeaderCase).uri(path.toUrl()).method(redirectMethod)
         .protocol(request.getProtocol()).headers(headers).entity(entity).build();
+  }
+
+  private static void removeHeader(MultiMap<String, String> headers, String header) {
+    headers.remove(header);
+    headers.remove(header.toLowerCase());
   }
 
   /**
