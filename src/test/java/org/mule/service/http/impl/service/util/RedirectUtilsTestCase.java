@@ -144,6 +144,18 @@ public class RedirectUtilsTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("W-14619216")
+  public void redirectedRequestWith302AndPostMethodRemovesContentLength() {
+    when(originalRequest.getMethod()).thenReturn("POST");
+    when(response.getStatusCode()).thenReturn(302);
+    when(options.shouldSendBodyAlways()).thenReturn(false);
+    originalRequestHeaders.put("ConTent-LengTH", "0");
+    RedirectUtils redirectUtils = new RedirectUtils(false, false);
+    HttpRequest redirectedRequest = redirectUtils.createRedirectRequest(response, originalRequest, options);
+    assertThat(redirectedRequest.getHeaders().containsKey("ConTent-LengTH"), is(false));
+  }
+
+  @Test
   @Issue("W-12594415")
   public void redirectedRequestWith302AndPostMethodWithSendBodyAlways() {
     when(originalRequest.getMethod()).thenReturn("POST");
