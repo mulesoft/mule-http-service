@@ -6,7 +6,11 @@
  */
 package org.mule.service.http.impl.service;
 
+import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.REQUESTER;
+
 import static java.lang.Thread.currentThread;
+import static java.util.Collections.singletonMap;
+
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -15,24 +19,26 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
-import static org.mule.service.http.impl.service.HttpMessageLogger.LoggerType.REQUESTER;
 import static org.slf4j.MDC.getCopyOfContextMap;
+
 import org.mule.runtime.api.util.Reference;
 import org.mule.tck.size.SmallTest;
 
 import java.util.Map;
 
-import io.qameta.allure.Issue;
-import org.apache.commons.collections.map.SingletonMap;
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.attributes.AttributeHolder;
+import org.slf4j.Logger;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.slf4j.Logger;
+
+import io.qameta.allure.Issue;
 
 @RunWith(MockitoJUnitRunner.class)
 @SmallTest
@@ -64,7 +70,7 @@ public class HttpMessageLoggerTestCase {
   public void setup() {
     initMocks(HttpMessageLoggerTestCase.class);
 
-    when(connectionAttributeHolder.getAttribute(eq("mdc"))).thenReturn(new SingletonMap("mdcKey", "mdcValue"));
+    when(connectionAttributeHolder.getAttribute(eq("mdc"))).thenReturn(singletonMap("mdcKey", "mdcValue"));
     when(connection.getAttributes()).thenReturn(connectionAttributeHolder);
 
     doAnswer(invocation -> {
