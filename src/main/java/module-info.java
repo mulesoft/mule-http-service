@@ -31,6 +31,7 @@ module org.mule.service.http {
   requires com.github.benmanes.caffeine;
   requires com.google.common;
   requires org.apache.commons.io;
+  requires org.apache.commons.lang3;
   requires org.apache.commons.text;
   requires org.slf4j;
 
