@@ -29,7 +29,7 @@
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.serialization=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.registry=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.security.tls=ALL-UNNAMED
-            ${surefire.args.base}
+            ${surefire.test.unit.open.args}
         </surefire.args>
         <javaModuleName>org.mule.service.http</javaModuleName>
 
