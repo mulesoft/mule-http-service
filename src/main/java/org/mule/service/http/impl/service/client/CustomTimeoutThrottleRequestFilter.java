@@ -77,11 +77,8 @@ public class CustomTimeoutThrottleRequestFilter implements RequestFilter {
 
     @Override
     public void onThrowable(Throwable t) {
-      try {
-        asyncHandler.onThrowable(t);
-      } finally {
-        complete();
-      }
+      complete();
+      asyncHandler.onThrowable(t);
     }
 
     @Override
