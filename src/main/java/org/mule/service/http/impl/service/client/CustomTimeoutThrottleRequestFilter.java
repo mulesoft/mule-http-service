@@ -54,7 +54,11 @@ public class CustomTimeoutThrottleRequestFilter implements RequestFilter {
       throw new FilterException("Interrupted request");
     }
 
-    return new FilterContext.FilterContextBuilder(ctx).asyncHandler(new AsyncHandlerWrapper(ctx.getAsyncHandler())).build();
+    return new FilterContext.FilterContextBuilder(ctx).asyncHandler(new AsyncHandlerWrapper(resolveAsyncHandler(ctx))).build();
+  }
+
+  protected AsyncHandler resolveAsyncHandler(FilterContext ctx) {
+    return ctx.getAsyncHandler();
   }
 
   private class AsyncHandlerWrapper<T> implements AsyncHandler<T> {
