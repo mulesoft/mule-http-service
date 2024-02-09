@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.client.async;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
+import static java.nio.ByteBuffer.allocateDirect;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
@@ -46,7 +47,6 @@ import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseBodyPart;
 
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
@@ -161,7 +161,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     GrizzlyResponseBodyPart bodyPartAfterError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPartBeforeError.isLast()).thenReturn(false);
     when(bodyPartAfterError.isLast()).thenReturn(false);
-    when(bodyPartBeforeError.getBodyByteBuffer()).thenReturn(ByteBuffer.allocateDirect(0));
+    when(bodyPartBeforeError.getBodyByteBuffer()).thenReturn(allocateDirect(0));
 
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     assertThat(handler.onBodyPartReceived(bodyPartBeforeError), is(CONTINUE));
