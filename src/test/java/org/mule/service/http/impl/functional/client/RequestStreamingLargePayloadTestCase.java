@@ -11,7 +11,7 @@ import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
-import static java.io.File.separator;
+import static java.net.URI.create;
 import static java.nio.file.Files.newInputStream;
 import static java.nio.file.Paths.get;
 
@@ -54,8 +54,8 @@ public class RequestStreamingLargePayloadTestCase extends HttpClientPostStreamin
 
   protected InputStream getInputStream() {
     try {
-      return newInputStream(get(getClassPathRoot(RequestStreamingLargePayloadTestCase.class).getPath() + separator
-          + "largePayload"));
+      return newInputStream(get(create(getClassPathRoot(RequestStreamingLargePayloadTestCase.class).toURI()
+          + "largePayload")));
     } catch (Exception e) {
       throw new AssertionError("Error on loading the large payload file");
     }
@@ -84,7 +84,7 @@ public class RequestStreamingLargePayloadTestCase extends HttpClientPostStreamin
   protected String expectedPayload() {
     try {
       return FileUtils
-          .readFileToString(new File(getClassPathRoot(RequestStreamingLargePayloadTestCase.class).getPath() + separator
+          .readFileToString(new File(getClassPathRoot(RequestStreamingLargePayloadTestCase.class).getPath()
               + "largePayload"));
     } catch (IOException e) {
       throw new AssertionError("Error on loading the large payload file");
