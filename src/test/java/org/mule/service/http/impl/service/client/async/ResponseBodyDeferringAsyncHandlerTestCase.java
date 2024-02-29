@@ -77,6 +77,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(true);
+    when(bodyPart.getBodyByteBuffer()).thenReturn(allocateDirect(0));
     future.whenComplete((response, exception) -> responseContent.set(response.getEntity().getContent()));
 
     assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
@@ -100,6 +101,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(false);
+    when(bodyPart.getBodyByteBuffer()).thenReturn(allocateDirect(0));
     future.whenComplete((response, exception) -> responseContent.set(response.getEntity().getContent()));
 
     assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
@@ -187,6 +189,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     GrizzlyResponseBodyPart bodyPartBeforeError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     GrizzlyResponseBodyPart bodyPartAfterError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPartBeforeError.isLast()).thenReturn(false);
+    when(bodyPartBeforeError.getBodyByteBuffer()).thenReturn(allocateDirect(0));
     when(bodyPartAfterError.isLast()).thenReturn(false);
 
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
@@ -206,6 +209,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(false);
     when(bodyPart.getBodyPartBytes()).thenReturn("payload".getBytes());
+    when(bodyPart.getBodyByteBuffer()).thenReturn(allocateDirect(0));
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     Latch writeLatch = new Latch();
     doAnswer(invocation -> {
