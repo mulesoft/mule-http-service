@@ -9,12 +9,14 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static org.mule.runtime.api.metadata.MediaType.MULTIPART_MIXED;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 
+import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.service.http.impl.service.domain.entity.multipart.StreamedMultipartHttpEntity;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 
@@ -32,20 +34,26 @@ public class GrizzlyHttpRequestAdapter extends GrizzlyHttpMessage implements Htt
   private HttpEntity body;
 
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext, HttpContent httpContent,
-                                   InetSocketAddress localAddress) {
-    this(filterChainContext, httpContent, (HttpRequestPacket) httpContent.getHttpHeader(), localAddress);
+                                   InetSocketAddress localAddress, boolean consumePayload) {
+    this(filterChainContext, httpContent, (HttpRequestPacket) httpContent.getHttpHeader(), localAddress, consumePayload);
   }
 
   public GrizzlyHttpRequestAdapter(FilterChainContext filterChainContext,
                                    HttpContent httpContent,
                                    HttpRequestPacket requestPacket,
-                                   InetSocketAddress localAddress) {
+                                   InetSocketAddress localAddress,
+                                   boolean consumePayload) {
     super(requestPacket, null, localAddress);
 
     if (httpContent.isLast()) {
       requestContent = new BufferInputStream(httpContent.getContent());
     } else {
-      requestContent = new BlockingTransferInputStream(requestPacket, filterChainContext);
+      if (consumePayload) {
+        requestContent =
+            new ByteArrayInputStream(IOUtils.toByteArray(new BlockingTransferInputStream(requestPacket, filterChainContext)));
+      } else {
+        requestContent = new BlockingTransferInputStream(requestPacket, filterChainContext);
+      }
     }
   }
 
