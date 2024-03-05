@@ -29,6 +29,7 @@
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.serialization=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.registry=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.security.tls=ALL-UNNAMED
+              --add-opens=jakarta.mail/com.sun.mail.util=org.mule.service.http
             ${surefire.test.unit.open.args}
         </surefire.args>
         <javaModuleName>org.mule.service.http</javaModuleName>
@@ -36,7 +37,7 @@
         <asyncHttpClientVersion>1.14-MULE-024</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
         <jakarta.activation.version>1.2.2</jakarta.activation.version>
-        <sun.mailapi.version>1.6.5</sun.mailapi.version>
+        <sun.mailapi.version>1.6.7</sun.mailapi.version>
         <bouncycastle.version>1.77</bouncycastle.version>
 
         <skipExportTests>false</skipExportTests>
