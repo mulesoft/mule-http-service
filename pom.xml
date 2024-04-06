@@ -38,7 +38,7 @@
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
         <jakarta.activation.version>1.2.2</jakarta.activation.version>
         <sun.mailapi.version>1.6.7</sun.mailapi.version>
-        <bouncycastle.version>1.77</bouncycastle.version>
+        <bouncycastle.version>1.78</bouncycastle.version>
 
         <skipExportTests>false</skipExportTests>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
