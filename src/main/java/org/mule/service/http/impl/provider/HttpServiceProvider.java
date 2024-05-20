@@ -6,23 +6,38 @@
  */
 package org.mule.service.http.impl.provider;
 
+import static java.lang.System.getProperty;
+
 import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.api.service.ServiceDefinition;
 import org.mule.runtime.api.service.ServiceProvider;
 import org.mule.runtime.http.api.HttpService;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
+import org.mule.service.http.netty.impl.service.NettyHttpServiceImplementation;
 
 import javax.inject.Inject;
 
 public class HttpServiceProvider implements ServiceProvider {
+
+  // TODO: Change default to GRIZZLY
+  private static final String IMPLEMENTATION_NAME = getProperty("mule.http.service.implementation", "NETTY");
 
   @Inject
   private SchedulerService schedulerService;
 
   @Override
   public ServiceDefinition getServiceDefinition() {
-    HttpServiceImplementation service = new HttpServiceImplementation(schedulerService);
-    ServiceDefinition serviceDefinition = new ServiceDefinition(HttpService.class, service);
-    return serviceDefinition;
+    return new ServiceDefinition(HttpService.class, getImpl());
+  }
+
+  private HttpService getImpl() {
+    if ("NETTY".equals(IMPLEMENTATION_NAME)) {
+      return new NettyHttpServiceImplementation(schedulerService);
+    } else if ("GRIZZLY".equals(IMPLEMENTATION_NAME)) {
+      return new HttpServiceImplementation(schedulerService);
+    } else {
+      throw new IllegalArgumentException(String
+          .format("Unknown HTTP Service implementation '%s'. Choose 'GRIZZLY' or 'NETTY'", IMPLEMENTATION_NAME));
+    }
   }
 }
