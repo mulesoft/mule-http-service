@@ -11,8 +11,8 @@ import static org.mule.service.http.impl.provider.HttpServiceProvider.NETTY_IMPL
 import static org.mule.service.http.impl.provider.HttpServiceProvider.getImplementationName;
 import static org.mule.tck.MuleTestUtils.testWithSystemProperty;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import org.mule.tck.junit4.AbstractMuleTestCase;
