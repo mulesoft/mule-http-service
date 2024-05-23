@@ -30,8 +30,7 @@ public class HttpServiceProvider implements ServiceProvider {
    * @throws IllegalArgumentException if an invalid value is configured.
    */
   public static String getImplementationName() {
-    // TODO: Change default to GRIZZLY
-    String implementationName = getProperty(IMPLEMENTATION_PROPERTY_NAME, NETTY_IMPLEMENTATION_NAME);
+    String implementationName = getProperty(IMPLEMENTATION_PROPERTY_NAME, GRIZZLY_IMPLEMENTATION_NAME);
     if (NETTY_IMPLEMENTATION_NAME.equals(implementationName) || GRIZZLY_IMPLEMENTATION_NAME.equals(implementationName)) {
       return implementationName;
     } else {

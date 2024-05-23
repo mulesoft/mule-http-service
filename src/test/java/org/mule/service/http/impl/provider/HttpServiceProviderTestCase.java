@@ -1,0 +1,48 @@
+/*
+ * Copyright 2023 Salesforce, Inc. All rights reserved.
+ * The software in this package is published under the terms of the CPAL v1.0
+ * license, a copy of which has been included with this distribution in the
+ * LICENSE.txt file.
+ */
+package org.mule.service.http.impl.provider;
+
+import static org.mule.service.http.impl.provider.HttpServiceProvider.GRIZZLY_IMPLEMENTATION_NAME;
+import static org.mule.service.http.impl.provider.HttpServiceProvider.NETTY_IMPLEMENTATION_NAME;
+import static org.mule.service.http.impl.provider.HttpServiceProvider.getImplementationName;
+import static org.mule.tck.MuleTestUtils.testWithSystemProperty;
+
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
+
+import org.mule.tck.junit4.AbstractMuleTestCase;
+
+import org.junit.Test;
+
+public class HttpServiceProviderTestCase extends AbstractMuleTestCase {
+
+  @Test
+  public void grizzlyByDefault() {
+    assertThat(getImplementationName(), is(GRIZZLY_IMPLEMENTATION_NAME));
+  }
+
+  @Test
+  public void grizzlyIfConfigured() throws Exception {
+    testWithSystemProperty("mule.http.service.implementation", "GRIZZLY",
+                           () -> assertThat(getImplementationName(), is(GRIZZLY_IMPLEMENTATION_NAME)));
+  }
+
+  @Test
+  public void nettyIfConfigured() throws Exception {
+    testWithSystemProperty("mule.http.service.implementation", "NETTY",
+                           () -> assertThat(getImplementationName(), is(NETTY_IMPLEMENTATION_NAME)));
+  }
+
+  @Test
+  public void invalidImplementationThrows() throws Exception {
+    testWithSystemProperty("mule.http.service.implementation", "INVALID",
+                           () -> assertThrows("Unknown HTTP Service implementation 'INVALID'. Choose 'GRIZZLY' or 'NETTY'",
+                                              IllegalArgumentException.class,
+                                              HttpServiceProvider::getImplementationName));
+  }
+}
