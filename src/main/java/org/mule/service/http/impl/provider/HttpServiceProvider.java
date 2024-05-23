@@ -19,25 +19,41 @@ import javax.inject.Inject;
 
 public class HttpServiceProvider implements ServiceProvider {
 
-  // TODO: Change default to GRIZZLY
-  private static final String IMPLEMENTATION_NAME = getProperty("mule.http.service.implementation", "NETTY");
+  public static final String IMPLEMENTATION_PROPERTY_NAME = "mule.http.service.implementation";
+  public static final String GRIZZLY_IMPLEMENTATION_NAME = "GRIZZLY";
+  public static final String NETTY_IMPLEMENTATION_NAME = "NETTY";
+
+  /**
+   * Gets the configured HTTP Service implementation name. It can be "GRIZZLY" or "NETTY".
+   *
+   * @return the name of the configured implementation. Can be "GRIZZLY" or "NETTY".
+   * @throws IllegalArgumentException if an invalid value is configured.
+   */
+  public static String getImplementationName() {
+    // TODO: Change default to GRIZZLY
+    String implementationName = getProperty(IMPLEMENTATION_PROPERTY_NAME, NETTY_IMPLEMENTATION_NAME);
+    if (NETTY_IMPLEMENTATION_NAME.equals(implementationName) || GRIZZLY_IMPLEMENTATION_NAME.equals(implementationName)) {
+      return implementationName;
+    } else {
+      throw new IllegalArgumentException(String
+          .format("Unknown HTTP Service implementation '%s'. Choose 'GRIZZLY' or 'NETTY'", implementationName));
+    }
+  }
 
   @Inject
   private SchedulerService schedulerService;
 
   @Override
   public ServiceDefinition getServiceDefinition() {
-    return new ServiceDefinition(HttpService.class, getImpl());
+    return new ServiceDefinition(HttpService.class, getImplementation());
   }
 
-  private HttpService getImpl() {
-    if ("NETTY".equals(IMPLEMENTATION_NAME)) {
+  private HttpService getImplementation() {
+    String implementationName = getImplementationName();
+    if (NETTY_IMPLEMENTATION_NAME.equals(implementationName)) {
       return new NettyHttpServiceImplementation(schedulerService);
-    } else if ("GRIZZLY".equals(IMPLEMENTATION_NAME)) {
-      return new HttpServiceImplementation(schedulerService);
     } else {
-      throw new IllegalArgumentException(String
-          .format("Unknown HTTP Service implementation '%s'. Choose 'GRIZZLY' or 'NETTY'", IMPLEMENTATION_NAME));
+      return new HttpServiceImplementation(schedulerService);
     }
   }
 }
