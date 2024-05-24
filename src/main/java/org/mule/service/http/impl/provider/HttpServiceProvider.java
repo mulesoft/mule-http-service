@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.provider;
 
+import static java.lang.String.format;
 import static java.lang.System.getProperty;
 
 import org.mule.runtime.api.scheduler.SchedulerService;
@@ -34,8 +35,8 @@ public class HttpServiceProvider implements ServiceProvider {
     if (NETTY_IMPLEMENTATION_NAME.equals(implementationName) || GRIZZLY_IMPLEMENTATION_NAME.equals(implementationName)) {
       return implementationName;
     } else {
-      throw new IllegalArgumentException(String
-          .format("Unknown HTTP Service implementation '%s'. Choose 'GRIZZLY' or 'NETTY'", implementationName));
+      throw new IllegalArgumentException(format("Unknown HTTP Service implementation '%s'. Choose 'GRIZZLY' or 'NETTY'",
+                                                implementationName));
     }
   }
 
