@@ -57,21 +57,21 @@ public class HttpServiceProviderTestCase extends AbstractMuleTestCase {
   @Test
   public void grizzlyImplementationIfConfigured() throws Exception {
     testWithSystemProperty("mule.http.service.implementation", "GRIZZLY",
-            () -> assertThat(getImplementationClass(), is(HttpServiceImplementation.class)));
+                           () -> assertThat(getImplementationClass(), is(HttpServiceImplementation.class)));
   }
 
   @Test
   public void nettyImplementationIfConfigured() throws Exception {
     testWithSystemProperty("mule.http.service.implementation", "NETTY",
-            () -> assertThat(getImplementationClass(), is(NettyHttpServiceImplementation.class)));
+                           () -> assertThat(getImplementationClass(), is(NettyHttpServiceImplementation.class)));
   }
 
   @Test
   public void invalidImplementationThrows() throws Exception {
     testWithSystemProperty("mule.http.service.implementation", "INVALID",
-            () -> assertThrows("Unknown HTTP Service implementation 'INVALID'. Choose 'GRIZZLY' or 'NETTY'",
-                    IllegalArgumentException.class,
-                    this::getImplementationClass));
+                           () -> assertThrows("Unknown HTTP Service implementation 'INVALID'. Choose 'GRIZZLY' or 'NETTY'",
+                                              IllegalArgumentException.class,
+                                              this::getImplementationClass));
   }
 
   public Class<? extends Service> getImplementationClass() {
