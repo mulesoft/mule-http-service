@@ -40,6 +40,8 @@
         <sun.mailapi.version>1.6.7</sun.mailapi.version>
         <bouncycastle.version>1.78.1</bouncycastle.version>
 
+        <nettyHttpServiceVersion>0.1.0-SNAPSHOT</nettyHttpServiceVersion>
+
         <skipExportTests>false</skipExportTests>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
@@ -138,6 +140,13 @@
             <artifactId>grizzly-websockets</artifactId>
             <version>${grizzlyVersion}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.mule.services</groupId>
+            <artifactId>mule-netty-http-service</artifactId>
+            <version>${nettyHttpServiceVersion}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>

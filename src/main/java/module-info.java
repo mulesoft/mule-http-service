@@ -35,9 +35,12 @@ module org.mule.service.http {
   requires org.apache.commons.text;
   requires org.slf4j;
 
+  requires org.mule.service.http.netty;
+
   // Allow invocation and injection into providers by the Mule Runtime
   exports org.mule.service.http.impl.provider to
-      org.mule.runtime.service;
+      org.mule.runtime.service,
+      com.mulesoft.mule.service.http.ee;
   exports org.mule.service.http.impl.service to
       org.mule.runtime.service,
       com.mulesoft.mule.service.http.ee;
