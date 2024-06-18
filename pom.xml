@@ -37,7 +37,7 @@
         <asyncHttpClientVersion>1.14-MULE-024</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
         <jakarta.activation.version>1.2.2</jakarta.activation.version>
-        <sun.mailapi.version>1.6.7</sun.mailapi.version>
+        <jakarta.mail.version>1.6.7</jakarta.mail.version>
         <bouncycastle.version>1.78.1</bouncycastle.version>
 
         <nettyHttpServiceVersion>0.1.0-SNAPSHOT</nettyHttpServiceVersion>
@@ -116,8 +116,8 @@
         </dependency>
         <dependency>
             <groupId>com.sun.mail</groupId>
-            <artifactId>mailapi</artifactId>
-            <version>${sun.mailapi.version}</version>
+            <artifactId>jakarta.mail</artifactId>
+            <version>${jakarta.mail.version}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.activation</groupId>
