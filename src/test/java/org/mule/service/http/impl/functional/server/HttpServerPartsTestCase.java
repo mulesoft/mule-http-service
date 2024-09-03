@@ -71,7 +71,7 @@ public class HttpServerPartsTestCase extends AbstractHttpServerTestCase {
       "--the-boundary\r\n"
           + "Content-Type: text/plain; charset=ISO-8859-1\r\n"
           + "Content-Transfer-Encoding: 8bit\r\n"
-          + "Content-Disposition: inline; name=\"field1\"; filename=\"�10.txt\" \r\n"
+          + "Content-Disposition: inline; name=\"field1\"; filename=\"£10.txt\" \r\n"
           + "\r\n"
           + "yes\r\n"
           + "--the-boundary--\r\n";
