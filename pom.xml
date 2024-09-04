@@ -29,7 +29,6 @@
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.serialization=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.registry=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.security.tls=ALL-UNNAMED
-              --add-opens=jakarta.mail/com.sun.mail.util=org.mule.service.http
             ${surefire.test.unit.open.args}
         </surefire.args>
         <javaModuleName>org.mule.service.http</javaModuleName>
@@ -37,7 +36,6 @@
         <asyncHttpClientVersion>1.14-MULE-024</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
         <bouncycastle.version>1.78.1</bouncycastle.version>
-        <jakarta.activation.api.version>2.1.3</jakarta.activation.api.version>
         <jakarta.mail.api.version>2.1.3</jakarta.mail.api.version>
 
         <nettyHttpServiceVersion>0.2.0-SNAPSHOT</nettyHttpServiceVersion>
@@ -85,6 +83,12 @@
             <artifactId>mule-service-http-api</artifactId>
             <version>${mule.version}</version>
             <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>jakarta.activation</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.mule.runtime</groupId>
@@ -97,6 +101,16 @@
             <artifactId>mule-module-tls</artifactId>
             <version>${mule.version}</version>
             <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>jakarta.activation</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.mail</groupId>
+                    <artifactId>jakarta.mail</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
@@ -119,11 +133,6 @@
             <version>${jakarta.mail.api.version}</version>
         </dependency>
         <dependency>
-            <groupId>jakarta.activation</groupId>
-            <artifactId>jakarta.activation-api</artifactId>
-            <version>${jakarta.activation.api.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
             <artifactId>grizzly-http-client</artifactId>
             <version>${asyncHttpClientVersion}</version>
@@ -144,6 +153,16 @@
             <groupId>org.mule.services</groupId>
             <artifactId>mule-netty-http-service</artifactId>
             <version>${nettyHttpServiceVersion}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>jakarta.activation</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.mail</groupId>
+                    <artifactId>jakarta.mail</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -183,6 +202,12 @@
             <groupId>org.mule.services</groupId>
             <artifactId>mule-service-weave</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.mail</groupId>
+                    <artifactId>jakarta.mail</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
@@ -221,18 +246,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.mule</groupId>
-                <artifactId>mule-javaee-runtime-bom</artifactId>
-                <version>${muleBomVersion}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <distributionManagement>
         <downloadUrl>http://www.mulesoft.org/display/MULE/Download</downloadUrl>
