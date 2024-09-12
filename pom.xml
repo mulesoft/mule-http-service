@@ -34,7 +34,7 @@
         </surefire.args>
         <javaModuleName>org.mule.service.http</javaModuleName>
 
-        <asyncHttpClientVersion>1.14-MULE-024</asyncHttpClientVersion>
+        <asyncHttpClientVersion>1.14-MULE-025</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
         <jakarta.activation.version>1.2.2</jakarta.activation.version>
         <sun.mailapi.version>1.6.7</sun.mailapi.version>
