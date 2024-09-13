@@ -2,6 +2,7 @@ upstreamProjects:
   Mule-runtime/mule/master
 mavenSettingsXmlId: mule-runtime-maven-settings-MuleSettings
 projectType: runtime
+mavenTool: "3.9.9"
 jdkTool: OPEN-JDK17
 additionalTestConfigs:
   jdk21:
