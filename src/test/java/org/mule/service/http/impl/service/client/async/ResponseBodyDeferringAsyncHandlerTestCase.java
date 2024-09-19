@@ -73,7 +73,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   public void doesNotStreamWhenPossible() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     Reference<InputStream> responseContent = new Reference<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, executor);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(true);
@@ -97,7 +97,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   public void streamsWhenRequired() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     Reference<InputStream> responseContent = new Reference<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, executor);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(false);
@@ -121,7 +121,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   @Issue("MULE-19208")
   public void handlerAbortsResponseWhenAnErrorOccurred() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, executor);
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(false);
 
@@ -143,7 +143,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   @Issue("MULE-19208")
   public void handlerDoesNotTryToWriteAPartIfAnErrorOccurred() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, executor);
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(false);
 
@@ -158,7 +158,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   @Issue("MULE-19208")
   public void handlerClosesPipedStreamIfAnErrorOccurredBetweenTwoParts() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, executor);
     GrizzlyResponseBodyPart bodyPartBeforeError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     GrizzlyResponseBodyPart bodyPartAfterError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPartBeforeError.isLast()).thenReturn(false);
@@ -185,7 +185,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   @Issue("MULE-19208")
   public void handlerDoesNotTryToWriteAPartIfAnErrorOccurredBetweenTwoParts() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, executor);
     GrizzlyResponseBodyPart bodyPartBeforeError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     GrizzlyResponseBodyPart bodyPartAfterError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPartBeforeError.isLast()).thenReturn(false);
@@ -205,7 +205,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   @Issue("MULE-19208")
   public void readerDoesNotBlockWhenNobodyWroteInTheStreamYet() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, executor);
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(false);
     when(bodyPart.getBodyPartBytes()).thenReturn("payload".getBytes());
@@ -256,7 +256,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   @Test
   public void abortsWhenPipeIsClosed() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, executor);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     GrizzlyResponseBodyPart bodyPart = spy(new GrizzlyResponseBodyPart(mock(HttpContent.class), mock(Connection.class)));
     when(bodyPart.isLast()).thenReturn(false);
@@ -269,7 +269,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   @Test
   public void doesNotThrowExceptionIfContentLengthIsGreaterThanMaxInteger() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, -1);
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, -1, executor);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
 
     FluentCaseInsensitiveStringsMap headersMap = mock((FluentCaseInsensitiveStringsMap.class));

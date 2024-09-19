@@ -21,6 +21,8 @@ import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
+
+import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
 import org.mule.service.http.impl.util.TimedPipedInputStream;
@@ -42,6 +44,7 @@ import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -72,6 +75,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   private volatile Response response;
   private int bufferSize;
+  private final ExecutorService workerScheduler;
   private OutputStream output;
   private Optional<InputStream> input = empty();
   private final CompletableFuture<HttpResponse> future;
@@ -91,9 +95,12 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   private AtomicBoolean throwableReceived = new AtomicBoolean(false);
 
-  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize) throws IOException {
+  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
+                                           ExecutorService workerScheduler)
+      throws IOException {
     this.future = future;
     this.bufferSize = userDefinedBufferSize;
+    this.workerScheduler = workerScheduler;
     this.mdc = MDC.getCopyOfContextMap();
   }
 
@@ -284,14 +291,16 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   private void handleIfNecessary() {
     if (!handled.getAndSet(true)) {
-      response = responseBuilder.build();
-      try {
-        future.complete(httpResponseCreator.create(response, input.orElse(response.getResponseBodyAsStream())));
-      } catch (IOException e) {
-        // Make sure all resources are accounted for and since we've set the handled flag, handle the future explicitly
-        onThrowable(e);
-        future.completeExceptionally(e);
-      }
+      workerScheduler.submit(() -> {
+        response = responseBuilder.build();
+        try {
+          future.complete(httpResponseCreator.create(response, input.orElse(response.getResponseBodyAsStream())));
+        } catch (IOException e) {
+          // Make sure all resources are accounted for and since we've set the handled flag, handle the future explicitly
+          onThrowable(e);
+          future.completeExceptionally(e);
+        }
+      });
     }
   }
 }
