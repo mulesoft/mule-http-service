@@ -39,6 +39,8 @@
         <bouncycastle.version>1.78.1</bouncycastle.version>
 
         <nettyHttpServiceVersion>0.2.0-SNAPSHOT</nettyHttpServiceVersion>
+        <jakarta.mail.version>2.0.1</jakarta.mail.version>
+        <jakarta.activation.version>2.0.1</jakarta.activation.version>
 
         <skipExportTests>false</skipExportTests>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
@@ -114,10 +116,12 @@
         <dependency>
             <groupId>com.sun.mail</groupId>
             <artifactId>jakarta.mail</artifactId>
+            <version>${jakarta.mail.version}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.activation</groupId>
             <artifactId>jakarta.activation</artifactId>
+            <version>${jakarta.activation.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
