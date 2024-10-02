@@ -172,6 +172,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
   }
 
   @Test
+  @Issue("W-16892585")
   public void whenTheTimeoutIsElapsedThenTheStartIsExecutedInTheWorkerScheduler() throws Exception {
     responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
     testWithSystemProperty("mule.timeoutToUseSelectorWhileStreamingResponseMillis", "0", () -> {
@@ -188,6 +189,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
   }
 
   @Test
+  @Issue("W-16892585")
   public void whenTheTimeoutIsNotElapsedThenTheStartIsNotExecutedInTheWorkerScheduler() throws Exception {
     responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
     testWithSystemProperty("mule.timeoutToUseSelectorWhileStreamingResponseMillis", "100000", () -> {
