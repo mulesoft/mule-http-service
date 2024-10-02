@@ -6,41 +6,45 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
+import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
+import static org.mule.tck.MuleTestUtils.testWithSystemProperty;
+
 import static java.lang.Thread.currentThread;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.rules.ExpectedException.none;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mule.runtime.http.api.HttpHeaders.Names.CONNECTION;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
-
-import io.qameta.allure.Issue;
-import org.glassfish.grizzly.http.ProcessingState;
-import org.junit.Rule;
-import org.junit.Test;
 
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 
-import org.glassfish.grizzly.Transport;
-import org.junit.Before;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import io.qameta.allure.Feature;
+import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
-import org.junit.rules.ExpectedException;
+import org.glassfish.grizzly.Transport;
+import org.glassfish.grizzly.http.HttpContent;
+import org.glassfish.grizzly.http.ProcessingState;
+import org.junit.Before;
+import org.junit.Test;
 
 @Feature(HTTP_SERVICE)
 @Story(RESPONSES)
@@ -48,9 +52,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
 
   private ResponseStreamingCompletionHandler handler;
   private InputStream mockStream;
-
-  @Rule
-  public ExpectedException exception = none();
+  private final ExecutorService workerPool = mock(ExecutorService.class);
 
   @Before
   public void setUp() {
@@ -62,7 +64,8 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
                                                      currentThread().getContextClassLoader(),
                                                      request,
                                                      responseMock,
-                                                     callback);
+                                                     callback,
+                                                     workerPool);
   }
 
   @Override
@@ -80,7 +83,8 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
                                                      currentThread().getContextClassLoader(),
                                                      request,
                                                      responseMock,
-                                                     callback);
+                                                     callback,
+                                                     workerPool);
     assertThat(handler.getHttpResponsePacket().getHeader(CONNECTION), equalTo(KEEP_ALIVE));
   }
 
@@ -94,7 +98,8 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
                                                      currentThread().getContextClassLoader(),
                                                      request,
                                                      responseMock,
-                                                     callback);
+                                                     callback,
+                                                     workerPool);
     assertThat(getHandler().getHttpResponsePacket().getHeader(CONNECTION), equalTo(CLOSE));
   }
 
@@ -106,7 +111,8 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
                                                          currentThread().getContextClassLoader(),
                                                          request,
                                                          responseMock,
-                                                         callback));
+                                                         callback,
+                                                         workerPool));
 
     when(mockStream.read(any(), anyInt(), anyInt())).thenThrow(new MuleRuntimeException(new NullPointerException()));
     handler.sendInputStreamChunk();
@@ -122,11 +128,10 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
                                                          currentThread().getContextClassLoader(),
                                                          request,
                                                          responseMock,
-                                                         callback));
-
-    exception.expect(IOException.class);
+                                                         callback,
+                                                         workerPool));
     when(mockStream.read(any(), anyInt(), anyInt())).thenThrow(new MuleRuntimeException(new IOException()));
-    handler.sendInputStreamChunk();
+    assertThrows(IOException.class, () -> handler.sendInputStreamChunk());
   }
 
   @Test
@@ -137,7 +142,8 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
                                                      currentThread().getContextClassLoader(),
                                                      request,
                                                      responseMock,
-                                                     callback);
+                                                     callback,
+                                                     workerPool);
     // When an unexpected error makes getConnection return null.
     when(ctx.getConnection()).thenReturn(null);
     // Then the failed() method is executed without throwing NPE.
@@ -152,7 +158,8 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
                                                      currentThread().getContextClassLoader(),
                                                      request,
                                                      responseMock,
-                                                     callback);
+                                                     callback,
+                                                     workerPool);
 
     // When the failed() method is invoked several times
     handler.failed(createExpectedException());
@@ -162,6 +169,39 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
     // Then the effects of failed() are invoked only once.
     verify(mockStream, times(1)).close();
     verify(callback, times(1)).onErrorSendingResponse(any(Exception.class));
+  }
+
+  @Test
+  public void whenTheTimeoutIsElapsedThenTheStartIsExecutedInTheWorkerScheduler() throws Exception {
+    responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
+    testWithSystemProperty("mule.timeoutToUseSelectorWhileStreamingResponseMillis", "0", () -> {
+      handler = new ResponseStreamingCompletionHandler(ctx,
+                                                       currentThread().getContextClassLoader(),
+                                                       request,
+                                                       responseMock,
+                                                       callback,
+                                                       workerPool);
+
+      handler.start();
+      verify(workerPool, times(1)).submit(any(Runnable.class));
+    });
+  }
+
+  @Test
+  public void whenTheTimeoutIsNotElapsedThenTheStartIsNotExecutedInTheWorkerScheduler() throws Exception {
+    responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
+    testWithSystemProperty("mule.timeoutToUseSelectorWhileStreamingResponseMillis", "100000", () -> {
+      handler = new ResponseStreamingCompletionHandler(ctx,
+                                                       currentThread().getContextClassLoader(),
+                                                       request,
+                                                       responseMock,
+                                                       callback,
+                                                       workerPool);
+
+      handler.start();
+      verify(workerPool, never()).submit(any(Runnable.class));
+      verify(ctx, times(1)).write(any(HttpContent.class), eq(handler));
+    });
   }
 
   private Exception createExpectedException() {

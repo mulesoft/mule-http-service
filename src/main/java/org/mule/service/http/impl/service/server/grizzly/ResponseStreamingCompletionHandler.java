@@ -6,22 +6,24 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.lang.Integer.valueOf;
-import static java.lang.Math.min;
-import static java.lang.System.getProperty;
-import static java.lang.System.nanoTime;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.lang.Thread.currentThread;
-import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
-import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
 import static org.mule.runtime.api.util.DataUnit.KB;
-import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.api.util.MuleSystemProperties.MULE_LOG_SEPARATION_DISABLED;
+import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.util.ClassUtils.setContextClassLoader;
 import static org.mule.runtime.core.api.util.StringUtils.isEmpty;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.service.http.impl.service.server.grizzly.ExecutorPerServerAddressIOStrategy.DELEGATE_WRITES_IN_CONFIGURED_EXECUTOR;
+
+import static java.lang.Integer.valueOf;
+import static java.lang.Math.min;
+import static java.lang.System.getProperty;
+import static java.lang.System.nanoTime;
+import static java.lang.Thread.currentThread;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
+import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_SEND_BUFFER_SIZE;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.api.connection.SourceRemoteConnectionException;
@@ -33,6 +35,8 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
@@ -62,6 +66,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
 
   private static final String SELECTOR_TIMEOUT = SYSTEM_PROPERTY_PREFIX + "timeoutToUseSelectorWhileStreamingResponseMillis";
   private final long selectorTimeoutNanos = MILLISECONDS.toNanos(Long.valueOf(getProperty(SELECTOR_TIMEOUT, "50")));
+  private final ExecutorService workerPool;
 
   private volatile boolean isDone;
   private boolean alreadyFailed = false;
@@ -69,7 +74,9 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   public ResponseStreamingCompletionHandler(final FilterChainContext ctx,
                                             ClassLoader ctxClassLoader,
                                             final HttpRequestPacket request,
-                                            final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
+                                            final HttpResponse httpResponse,
+                                            ResponseStatusCallback responseStatusCallback,
+                                            ExecutorService workerPool) {
     checkArgument((httpResponse.getEntity().isStreaming()), "HTTP response entity must be stream based");
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
@@ -79,6 +86,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
     bufferSize = calculateBufferSize(ctx, ctxClassLoader);
     this.responseStatusCallback = responseStatusCallback;
     this.startTimeNanos = nanoTime();
+    this.workerPool = workerPool;
   }
 
   /**
@@ -117,6 +125,25 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   public void start() throws IOException {
+    if (isSelectorTimeout()) {
+      markConnectionToDelegateWritesInConfiguredExecutor(true);
+      try {
+        workerPool.submit(() -> {
+          try {
+            start0();
+          } catch (Exception exception) {
+            responseStatusCallback.onErrorSendingResponse(exception);
+          }
+        });
+      } catch (RejectedExecutionException ree) {
+        start0();
+      }
+    } else {
+      start0();
+    }
+  }
+
+  private void start0() throws IOException {
     Thread thread = null;
     ClassLoader currentClassLoader = null;
     ClassLoader newClassLoader = null;

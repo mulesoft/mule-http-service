@@ -50,6 +50,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLSession;
@@ -60,14 +61,16 @@ import javax.net.ssl.SSLSession;
 public class GrizzlyRequestDispatcherFilter extends BaseFilter {
 
   private final RequestHandlerProvider requestHandlerProvider;
+  private final ExecutorService workerPool;
 
   private final byte[] SERVER_NOT_AVAILABLE_CONTENT = ("Server not available to handle this request, either not initialized yet "
       + "or it has been disposed.").getBytes(defaultCharset());
 
   private ConcurrentMap<ServerAddress, AtomicInteger> activeRequests = new ConcurrentHashMap<>();
 
-  GrizzlyRequestDispatcherFilter(final RequestHandlerProvider requestHandlerProvider) {
+  GrizzlyRequestDispatcherFilter(final RequestHandlerProvider requestHandlerProvider, ExecutorService workerPool) {
     this.requestHandlerProvider = requestHandlerProvider;
+    this.workerPool = workerPool;
   }
 
   @Override
@@ -140,7 +143,7 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
 
               if (response.getEntity().isStreaming()) {
                 new ResponseStreamingCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                                       requestAdapterNotifyingResponseStatusCallback).start();
+                                                       requestAdapterNotifyingResponseStatusCallback, workerPool).start();
               } else {
                 new ResponseCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
                                               requestAdapterNotifyingResponseStatusCallback).start();
