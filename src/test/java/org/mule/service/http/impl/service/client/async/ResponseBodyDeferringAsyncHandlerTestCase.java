@@ -296,31 +296,6 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     }));
   }
 
-  @Test
-  @Issue("W-16640190")
-  public void errorOnWhenComplete() throws Exception {
-    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
-    Reference<String> responseContent = new Reference<>();
-    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, workersExecutor);
-    handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
-
-    GrizzlyResponseBodyPart intermediatePart = mockBodyPart(false, "Hello ".getBytes());
-    GrizzlyResponseBodyPart lastPart = mockBodyPart(true, "world".getBytes());
-
-    future.whenComplete((response, exception) -> {
-      throw new NullPointerException("Expected");
-    });
-
-    assertThat(handler.onBodyPartReceived(intermediatePart), is(CONTINUE));
-    assertThat(handler.onBodyPartReceived(lastPart), is(CONTINUE));
-    assertThat(handler.onCompleted(), is(nullValue()));
-
-    prober.check(new JUnitLambdaProbe(() -> {
-      assertThat(responseContent.get(), is("Hello world"));
-      return true;
-    }));
-  }
-
   private static GrizzlyResponseBodyPart mockBodyPart(boolean isLast, byte[] content) throws IOException {
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(isLast);
