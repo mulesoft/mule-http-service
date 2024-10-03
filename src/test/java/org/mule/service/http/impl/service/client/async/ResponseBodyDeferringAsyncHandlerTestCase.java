@@ -45,13 +45,12 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.util.TimedPipedInputStream;
 import org.mule.service.http.impl.util.TimedPipedOutputStream;
 import org.mule.tck.junit4.AbstractMuleTestCase;
-import org.mule.tck.probe.JUnitProbe;
+import org.mule.tck.probe.JUnitLambdaProbe;
 import org.mule.tck.probe.PollingProber;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
@@ -66,12 +65,9 @@ import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.http.HttpContent;
-import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 @Feature(HTTP_SERVICE)
 @Story(STREAMING)
@@ -111,15 +107,10 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
     assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
 
-    prober.check(new JUnitProbe() {
-
-      @Override
-      protected boolean test() throws Exception {
-        assertThat(responseContent.get(), not(nullValue()));
-        assertThat(responseContent.get(), not(instanceOf(TimedPipedInputStream.class)));
-        return true;
-      }
-    });
+    prober.check(new JUnitLambdaProbe(() -> {
+      assertThat(responseContent.get(), not(instanceOf(TimedPipedInputStream.class)));
+      return true;
+    }));
   }
 
   @Test
@@ -133,15 +124,10 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
     assertThat(handler.onBodyPartReceived(bodyPart), is(CONTINUE));
 
-    prober.check(new JUnitProbe() {
-
-      @Override
-      protected boolean test() throws Exception {
-        assertThat(responseContent.get(), not(nullValue()));
-        assertThat(responseContent.get(), instanceOf(TimedPipedInputStream.class));
-        return true;
-      }
-    });
+    prober.check(new JUnitLambdaProbe(() -> {
+      assertThat(responseContent.get(), instanceOf(TimedPipedInputStream.class));
+      return true;
+    }));
   }
 
   @Test
@@ -156,13 +142,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     AsyncHandler.STATE state = handler.onBodyPartReceived(bodyPart);
     assertThat(state, is(ABORT));
 
-    prober.check(new JUnitProbe() {
-
-      @Override
-      protected boolean test() throws Exception {
-        return future.isCompletedExceptionally();
-      }
-    });
+    prober.check(new JUnitLambdaProbe(future::isCompletedExceptionally));
   }
 
   @Test
@@ -192,15 +172,11 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     handler.onThrowable(new TimeoutException("Timeout exceeded"));
     assertThat(handler.onBodyPartReceived(bodyPartAfterError), is(ABORT));
 
-    prober.check(new JUnitProbe() {
-
-      @Override
-      protected boolean test() throws Exception {
-        // When the TimedPipedInputStream is closed by writer, read returns -1 indicating EOF.
-        byte[] result = new byte[16];
-        return future.get().getEntity().getContent().read(result) == -1;
-      }
-    });
+    prober.check(new JUnitLambdaProbe(() -> {
+      // When the TimedPipedInputStream is closed by writer, read returns -1 indicating EOF.
+      byte[] result = new byte[16];
+      return future.get().getEntity().getContent().read(result) == -1;
+    }));
   }
 
   @Test
@@ -245,16 +221,12 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     });
 
     // The read operation isn't blocking when nobody wrote in the stream.
-    prober.check(new JUnitProbe() {
-
-      @Override
-      protected boolean test() throws Exception {
-        // When the TimedPipedInputStream was never written and it's still open, read returns 0.
-        byte[] result = new byte[16];
-        int bytesRead = future.get().getEntity().getContent().read(result);
-        return bytesRead == 0;
-      }
-    });
+    prober.check(new JUnitLambdaProbe(() -> {
+      // When the TimedPipedInputStream was never written and it's still open, read returns 0.
+      byte[] result = new byte[16];
+      int bytesRead = future.get().getEntity().getContent().read(result);
+      return bytesRead == 0;
+    }));
 
     writeLatch.release();
 
@@ -262,15 +234,11 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     handler.onCompleted();
 
     // The read operation returns EOF when the pipe was closed while it was empty.
-    prober.check(new JUnitProbe() {
-
-      @Override
-      protected boolean test() throws Exception {
-        // When the TimedPipedInputStream is closed by writer, read returns -1 indicating EOF.
-        byte[] result = new byte[16];
-        return future.get().getEntity().getContent().read(result) == -1;
-      }
-    });
+    prober.check(new JUnitLambdaProbe(() -> {
+      // When the TimedPipedInputStream is closed by writer, read returns -1 indicating EOF.
+      byte[] result = new byte[16];
+      return future.get().getEntity().getContent().read(result) == -1;
+    }));
   }
 
   @Test
@@ -303,7 +271,8 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   }
 
   @Test
-  public void readFromPipeInWhenComplete() throws Exception {
+  @Issue("W-16640190")
+  public void readFromPipeInWhenCompleteDoesNotCauseADeadlock() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     Reference<String> responseContent = new Reference<>();
     ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, workersExecutor);
@@ -321,15 +290,35 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     assertThat(handler.onBodyPartReceived(lastPart), is(CONTINUE));
     assertThat(handler.onCompleted(), is(nullValue()));
 
-    prober.check(new JUnitProbe() {
+    prober.check(new JUnitLambdaProbe(() -> {
+      assertThat(responseContent.get(), is("Hello world"));
+      return true;
+    }));
+  }
 
-      @Override
-      protected boolean test() throws Exception {
-        assertThat(responseContent.get(), not(nullValue()));
-        assertThat(responseContent.get(), is("Hello world"));
-        return true;
-      }
+  @Test
+  @Issue("W-16640190")
+  public void errorOnWhenComplete() throws Exception {
+    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
+    Reference<String> responseContent = new Reference<>();
+    ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, workersExecutor);
+    handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
+
+    GrizzlyResponseBodyPart intermediatePart = mockBodyPart(false, "Hello ".getBytes());
+    GrizzlyResponseBodyPart lastPart = mockBodyPart(true, "world".getBytes());
+
+    future.whenComplete((response, exception) -> {
+      throw new NullPointerException("Expected");
     });
+
+    assertThat(handler.onBodyPartReceived(intermediatePart), is(CONTINUE));
+    assertThat(handler.onBodyPartReceived(lastPart), is(CONTINUE));
+    assertThat(handler.onCompleted(), is(nullValue()));
+
+    prober.check(new JUnitLambdaProbe(() -> {
+      assertThat(responseContent.get(), is("Hello world"));
+      return true;
+    }));
   }
 
   private static GrizzlyResponseBodyPart mockBodyPart(boolean isLast, byte[] content) throws IOException {
