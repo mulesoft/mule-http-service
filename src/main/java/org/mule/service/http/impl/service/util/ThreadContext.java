@@ -17,13 +17,17 @@ import org.slf4j.MDC;
  * Auxiliary auto-closeable class to be used in a try-with-resources scope. Client would create an instance of ThreadContext
  * passing a class loader and a map to be set as mdc while the instance is open. When the instance goes out of scope, it's closed
  * and the previous class loader and mdc are restored.
- *
- * Usage example: <code>
+ * <p>
+ * Usage example:
+ * 
+ * <pre>
+ * {@code
  *   try (ThreadContext tc = new ThreadContext(theClassLoader, theMDC)) {
  *     // The code in this scope will use theClassLoader and theMDC.
  *   }
  *   // Out of the scope, the code will use the outer class loader and mdc.
- * </code>
+ * }
+ * </pre>
  *
  * It's only intended to be used in a try-with-resources block, avoid using it in another fashion.
  */
