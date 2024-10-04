@@ -448,7 +448,8 @@ public class GrizzlyHttpClient implements HttpClient {
       CompletableFuture<HttpResponse> auxFuture = new CompletableFuture<>();
       if (streamingEnabled) {
         asyncHandler =
-            new PreservingClassLoaderAsyncHandler<>(new ResponseBodyDeferringAsyncHandler(auxFuture, responseBufferSize));
+            new PreservingClassLoaderAsyncHandler<>(new ResponseBodyDeferringAsyncHandler(auxFuture, responseBufferSize,
+                                                                                          workerScheduler));
       } else {
         asyncHandler = new PreservingClassLoaderAsyncHandler<>(new ResponseAsyncHandler(auxFuture));
       }
