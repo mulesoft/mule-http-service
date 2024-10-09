@@ -6,12 +6,9 @@
  */
 package org.mule.service.http.impl.service;
 
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
-import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
-import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.scheduler.SchedulerConfig.config;
+import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.core.api.config.MuleProperties.APP_NAME_PROPERTY;
 import static org.mule.runtime.core.api.config.MuleProperties.DOMAIN_NAME_PROPERTY;
 import static org.mule.runtime.core.api.config.MuleProperties.OBJECT_SCHEDULER_BASE_CONFIG;
@@ -20,7 +17,15 @@ import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.DOMAIN;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.POLICY;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.disposeIfNeeded;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
+
+import static java.lang.Long.getLong;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+
+import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
+import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
 import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.api.artifact.Registry;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.Startable;
@@ -65,6 +70,8 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   private static final Logger logger = getLogger(HttpServiceImplementation.class);
   private static final String CONTAINER_CONTEXT = "container";
+  private static final String HTTP_GRACEFUL_SHUTDOWN_TIMEOUT_PROPERTY_NAME =
+      SYSTEM_PROPERTY_PREFIX + "http.graceful.shutdown.timeout";
   private static final long DEFAULT_SHUTDOWN_TIMEOUT = 200;
 
   protected final SchedulerService schedulerService;
@@ -80,8 +87,8 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   @Override
   public HttpServerFactory getServerFactory() {
-    return new ContextHttpServerFactoryAdapter(CONTAINER_CONTEXT, empty(), listenerConnectionManager,
-                                               () -> DEFAULT_SHUTDOWN_TIMEOUT);
+    Supplier<Long> shutdownTimeout = () -> getLong(HTTP_GRACEFUL_SHUTDOWN_TIMEOUT_PROPERTY_NAME, DEFAULT_SHUTDOWN_TIMEOUT);
+    return new ContextHttpServerFactoryAdapter(CONTAINER_CONTEXT, empty(), listenerConnectionManager, shutdownTimeout);
   }
 
   @Inject
@@ -89,7 +96,8 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
     ArtifactType artifactType = muleContext.getArtifactType();
     Optional<String> appName = registry.lookupByName(APP_NAME_PROPERTY);
     Optional<String> domainName = registry.lookupByName(DOMAIN_NAME_PROPERTY);
-    Supplier<Long> shutdownTimeout = () -> muleContext.getConfiguration().getShutdownTimeout();
+    Supplier<Long> shutdownTimeout =
+        () -> getLong(HTTP_GRACEFUL_SHUTDOWN_TIMEOUT_PROPERTY_NAME, muleContext.getConfiguration().getShutdownTimeout());
 
     try {
       switch (artifactType) {
