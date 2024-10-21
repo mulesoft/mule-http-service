@@ -31,6 +31,7 @@ import org.mule.runtime.core.api.config.bootstrap.ArtifactType;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
+import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter;
 
 import java.lang.reflect.Field;
@@ -228,7 +229,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
     when(registry.<String>lookupByName(APP_NAME_PROPERTY)).thenReturn(artifactName);
     when(registry.<String>lookupByName(DOMAIN_NAME_PROPERTY)).thenReturn(domainName);
 
-    return service.getServerFactory(registry, muleContext);
+    return ((HttpServiceImplementation) service).getServerFactory(registry, muleContext);
   }
 
   private void assertServerFactory(HttpServerFactory serverFactory, String contextName, Optional<String> parentContext)
