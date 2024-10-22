@@ -13,6 +13,8 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -35,7 +37,8 @@ public class NonBlockingStreamWriter implements Runnable {
     try {
       while (!isStopped.get()) {
         boolean couldWriteSomething = writeWhateverPossible();
-        if (!couldWriteSomething) {
+
+        if (!couldWriteSomething && !isStopped.get()) {
           LOGGER.trace("Giving some time to the other threads to consume from pipes...");
           Thread.sleep(100);
         }
@@ -46,7 +49,7 @@ public class NonBlockingStreamWriter implements Runnable {
   }
 
   private boolean writeWhateverPossible() throws InterruptedException {
-    BlockingQueue<InternalWriteTask> tasksWithPendingData = new LinkedBlockingQueue<>();
+    List<InternalWriteTask> tasksWithPendingData = new ArrayList<>(tasks.size());
     boolean couldCompleteSomething = false;
 
     InternalWriteTask task = tasks.poll(100, TimeUnit.MILLISECONDS);
@@ -60,7 +63,7 @@ public class NonBlockingStreamWriter implements Runnable {
       task = tasks.poll(100, TimeUnit.MILLISECONDS);
     }
 
-    tasks = tasksWithPendingData;
+    tasks.addAll(tasksWithPendingData);
     return couldCompleteSomething;
   }
 
