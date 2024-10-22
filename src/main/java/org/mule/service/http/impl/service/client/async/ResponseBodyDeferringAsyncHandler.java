@@ -101,7 +101,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
-  private AtomicBoolean throwableReceived = new AtomicBoolean(false);
+  private final AtomicBoolean throwableReceived = new AtomicBoolean(false);
 
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
                                            ExecutorService workerScheduler,
@@ -279,14 +279,13 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       // no room to write everything...
       nonBlockingStreamWriter.addDataToWrite(output, bodyPart.getBodyPartBytes(), this::availableSpaceInPipe)
           .whenComplete((nothing, error) -> {
-            boolean ignorePause = throwableReceived.get();
             if (error != null) {
               onThrowable(error);
             }
-            if (ignorePause) {
-              ctx.resume();
-            } else {
+            try {
               resumeFromPausedAction(ctx);
+            } catch (Exception e) {
+              onThrowable(e);
             }
           });
     } else {

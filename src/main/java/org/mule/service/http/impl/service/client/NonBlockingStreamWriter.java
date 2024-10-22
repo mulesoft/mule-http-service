@@ -50,21 +50,24 @@ public class NonBlockingStreamWriter implements Runnable {
 
   private boolean writeWhateverPossible() throws InterruptedException {
     List<InternalWriteTask> tasksWithPendingData = new ArrayList<>(tasks.size());
-    boolean couldCompleteSomething = false;
+    boolean couldWriteSomething = false;
 
     InternalWriteTask task = tasks.poll(100, TimeUnit.MILLISECONDS);
     while (task != null) {
+      int remainingBeforeExecute = task.remaining();
       boolean couldComplete = task.execute();
-      if (couldComplete) {
-        couldCompleteSomething = true;
-      } else {
+      int remainingAfterExecute = task.remaining();
+      if (!couldComplete) {
         tasksWithPendingData.add(task);
+      }
+      if (remainingAfterExecute > remainingBeforeExecute) {
+        couldWriteSomething = true;
       }
       task = tasks.poll(100, TimeUnit.MILLISECONDS);
     }
 
     tasks.addAll(tasksWithPendingData);
-    return couldCompleteSomething;
+    return couldWriteSomething;
   }
 
   public CompletableFuture<Void> addDataToWrite(OutputStream destinationStream,
@@ -95,15 +98,16 @@ public class NonBlockingStreamWriter implements Runnable {
 
     public InternalWriteTask(OutputStream destinationStream, byte[] dataToWrite, Supplier<Integer> availableSpace) {
       this.id = idGenerator.getAndIncrement();
-
-      LOGGER.debug("Adding data to write (id: {})", id);
-
       this.destinationStream = destinationStream;
       this.availableSpace = availableSpace;
       this.toCompleteWhenAllDataIsWritten = new CompletableFuture<>();
       this.totalBytesToWrite = dataToWrite.length;
       this.dataToWrite = dataToWrite;
       this.alreadyWritten = 0;
+    }
+
+    public int remaining() {
+      return totalBytesToWrite - alreadyWritten;
     }
 
     public boolean execute() {
@@ -115,7 +119,7 @@ public class NonBlockingStreamWriter implements Runnable {
           destinationStream.write(dataToWrite, alreadyWritten, bytesToWriteInThisExecution);
         } catch (Exception e) {
           toCompleteWhenAllDataIsWritten.completeExceptionally(e);
-          LOGGER.debug("Error on write (id: {})", id, e);
+          LOGGER.trace("Error on write (id: {})", id, e);
           return true;
         }
         alreadyWritten += bytesToWriteInThisExecution;
@@ -125,18 +129,18 @@ public class NonBlockingStreamWriter implements Runnable {
       }
 
       if (alreadyWritten == totalBytesToWrite) {
-        LOGGER.debug("Fully written (id: {})", id);
+        LOGGER.trace("Fully written (id: {})", id);
         toCompleteWhenAllDataIsWritten.complete(null);
         return true;
       }
 
       if (bytesToWriteInThisExecution == -1) {
-        LOGGER.debug("Destination stream closed (id: {})", id);
+        LOGGER.trace("Destination stream closed (id: {})", id);
         toCompleteWhenAllDataIsWritten.completeExceptionally(new IOException("Pipe closed"));
         return true;
       }
 
-      LOGGER.debug("Written bytes: {}/{} (id: {})", alreadyWritten, totalBytesToWrite, id);
+      LOGGER.trace("Written bytes: {}/{} (id: {})", alreadyWritten, totalBytesToWrite, id);
       return false;
     }
 
