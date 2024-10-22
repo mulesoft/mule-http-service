@@ -25,6 +25,7 @@ import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.functional.FillAndWaitStream;
 import org.mule.service.http.impl.functional.ResponseReceivedProbe;
+import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.probe.PollingProber;
 import org.slf4j.MDC;
 
@@ -232,7 +233,8 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
   private void testMdcPropagation(boolean shouldStream, boolean shouldThrowException) throws IOException {
     HttpClient client =
-        service.getClientFactory(SchedulerConfig.config().withName("test-scheduler").withMaxConcurrentTasks(5))
+        ((HttpServiceImplementation) service)
+            .getClientFactory(SchedulerConfig.config().withName("test-scheduler").withMaxConcurrentTasks(5))
             .create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(shouldStream).build());
     client.start();
     final Reference<HttpResponse> responseReference = new Reference<>();

@@ -18,6 +18,7 @@ import static junit.framework.TestCase.fail;
 import org.mule.runtime.api.lifecycle.Stoppable;
 import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
+import org.mule.runtime.http.api.HttpService;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.SimpleUnitTestSupportSchedulerService;
@@ -42,7 +43,7 @@ public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
   @Parameter
   public String serviceToLoad;
 
-  protected HttpServiceImplementation service;
+  protected HttpService service;
   private SchedulerService schedulerService;
 
   @Parameters(name = "{0}")
@@ -63,7 +64,7 @@ public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
     schedulerService = getSchedulerService();
     service = (HttpServiceImplementation) instantiateClass(serviceToLoad, new Object[] {schedulerService},
                                                            this.getClass().getClassLoader());
-    service.start();
+    ((HttpServiceImplementation) service).start();
   }
 
   protected SchedulerService getSchedulerService() {
@@ -73,7 +74,7 @@ public abstract class AbstractHttpServiceTestCase extends AbstractMuleTestCase {
   @After
   public void closeServices() throws Exception {
     if (service != null) {
-      service.stop();
+      ((HttpServiceImplementation) service).stop();
     }
     if (schedulerService instanceof Stoppable) {
       ((Stoppable) schedulerService).stop();
