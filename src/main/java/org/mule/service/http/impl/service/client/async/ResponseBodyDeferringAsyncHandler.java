@@ -49,7 +49,7 @@ import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
-import com.ning.http.client.PauseHandler;
+import com.ning.http.client.providers.grizzly.PauseHandler;
 import com.ning.http.client.Response;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
 import org.glassfish.grizzly.http.HttpResponsePacket;
