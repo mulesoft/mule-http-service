@@ -21,8 +21,6 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
-import static com.ning.http.client.PauseContextHelper.requirePause;
-import static com.ning.http.client.PauseContextHelper.resumeFromPausedAction;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
 
@@ -45,14 +43,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
+import com.ning.http.client.PauseHandler;
 import com.ning.http.client.Response;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
-import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -262,24 +261,30 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     int bodyLength = bodyPart.length();
     int spaceInPipe = availableSpaceInPipe();
     if (spaceInPipe < bodyLength) {
-      final FilterChainContext ctx = bodyPart.getContext();
-      requirePause(ctx);
-      // no room to write everything...
-      nonBlockingStreamWriter.addDataToWrite(output, bodyPart.getBodyPartBytes(), this::availableSpaceInPipe)
-          .whenComplete((nothing, error) -> {
-            if (error != null) {
-              onThrowable(error);
-            }
-            try {
-              resumeFromPausedAction(ctx);
-            } catch (Exception e) {
-              onThrowable(e);
-            }
-          });
+      // There is no room to write everything, so we defer the content writing to the output stream. To avoid receiving
+      // more bodyParts, we have to pause the READ events
+      final PauseHandler pauseHandler = bodyPart.getPauseHandler();
+      pauseHandler.requestPause();
+      nonBlockingStreamWriter
+          .addDataToWrite(output, bodyPart.getBodyPartBytes(), this::availableSpaceInPipe)
+          .whenComplete(resumeCallback(pauseHandler));
     } else {
       bodyPart.writeTo(output);
     }
     return CONTINUE;
+  }
+
+  private BiConsumer<Void, Throwable> resumeCallback(final PauseHandler pauseHandler) {
+    return (ignored, error) -> {
+      if (error != null) {
+        onThrowable(error);
+      }
+      try {
+        pauseHandler.resume();
+      } catch (Exception e) {
+        onThrowable(e);
+      }
+    };
   }
 
   private int availableSpaceInPipe() {
