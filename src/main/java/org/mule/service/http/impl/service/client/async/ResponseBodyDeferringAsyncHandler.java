@@ -21,20 +21,19 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import static com.ning.http.client.AsyncHandler.STATE.ABORT;
 import static com.ning.http.client.AsyncHandler.STATE.CONTINUE;
+import static com.ning.http.client.PauseContextHelper.requirePause;
+import static com.ning.http.client.PauseContextHelper.resumeFromPausedAction;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.glassfish.grizzly.http.PauseCtxHelper.requirePause;
-import static org.glassfish.grizzly.http.PauseCtxHelper.resumeFromPausedAction;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
 
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
-import org.mule.service.http.impl.service.util.ThreadContext;
 import org.mule.service.http.impl.service.client.NonBlockingStreamWriter;
+import org.mule.service.http.impl.service.util.ThreadContext;
 import org.mule.service.http.impl.util.TimedPipedInputStream;
 import org.mule.service.http.impl.util.TimedPipedOutputStream;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -43,7 +42,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -245,16 +243,6 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
               of(new TimedPipedInputStream(bufferSize, PIPE_READ_TIMEOUT_MILLIS, MILLISECONDS, (TimedPipedOutputStream) output));
         }
       }
-      if (LOGGER.isDebugEnabled()) {
-        int bodyLength = bodyPart.getBodyByteBuffer().remaining();
-        LOGGER.debug("Multiple parts (part size = {} bytes, PipedInputStream buffer size = {} bytes).", bodyLength, bufferSize);
-        if (bufferSize - input.get().available() < bodyLength) {
-          // TODO - MULE-10550: Process to detect blocking of non-io threads should take care of this
-          LOGGER
-              .debug("SELECTOR BLOCKED! No room in piped stream to write {} bytes immediately. There are still has {} bytes unread",
-                     bodyLength, input.get().available());
-        }
-      }
       handleIfNecessary();
       if (errorDetected()) {
         return closeAndAbort();
@@ -271,7 +259,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   private synchronized STATE writeBodyPartToPipe(HttpResponseBodyPart bodyPart) throws IOException {
-    int bodyLength = bodyPart.getBodyByteBuffer().remaining();
+    int bodyLength = bodyPart.length();
     int spaceInPipe = availableSpaceInPipe();
     if (spaceInPipe < bodyLength) {
       final FilterChainContext ctx = bodyPart.getContext();
