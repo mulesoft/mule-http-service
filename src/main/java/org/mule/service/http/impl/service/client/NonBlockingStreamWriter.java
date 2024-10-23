@@ -30,7 +30,7 @@ public class NonBlockingStreamWriter implements Runnable {
   private static final Logger LOGGER = getLogger(NonBlockingStreamWriter.class);
 
   private final AtomicBoolean isStopped = new AtomicBoolean(false);
-  private BlockingQueue<InternalWriteTask> tasks = new LinkedBlockingQueue<>();
+  private final BlockingQueue<InternalWriteTask> tasks = new LinkedBlockingQueue<>();
 
   @Override
   public void run() {
