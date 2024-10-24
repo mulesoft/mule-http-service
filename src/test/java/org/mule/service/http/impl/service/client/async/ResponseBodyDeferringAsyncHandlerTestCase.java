@@ -60,14 +60,17 @@ import com.ning.http.client.FluentCaseInsensitiveStringsMap;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseBodyPart;
-import io.qameta.allure.Feature;
-import io.qameta.allure.Issue;
-import io.qameta.allure.Story;
+
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.http.HttpContent;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import io.qameta.allure.Feature;
+import io.qameta.allure.Issue;
+import io.qameta.allure.Story;
 
 @Feature(HTTP_SERVICE)
 @Story(STREAMING)
@@ -164,8 +167,8 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   public void handlerClosesPipedStreamIfAnErrorOccurredBetweenTwoParts() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     ResponseBodyDeferringAsyncHandler handler = new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, workersExecutor);
-    GrizzlyResponseBodyPart bodyPartBeforeError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
-    GrizzlyResponseBodyPart bodyPartAfterError = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
+    GrizzlyResponseBodyPart bodyPartBeforeError = mockBodyPart(false, new byte[0]);
+    GrizzlyResponseBodyPart bodyPartAfterError = mockBodyPart(false, new byte[0]);
 
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     assertThat(handler.onBodyPartReceived(bodyPartBeforeError), is(CONTINUE));
