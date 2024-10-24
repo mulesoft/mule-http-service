@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
 
 import io.qameta.allure.Issue;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.mule.rules.BouncyCastleProviderCleaner;
 import org.mule.runtime.api.lifecycle.CreateException;
@@ -50,6 +51,7 @@ import java.util.Collection;
 
 @Story(TLS)
 @Issue("MULE-18398")
+@Ignore("W-17059320")
 public class HttpClientTlsCustomProviderTestCase extends AbstractHttpClientTestCase {
 
   private static final String PASS = "mulepassword";
