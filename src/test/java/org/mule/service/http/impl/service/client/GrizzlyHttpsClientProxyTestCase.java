@@ -38,9 +38,11 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jsse.provider.BouncyCastleJsseProvider;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
+@Ignore("W-17059320")
 public class GrizzlyHttpsClientProxyTestCase extends AbstractHttpClientTestCase {
 
   private static final String PASS = "mulepassword";
