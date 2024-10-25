@@ -259,9 +259,8 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     ResponseBodyDeferringAsyncHandler handler =
         new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, workersExecutor, nonBlockingStreamWriter);
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
-    GrizzlyResponseBodyPart bodyPart = spy(new GrizzlyResponseBodyPart(mock(HttpContent.class), mock(FilterChainContext.class)));
-    when(bodyPart.isLast()).thenReturn(false);
-    doReturn("You will call me Snowball because my fur is pretty and white.".getBytes()).when(bodyPart).getBodyPartBytes();
+    GrizzlyResponseBodyPart bodyPart =
+        mockBodyPart(false, "You will call me Snowball because my fur is pretty and white.".getBytes());
     handler.onBodyPartReceived(bodyPart);
     handler.closeOut();
     assertThat(handler.onBodyPartReceived(bodyPart), is(ABORT));
@@ -315,6 +314,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(isLast);
     when(bodyPart.getBodyByteBuffer()).thenReturn(wrap(content));
+    when(bodyPart.getBodyPartBytes()).thenReturn(content);
     doAnswer(invocation -> {
       OutputStream outputStream = invocation.getArgument(0);
       outputStream.write(content);
