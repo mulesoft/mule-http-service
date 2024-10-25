@@ -257,13 +257,10 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
-  private synchronized STATE writeBodyPartToPipe(HttpResponseBodyPart bodyPart) throws IOException {
+  private STATE writeBodyPartToPipe(HttpResponseBodyPart bodyPart) throws IOException {
     int bodyLength = bodyPart.length();
     int spaceInPipe = availableSpaceInPipe();
-    if (spaceInPipe == -1) {
-      throw new IOException("Pipe closed");
-    }
-    if (spaceInPipe < bodyLength) {
+    if (spaceInPipe >= 0 && spaceInPipe < bodyLength) {
       // There is no room to write everything, so we defer the content writing to the output stream. Also, to avoid
       // receiving more bodyParts temporarily, we have to pause the READ events.
       final PauseHandler pauseHandler = bodyPart.getPauseHandler();

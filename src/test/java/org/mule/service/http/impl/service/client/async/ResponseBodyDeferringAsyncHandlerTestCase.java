@@ -29,11 +29,10 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,17 +60,13 @@ import com.ning.http.client.FluentCaseInsensitiveStringsMap;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseBodyPart;
-
-import org.glassfish.grizzly.filterchain.FilterChainContext;
-import org.glassfish.grizzly.http.HttpContent;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
+import com.ning.http.client.providers.grizzly.PauseHandler;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 @Feature(HTTP_SERVICE)
 @Story(STREAMING)
@@ -80,6 +75,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   private static final int PROBE_TIMEOUT = 5000;
   private static final int POLL_DELAY = 300;
   private static final int BUFFER_SIZE = 1024;
+  private static final PauseHandler pauseHandler = mock(PauseHandler.class);
 
   private final ExecutorService testExecutor = newSingleThreadExecutor();
   private final PollingProber prober = new PollingProber(PROBE_TIMEOUT, POLL_DELAY);
@@ -310,11 +306,85 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     }));
   }
 
+  @Test
+  @Issue("W-17048606")
+  public void writePartBiggerThanBufferAsyncWrite() throws Exception {
+    // use default timeout for this test
+    clearProperty(READ_TIMEOUT_PROPERTY_NAME);
+    refreshSystemProperties();
+
+    int smallBufferSize = 5;
+
+    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
+    ResponseBodyDeferringAsyncHandler handler =
+        new ResponseBodyDeferringAsyncHandler(future, smallBufferSize, workersExecutor, nonBlockingStreamWriter);
+
+    GrizzlyResponseBodyPart intermediatePart = mockBodyPart(false, "Hello ".getBytes());
+    GrizzlyResponseBodyPart lastPart = mockBodyPart(true, "world".getBytes());
+
+    assertThat(handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS)), is(CONTINUE));
+    assertThat(handler.onBodyPartReceived(intermediatePart), is(CONTINUE));
+
+    // The part doesn't fit into the buffer, then we pause the event processing
+    verify(pauseHandler).requestPause();
+
+    // The (incomplete) response can be gotten from the future, and it has a full pipe (available = buffer size)
+    HttpResponse response = future.get();
+    InputStream pipe = response.getEntity().getContent();
+    assertThat(pipe, instanceOf(TimedPipedInputStream.class));
+    assertThat(pipe.available(), is(smallBufferSize));
+
+    // Not resumed yet, because the async writer isn't running
+    verify(pauseHandler, never()).resume();
+
+    // Now we run the writer, consume the pipe async, and write the last part
+    StringBuilder responseAsString = new StringBuilder();
+    testExecutor.submit(() -> consumePipe(pipe, responseAsString));
+    workersExecutor.submit(nonBlockingStreamWriter);
+    assertThat(handler.onBodyPartReceived(lastPart), is(CONTINUE));
+
+    // Eventually, the response is consumed from the pipe
+    prober.check(new JUnitLambdaProbe(() -> {
+      synchronized (responseAsString) {
+        assertThat(responseAsString.toString(), is("Hello world"));
+      }
+      return true;
+    }));
+
+    // Receive the onComplete...
+    assertThat(handler.onCompleted(), is(nullValue()));
+
+    // At this point, the event processing has to be resumed at least once
+    verify(pauseHandler, atLeastOnce()).resume();
+
+    nonBlockingStreamWriter.stop();
+  }
+
+  private static void consumePipe(InputStream pipe, StringBuilder responseStringBuilder) {
+    boolean keepReading = true;
+    while (keepReading) {
+      try {
+        int b = pipe.read();
+        if (b == -1) {
+          keepReading = false;
+        } else {
+          synchronized (responseStringBuilder) {
+            responseStringBuilder.append((char) b);
+          }
+        }
+      } catch (IOException e) {
+        fail("Got exception reading from pipe");
+      }
+    }
+  }
+
   private static GrizzlyResponseBodyPart mockBodyPart(boolean isLast, byte[] content) throws IOException {
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(isLast);
     when(bodyPart.getBodyByteBuffer()).thenReturn(wrap(content));
     when(bodyPart.getBodyPartBytes()).thenReturn(content);
+    when(bodyPart.length()).thenReturn(content.length);
+    when(bodyPart.getPauseHandler()).thenReturn(pauseHandler);
     doAnswer(invocation -> {
       OutputStream outputStream = invocation.getArgument(0);
       outputStream.write(content);
