@@ -14,6 +14,7 @@ import static org.mule.service.http.impl.service.client.async.ResponseBodyDeferr
 
 import static java.lang.System.clearProperty;
 import static java.lang.System.setProperty;
+import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteBuffer.wrap;
 import static java.util.concurrent.Executors.newFixedThreadPool;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
