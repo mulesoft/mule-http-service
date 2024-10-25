@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.client;
 
 import static java.lang.Math.min;
 import static java.lang.Thread.currentThread;
+import static java.lang.Thread.sleep;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -25,12 +26,50 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 
+/**
+ * Writes the data passed via the non-blocking method {@link #addDataToWrite(OutputStream, byte[], Supplier)} to the specified
+ * stream, only if there is available space. If no space available, it saves a task to try later. When it tried to execute all the
+ * pending writes, and it couldn't, then it sleeps a certain period passed via constructor (default is
+ * {@link #DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS}). This is done to avoid an unnecessarily high CPU consumption.
+ */
 public class NonBlockingStreamWriter implements Runnable {
 
   private static final Logger LOGGER = getLogger(NonBlockingStreamWriter.class);
+  private static final int DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS = 100;
 
   private final AtomicBoolean isStopped = new AtomicBoolean(false);
   private final BlockingQueue<InternalWriteTask> tasks = new LinkedBlockingQueue<>();
+  private final int timeToSleepWhenCouldNotWriteMillis;
+
+  public NonBlockingStreamWriter(int timeToSleepWhenCouldNotWriteMillis) {
+    this.timeToSleepWhenCouldNotWriteMillis = timeToSleepWhenCouldNotWriteMillis;
+  }
+
+  public NonBlockingStreamWriter() {
+    this(DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS);
+  }
+
+  /**
+   * Tries to write from <code>dataToWrite</code> to <code>destinationStream</code>, as many bytes as the
+   * <code>availableSpace</code> supplier says it's possible to write. If the supplier returns <code>0</code>, it schedules a task
+   * to try later.
+   * 
+   * @param destinationStream where the data has to be written.
+   * @param dataToWrite       the data to write.
+   * @param availableSpace    a supplier that says how many bytes can be written to the stream without blocking.
+   * @return a {@link CompletableFuture} that will be completed when all the data was written, or when an exception occurs.
+   */
+  public CompletableFuture<Void> addDataToWrite(OutputStream destinationStream,
+                                                byte[] dataToWrite,
+                                                Supplier<Integer> availableSpace) {
+
+    InternalWriteTask internalWriteTask = new InternalWriteTask(destinationStream, dataToWrite, availableSpace);
+    boolean couldCompleteSync = internalWriteTask.execute();
+    if (!couldCompleteSync) {
+      tasks.add(internalWriteTask);
+    }
+    return internalWriteTask.getFuture();
+  }
 
   @Override
   public void run() {
@@ -40,7 +79,7 @@ public class NonBlockingStreamWriter implements Runnable {
 
         if (!couldWriteSomething && !isStopped.get()) {
           LOGGER.trace("Giving some time to the other threads to consume from pipes...");
-          Thread.sleep(100);
+          sleep(timeToSleepWhenCouldNotWriteMillis);
         }
       }
     } catch (InterruptedException e) {
@@ -48,6 +87,19 @@ public class NonBlockingStreamWriter implements Runnable {
     }
   }
 
+  /**
+   * Signals the writer to stop writing. It can also be stopped by interrupting the thread where it's running.
+   */
+  public void stop() {
+    isStopped.set(true);
+  }
+
+  /**
+   * Iterates all the pending write tasks and executes them.
+   * 
+   * @return <code>true</code> if it could write at least one byte, or <code>false</code> otherwise.
+   * @throws InterruptedException if the thread was interrupted.
+   */
   private boolean writeWhateverPossible() throws InterruptedException {
     List<InternalWriteTask> tasksWithPendingData = new ArrayList<>(tasks.size());
     boolean couldWriteSomething = false;
@@ -60,7 +112,7 @@ public class NonBlockingStreamWriter implements Runnable {
       if (!couldComplete) {
         tasksWithPendingData.add(task);
       }
-      if (remainingAfterExecute > remainingBeforeExecute) {
+      if (remainingAfterExecute < remainingBeforeExecute) {
         couldWriteSomething = true;
       }
       task = tasks.poll(100, TimeUnit.MILLISECONDS);
@@ -68,19 +120,6 @@ public class NonBlockingStreamWriter implements Runnable {
 
     tasks.addAll(tasksWithPendingData);
     return couldWriteSomething;
-  }
-
-  public CompletableFuture<Void> addDataToWrite(OutputStream destinationStream,
-                                                byte[] dataToWrite,
-                                                Supplier<Integer> availableSpace) {
-
-    InternalWriteTask internalWriteTask = new InternalWriteTask(destinationStream, dataToWrite, availableSpace);
-    tasks.add(internalWriteTask);
-    return internalWriteTask.getFuture();
-  }
-
-  public void stop() {
-    isStopped.set(true);
   }
 
   private static final class InternalWriteTask {
