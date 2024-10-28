@@ -9,6 +9,7 @@ package org.mule.service.http.impl.service.client;
 import static org.mule.functional.junit4.matchers.ThrowableMessageMatcher.hasMessage;
 
 import static java.lang.System.currentTimeMillis;
+import static java.lang.Thread.sleep;
 import static java.util.Arrays.stream;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.toCollection;
@@ -41,7 +42,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import io.qameta.allure.Issue;
-import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -188,11 +188,40 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
   }
 
   @Test
-  public void interruptTheThreadWorksToInterruptTheWriter() throws InterruptedException {
-    Thread threadOutsideTheStaticExecutor = new Thread(new NonBlockingStreamWriter());
+  public void interruptTheThreadDoesntInterruptTheWriterIfNotStopped() throws InterruptedException {
+    NonBlockingStreamWriter writer = new NonBlockingStreamWriter();
+    Thread threadOutsideTheStaticExecutor = new Thread(writer);
     threadOutsideTheStaticExecutor.start();
     threadOutsideTheStaticExecutor.interrupt();
+
+    // Give it some time to finish if it will (it should not)
+    threadOutsideTheStaticExecutor.join(500);
+    assertThat(threadOutsideTheStaticExecutor.isAlive(), is(true));
+
+    writer.stop();
     threadOutsideTheStaticExecutor.join();
+    assertThat(threadOutsideTheStaticExecutor.isAlive(), is(false));
+  }
+
+  @Test
+  public void interruptTheThreadAfterStopWillInterruptTheSleep() throws InterruptedException {
+    int ridiculouslyBigSleepMillis = Integer.MAX_VALUE;
+    NonBlockingStreamWriter writer = new NonBlockingStreamWriter(ridiculouslyBigSleepMillis);
+    Thread threadOutsideTheStaticExecutor = new Thread(writer);
+    threadOutsideTheStaticExecutor.start();
+
+    // "Ensure" that the thread is sleeping
+    sleep(500);
+    writer.stop();
+
+    // We told the writer to stop, but it's still sleeping
+    threadOutsideTheStaticExecutor.join(500);
+    assertThat(threadOutsideTheStaticExecutor.isAlive(), is(true));
+
+    // If we interrupt the writer now, it will be joined without any issue
+    threadOutsideTheStaticExecutor.interrupt();
+    threadOutsideTheStaticExecutor.join();
+    assertThat(threadOutsideTheStaticExecutor.isAlive(), is(false));
   }
 
   @Test

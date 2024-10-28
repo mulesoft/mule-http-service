@@ -77,17 +77,19 @@ public class NonBlockingStreamWriter implements Runnable {
 
   @Override
   public void run() {
-    try {
-      while (!isStopped.get()) {
+    while (!isStopped.get()) {
+      try {
         boolean couldWriteSomething = writeWhateverPossible();
 
         if (!couldWriteSomething && !isStopped.get()) {
           LOGGER.trace("Giving some time to the other threads to consume from pipes...");
           sleep(timeToSleepWhenCouldNotWriteMillis);
         }
+      } catch (InterruptedException e) {
+        if (!isStopped.get()) {
+          LOGGER.warn("Non blocking writer thread was interrupted before it was stopped. It will resume the execution", e);
+        }
       }
-    } catch (InterruptedException e) {
-      currentThread().interrupt();
     }
   }
 
