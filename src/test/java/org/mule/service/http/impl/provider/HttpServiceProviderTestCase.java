@@ -28,27 +28,29 @@ import org.junit.Test;
 
 public class HttpServiceProviderTestCase extends AbstractMuleTestCase {
 
+  public static final String MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY = "mule.http.service.implementation";
+
   @Test
   public void grizzlyPropertyByDefault() {
-    assumeThat(getProperty("mule.http.service.implementation"), is(nullValue()));
+    assumeThat(getProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY), is(nullValue()));
     assertThat(getImplementationName(), is(GRIZZLY_IMPLEMENTATION_NAME));
   }
 
   @Test
   public void grizzlyPropertyIfConfigured() throws Exception {
-    testWithSystemProperty("mule.http.service.implementation", "GRIZZLY",
+    testWithSystemProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY, "GRIZZLY",
                            () -> assertThat(getImplementationName(), is(GRIZZLY_IMPLEMENTATION_NAME)));
   }
 
   @Test
   public void nettyPropertyIfConfigured() throws Exception {
-    testWithSystemProperty("mule.http.service.implementation", "NETTY",
+    testWithSystemProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY, "NETTY",
                            () -> assertThat(getImplementationName(), is(NETTY_IMPLEMENTATION_NAME)));
   }
 
   @Test
   public void invalidPropertyThrows() throws Exception {
-    testWithSystemProperty("mule.http.service.implementation", "INVALID",
+    testWithSystemProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY, "INVALID",
                            () -> assertThrows("Unknown HTTP Service implementation 'INVALID'. Choose 'GRIZZLY' or 'NETTY'",
                                               IllegalArgumentException.class,
                                               HttpServiceProvider::getImplementationName));
@@ -56,25 +58,25 @@ public class HttpServiceProviderTestCase extends AbstractMuleTestCase {
 
   @Test
   public void grizzlyImplementationByDefault() {
-    assumeThat(getProperty("mule.http.service.implementation"), is(nullValue()));
+    assumeThat(getProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY), is(nullValue()));
     assertThat(getImplementationClass(), is(HttpServiceImplementation.class));
   }
 
   @Test
   public void grizzlyImplementationIfConfigured() throws Exception {
-    testWithSystemProperty("mule.http.service.implementation", "GRIZZLY",
+    testWithSystemProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY, "GRIZZLY",
                            () -> assertThat(getImplementationClass(), is(HttpServiceImplementation.class)));
   }
 
   @Test
   public void nettyImplementationIfConfigured() throws Exception {
-    testWithSystemProperty("mule.http.service.implementation", "NETTY",
+    testWithSystemProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY, "NETTY",
                            () -> assertThat(getImplementationClass(), is(NettyHttpServiceImplementation.class)));
   }
 
   @Test
   public void invalidImplementationThrows() throws Exception {
-    testWithSystemProperty("mule.http.service.implementation", "INVALID",
+    testWithSystemProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY, "INVALID",
                            () -> assertThrows("Unknown HTTP Service implementation 'INVALID'. Choose 'GRIZZLY' or 'NETTY'",
                                               IllegalArgumentException.class,
                                               this::getImplementationClass));
