@@ -11,9 +11,13 @@ import static org.mule.service.http.impl.provider.HttpServiceProvider.NETTY_IMPL
 import static org.mule.service.http.impl.provider.HttpServiceProvider.getImplementationName;
 import static org.mule.tck.MuleTestUtils.testWithSystemProperty;
 
+import static java.lang.System.getProperty;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assume.assumeThat;
 
 import org.mule.runtime.api.service.Service;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
@@ -26,6 +30,7 @@ public class HttpServiceProviderTestCase extends AbstractMuleTestCase {
 
   @Test
   public void grizzlyPropertyByDefault() {
+    assumeThat(getProperty("mule.http.service.implementation"), is(nullValue()));
     assertThat(getImplementationName(), is(GRIZZLY_IMPLEMENTATION_NAME));
   }
 
@@ -51,6 +56,7 @@ public class HttpServiceProviderTestCase extends AbstractMuleTestCase {
 
   @Test
   public void grizzlyImplementationByDefault() {
+    assumeThat(getProperty("mule.http.service.implementation"), is(nullValue()));
     assertThat(getImplementationClass(), is(HttpServiceImplementation.class));
   }
 
