@@ -8,6 +8,7 @@ package org.mule.service.http.impl.service.client;
 
 import static java.lang.Integer.getInteger;
 import static java.lang.Runtime.getRuntime;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
@@ -55,8 +57,10 @@ public class GrizzlyHttpClientLifecycleTestCase extends AbstractMuleTestCase {
   public void testSchedulerSize() {
     SchedulerService schedulerService = mock(SchedulerService.class);
     SchedulerConfig schedulerConfig = mock(SchedulerConfig.class);
-    Scheduler scheduler = mock(Scheduler.class);
-    when(schedulerService.customScheduler(any(), anyInt())).thenReturn(scheduler);
+    Scheduler selectorsScheduler = mock(Scheduler.class);
+    when(schedulerService.customScheduler(any(), anyInt())).thenReturn(selectorsScheduler);
+    Scheduler workersScheduler = mock(Scheduler.class);
+    when(schedulerService.ioScheduler(any())).thenReturn(workersScheduler);
     when(schedulerConfig.withDirectRunCpuLightWhenTargetBusy(anyBoolean())).thenReturn(schedulerConfig);
     when(schedulerConfig.withMaxConcurrentTasks(anyInt())).thenReturn(schedulerConfig);
     when(schedulerConfig.withName(anyString())).thenReturn(schedulerConfig);

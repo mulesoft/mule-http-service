@@ -219,6 +219,10 @@ public class TimedPipedInputStream extends InputStream {
     notifyAll();
   }
 
+  public synchronized boolean isClosed() {
+    return closedByReader || closedByWriter;
+  }
+
   private class CircularInteger {
 
     private int cap;
