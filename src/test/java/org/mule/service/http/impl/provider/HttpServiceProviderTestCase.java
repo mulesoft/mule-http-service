@@ -11,13 +11,9 @@ import static org.mule.service.http.impl.provider.HttpServiceProvider.NETTY_IMPL
 import static org.mule.service.http.impl.provider.HttpServiceProvider.getImplementationName;
 import static org.mule.tck.MuleTestUtils.testWithSystemProperty;
 
-import static java.lang.System.getProperty;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assume.assumeThat;
 
 import org.mule.runtime.api.service.Service;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
@@ -31,9 +27,9 @@ public class HttpServiceProviderTestCase extends AbstractMuleTestCase {
   public static final String MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY = "mule.http.service.implementation";
 
   @Test
-  public void grizzlyPropertyByDefault() {
-    assumeThat(getProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY), is(nullValue()));
-    assertThat(getImplementationName(), is(GRIZZLY_IMPLEMENTATION_NAME));
+  public void grizzlyPropertyByDefault() throws Exception {
+    testWithSystemProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY, null,
+                           () -> assertThat(getImplementationName(), is(GRIZZLY_IMPLEMENTATION_NAME)));
   }
 
   @Test
@@ -57,9 +53,9 @@ public class HttpServiceProviderTestCase extends AbstractMuleTestCase {
   }
 
   @Test
-  public void grizzlyImplementationByDefault() {
-    assumeThat(getProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY), is(nullValue()));
-    assertThat(getImplementationClass(), is(HttpServiceImplementation.class));
+  public void grizzlyImplementationByDefault() throws Exception {
+    testWithSystemProperty(MULE_HTTP_SERVICE_IMPLEMENTATION_SYSTEM_PROPERTY, null,
+                           () -> assertThat(getImplementationClass(), is(HttpServiceImplementation.class)));
   }
 
   @Test
