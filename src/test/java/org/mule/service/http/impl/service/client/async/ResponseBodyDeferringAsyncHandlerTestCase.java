@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.client.async;
 
+import static org.mule.runtime.core.api.util.UUID.getUUID;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.slf4j.MDC.getCopyOfContextMap;
 
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.api.util.concurrent.Latch;
@@ -51,6 +53,8 @@ import org.mule.tck.probe.PollingProber;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
@@ -67,6 +71,7 @@ import io.qameta.allure.Story;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.MDC;
 
 @Feature(HTTP_SERVICE)
 @Story(STREAMING)
@@ -75,7 +80,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   private static final int PROBE_TIMEOUT = 5000;
   private static final int POLL_DELAY = 300;
   private static final int BUFFER_SIZE = 1024;
-  private static final PauseHandler pauseHandler = mock(PauseHandler.class);
+  private final PauseHandler pauseHandler = mock(PauseHandler.class);
 
   private final ExecutorService testExecutor = newSingleThreadExecutor();
   private final PollingProber prober = new PollingProber(PROBE_TIMEOUT, POLL_DELAY);
@@ -308,7 +313,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
   @Test
   @Issue("W-17048606")
-  public void writePartBiggerThanBufferAsyncWrite() throws Exception {
+  public void writePartBiggerThanBufferResultsInAsyncWrite() throws Exception {
     // use default timeout for this test
     clearProperty(READ_TIMEOUT_PROPERTY_NAME);
     refreshSystemProperties();
@@ -341,9 +346,17 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     StringBuilder responseAsString = new StringBuilder();
     testExecutor.submit(() -> consumePipe(pipe, responseAsString));
     workersExecutor.submit(nonBlockingStreamWriter);
+
+    // Now that the writer is running, the event processing has to be resumed at least once
+    prober.check(new JUnitLambdaProbe(() -> {
+      verify(pauseHandler, atLeastOnce()).resume();
+      return true;
+    }));
+
+    // And now that the write is resumed, we can simulate the receiving of the last part
     assertThat(handler.onBodyPartReceived(lastPart), is(CONTINUE));
 
-    // Eventually, the response is consumed from the pipe
+    // Eventually, the whole response can be consumed from the pipe
     prober.check(new JUnitLambdaProbe(() -> {
       synchronized (responseAsString) {
         assertThat(responseAsString.toString(), is("Hello world"));
@@ -353,11 +366,52 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
 
     // Receive the onComplete...
     assertThat(handler.onCompleted(), is(nullValue()));
-
-    // At this point, the event processing has to be resumed at least once
-    verify(pauseHandler, atLeastOnce()).resume();
-
     nonBlockingStreamWriter.stop();
+  }
+
+  @Test
+  @Issue("W-17048606")
+  public void asyncWriteHappensWithSameTCCL() throws Exception {
+    // use default timeout for this test
+    clearProperty(READ_TIMEOUT_PROPERTY_NAME);
+    refreshSystemProperties();
+    int smallBufferSize = 5;
+
+    final String randomKey = getUUID();
+    MDC.put(randomKey, "TestValue");
+    final Map<String, String> mdcSeenOnThrowable = new HashMap<>();
+
+    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
+    ResponseBodyDeferringAsyncHandler handler =
+        new ResponseBodyDeferringAsyncHandler(future, smallBufferSize, workersExecutor, nonBlockingStreamWriter) {
+
+          @Override
+          public void onThrowable(Throwable t) {
+            // Save the MDC to make assertions later
+            mdcSeenOnThrowable.putAll(getCopyOfContextMap());
+            super.onThrowable(t);
+          }
+        };
+
+    GrizzlyResponseBodyPart nonLastPart = mockBodyPart(false, "Hello ".getBytes());
+
+    assertThat(handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS)), is(CONTINUE));
+    assertThat(handler.onBodyPartReceived(nonLastPart), is(CONTINUE));
+
+    HttpResponse response = future.get();
+    response.getEntity().getContent().close();
+
+    workersExecutor.submit(nonBlockingStreamWriter);
+
+    // As we closed the pipe, the write operation has to throw an error and the onThrowable has to be called in the
+    // NonBlockingWriter's thread. The onThrowable should be called with the MDC that was present when we created the
+    // asyncHandler.
+    prober.check(new JUnitLambdaProbe(() -> {
+      assertThat(mdcSeenOnThrowable.get(randomKey), is("TestValue"));
+      return true;
+    }));
+
+    MDC.remove(randomKey);
   }
 
   private static void consumePipe(InputStream pipe, StringBuilder responseStringBuilder) {
@@ -378,7 +432,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     }
   }
 
-  private static GrizzlyResponseBodyPart mockBodyPart(boolean isLast, byte[] content) throws IOException {
+  private GrizzlyResponseBodyPart mockBodyPart(boolean isLast, byte[] content) throws IOException {
     GrizzlyResponseBodyPart bodyPart = mock(GrizzlyResponseBodyPart.class, RETURNS_DEEP_STUBS);
     when(bodyPart.isLast()).thenReturn(isLast);
     when(bodyPart.getBodyByteBuffer()).thenReturn(wrap(content));

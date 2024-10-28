@@ -24,22 +24,28 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
+import org.mule.service.http.impl.service.util.ThreadContext;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import io.qameta.allure.Issue;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.MDC;
 
 @Issue("W-17048606")
 public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
@@ -189,6 +195,24 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
     threadOutsideTheStaticExecutor.join();
   }
 
+  @Test
+  public void writeOperationIsExecutedWithSameThreadContext() throws ExecutionException, InterruptedException {
+    executorService.submit(nonBlockingStreamWriter);
+    OutputStreamSavingThreadContext out = new OutputStreamSavingThreadContext();
+
+    Map<String, String> mockMdc = new HashMap<>();
+    mockMdc.put("Key1", "Value1");
+    mockMdc.put("Key2", "Value2");
+    ClassLoader mockClassLoader = mock(ClassLoader.class);
+    try (ThreadContext tc = new ThreadContext(mockClassLoader, mockMdc)) {
+      // the 0 of the SequenceProvider forces the last write to happen in the writer's thread
+      nonBlockingStreamWriter.addDataToWrite(out, SOME_DATA, new SequenceProvider(SOME_DATA.length - 5, 0, 5)).get();
+    }
+
+    assertThat(out.getClassLoaderOnLastWrite(), is(mockClassLoader));
+    assertThat(out.getMDCOnLastWrite(), is(mockMdc));
+  }
+
   private static class SequenceProvider implements Supplier<Integer> {
 
     private final Queue<Integer> sequence;
@@ -203,6 +227,33 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
         return 0;
       }
       return sequence.remove();
+    }
+  }
+
+  private static class OutputStreamSavingThreadContext extends OutputStream {
+
+    private final AtomicReference<ClassLoader> classLoaderOnWrite = new AtomicReference<>();
+    private final AtomicReference<Map<String, String>> mdcOnWrite = new AtomicReference<>();
+
+    @Override
+    public void write(int b) throws IOException {
+      mdcOnWrite.set(MDC.getCopyOfContextMap());
+      classLoaderOnWrite.set(Thread.currentThread().getContextClassLoader());
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
+      mdcOnWrite.set(MDC.getCopyOfContextMap());
+      classLoaderOnWrite.set(Thread.currentThread().getContextClassLoader());
+      super.write(b, off, len);
+    }
+
+    public ClassLoader getClassLoaderOnLastWrite() {
+      return classLoaderOnWrite.get();
+    }
+
+    public Map<String, String> getMDCOnLastWrite() {
+      return mdcOnWrite.get();
     }
   }
 }

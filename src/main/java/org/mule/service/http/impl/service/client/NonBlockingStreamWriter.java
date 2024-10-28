@@ -11,11 +11,15 @@ import static java.lang.Thread.currentThread;
 import static java.lang.Thread.sleep;
 
 import static org.slf4j.LoggerFactory.getLogger;
+import static org.slf4j.MDC.getCopyOfContextMap;
+
+import org.mule.service.http.impl.service.util.ThreadContext;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -132,6 +136,8 @@ public class NonBlockingStreamWriter implements Runnable {
     private final Supplier<Integer> availableSpace;
     private final CompletableFuture<Void> toCompleteWhenAllDataIsWritten;
     private final int id;
+    private final Map<String, String> callerMDC;
+    private final ClassLoader callerTCCL;
 
     private int alreadyWritten;
 
@@ -143,6 +149,9 @@ public class NonBlockingStreamWriter implements Runnable {
       this.totalBytesToWrite = dataToWrite.length;
       this.dataToWrite = dataToWrite;
       this.alreadyWritten = 0;
+
+      this.callerMDC = getCopyOfContextMap();
+      this.callerTCCL = currentThread().getContextClassLoader();
     }
 
     public int remaining() {
@@ -150,37 +159,39 @@ public class NonBlockingStreamWriter implements Runnable {
     }
 
     public boolean execute() {
-      int remainingBytes = totalBytesToWrite - alreadyWritten;
-      int bytesToWriteInThisExecution = min(availableSpace.get(), remainingBytes);
+      try (ThreadContext threadContext = new ThreadContext(callerTCCL, callerMDC)) {
+        int remainingBytes = totalBytesToWrite - alreadyWritten;
+        int bytesToWriteInThisExecution = min(availableSpace.get(), remainingBytes);
 
-      while (bytesToWriteInThisExecution > 0) {
-        try {
-          destinationStream.write(dataToWrite, alreadyWritten, bytesToWriteInThisExecution);
-        } catch (Exception e) {
-          toCompleteWhenAllDataIsWritten.completeExceptionally(e);
-          LOGGER.trace("Error on write (id: {})", id, e);
+        while (bytesToWriteInThisExecution > 0) {
+          try {
+            destinationStream.write(dataToWrite, alreadyWritten, bytesToWriteInThisExecution);
+          } catch (Exception e) {
+            toCompleteWhenAllDataIsWritten.completeExceptionally(e);
+            LOGGER.trace("Error on write (id: {})", id, e);
+            return true;
+          }
+          alreadyWritten += bytesToWriteInThisExecution;
+
+          remainingBytes = totalBytesToWrite - alreadyWritten;
+          bytesToWriteInThisExecution = min(availableSpace.get(), remainingBytes);
+        }
+
+        if (alreadyWritten == totalBytesToWrite) {
+          LOGGER.trace("Fully written (id: {})", id);
+          toCompleteWhenAllDataIsWritten.complete(null);
           return true;
         }
-        alreadyWritten += bytesToWriteInThisExecution;
 
-        remainingBytes = totalBytesToWrite - alreadyWritten;
-        bytesToWriteInThisExecution = min(availableSpace.get(), remainingBytes);
+        if (bytesToWriteInThisExecution == -1) {
+          LOGGER.trace("Destination stream closed (id: {})", id);
+          toCompleteWhenAllDataIsWritten.completeExceptionally(new IOException("Pipe closed"));
+          return true;
+        }
+
+        LOGGER.trace("Written bytes: {}/{} (id: {})", alreadyWritten, totalBytesToWrite, id);
+        return false;
       }
-
-      if (alreadyWritten == totalBytesToWrite) {
-        LOGGER.trace("Fully written (id: {})", id);
-        toCompleteWhenAllDataIsWritten.complete(null);
-        return true;
-      }
-
-      if (bytesToWriteInThisExecution == -1) {
-        LOGGER.trace("Destination stream closed (id: {})", id);
-        toCompleteWhenAllDataIsWritten.completeExceptionally(new IOException("Pipe closed"));
-        return true;
-      }
-
-      LOGGER.trace("Written bytes: {}/{} (id: {})", alreadyWritten, totalBytesToWrite, id);
-      return false;
     }
 
     public CompletableFuture<Void> getFuture() {
