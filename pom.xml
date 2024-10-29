@@ -39,6 +39,8 @@
         <sun.mailapi.version>1.6.5</sun.mailapi.version>
         <bouncycastle.version>1.74</bouncycastle.version>
 
+        <junit.version>4.13.2</junit.version>
+
         <skipExportTests>false</skipExportTests>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
@@ -222,6 +224,12 @@
             <groupId>com.github.valfirst</groupId>
             <artifactId>slf4j-test</artifactId>
             <version>2.9.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
