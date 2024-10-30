@@ -18,11 +18,12 @@
     <version>1.6.21-SNAPSHOT</version>
 
     <properties>
-        <asyncHttpClientVersion>1.14-MULE-024</asyncHttpClientVersion>
+        <asyncHttpClientVersion>1.14-MULE-026</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
         <javax.activation.version>1.2.0</javax.activation.version>
         <sun.mailapi.version>1.6.5</sun.mailapi.version>
         <bouncycastle.version>1.74</bouncycastle.version>
+        <junit.version>4.13.2</junit.version>
 
         <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
@@ -184,6 +185,12 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bctls-jdk18on</artifactId>
             <version>${bouncycastle.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

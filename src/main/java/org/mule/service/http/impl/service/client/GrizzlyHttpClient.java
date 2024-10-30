@@ -135,6 +135,7 @@ public class GrizzlyHttpClient implements HttpClient {
   private final int responseBufferSize;
   private final String name;
   private final boolean decompressionEnabled;
+  private final NonBlockingStreamWriter nonBlockingStreamWriter;
   private Scheduler selectorScheduler;
   private Scheduler workerScheduler;
   private final SchedulerService schedulerService;
@@ -166,6 +167,8 @@ public class GrizzlyHttpClient implements HttpClient {
     this.schedulersConfig = schedulersConfig;
     this.redirectUtils = new RedirectUtils(isStrict302Handling, PRESERVE_HEADER_CASE);
     this.headerPopulator = new RequestHeaderPopulator(usePersistentConnections);
+
+    this.nonBlockingStreamWriter = new NonBlockingStreamWriter();
   }
 
   @Override
@@ -175,6 +178,11 @@ public class GrizzlyHttpClient implements HttpClient {
         .withMaxConcurrentTasks(DEFAULT_SELECTOR_THREAD_COUNT)
         .withName(name), DEFAULT_SELECTOR_THREAD_COUNT);
     workerScheduler = getWorkerScheduler(schedulersConfig.withName(name + ".requester.workers"));
+
+    if (streamingEnabled) {
+      // Only use a dedicated thread to the stream writer if streaming is enabled.
+      workerScheduler.submit(nonBlockingStreamWriter);
+    }
 
     AsyncHttpClientConfig.Builder builder = new AsyncHttpClientConfig.Builder();
     builder.setAllowPoolingConnections(true);
@@ -449,7 +457,8 @@ public class GrizzlyHttpClient implements HttpClient {
       if (streamingEnabled) {
         asyncHandler =
             new PreservingClassLoaderAsyncHandler<>(new ResponseBodyDeferringAsyncHandler(auxFuture, responseBufferSize,
-                                                                                          workerScheduler));
+                                                                                          workerScheduler,
+                                                                                          nonBlockingStreamWriter));
       } else {
         asyncHandler = new PreservingClassLoaderAsyncHandler<>(new ResponseAsyncHandler(auxFuture));
       }
@@ -570,6 +579,7 @@ public class GrizzlyHttpClient implements HttpClient {
   @Override
   public void stop() {
     asyncHttpClient.close();
+    nonBlockingStreamWriter.stop();
     workerScheduler.stop();
     selectorScheduler.stop();
   }
