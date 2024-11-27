@@ -18,7 +18,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
-import static org.mockito.MockitoAnnotations.initMocks;
 import static org.slf4j.MDC.getCopyOfContextMap;
 
 import org.mule.runtime.api.util.Reference;
@@ -32,11 +31,14 @@ import org.glassfish.grizzly.attributes.AttributeHolder;
 import org.slf4j.Logger;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.MockitoRule;
 
 import io.qameta.allure.Issue;
 
@@ -44,6 +46,9 @@ import io.qameta.allure.Issue;
 @SmallTest
 @Issue("MULE-19243")
 public class HttpMessageLoggerTestCase {
+
+  @Rule
+  public MockitoRule rule = MockitoJUnit.rule();
 
   @Mock
   private ClassLoader classLoader;
@@ -68,8 +73,6 @@ public class HttpMessageLoggerTestCase {
 
   @Before
   public void setup() {
-    initMocks(HttpMessageLoggerTestCase.class);
-
     when(connectionAttributeHolder.getAttribute(eq("mdc"))).thenReturn(singletonMap("mdcKey", "mdcValue"));
     when(connection.getAttributes()).thenReturn(connectionAttributeHolder);
 
