@@ -18,13 +18,13 @@ import org.glassfish.grizzly.Grizzly;
 import org.glassfish.grizzly.IOEvent;
 import org.glassfish.grizzly.IOEventLifeCycleListener;
 import org.glassfish.grizzly.strategies.AbstractIOStrategy;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.EnumSet;
 import java.util.concurrent.Executor;
-import java.util.logging.Logger;
 
 /**
  * Grizzly IO Strategy that will handle each work to an specific {@link Executor} based on the {@link ServerAddress} of a
