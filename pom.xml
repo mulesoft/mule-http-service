@@ -34,7 +34,7 @@
         <javaModuleName>org.mule.service.http</javaModuleName>
 
         <asyncHttpClientVersion>1.14-MULE-027</asyncHttpClientVersion>
-        <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
+        <grizzlyVersion>2.3.36-MULE-027</grizzlyVersion>
         <bouncycastle.version>1.78.1</bouncycastle.version>
 
         <nettyHttpServiceVersion>0.2.0-SNAPSHOT</nettyHttpServiceVersion>
