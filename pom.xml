@@ -34,8 +34,8 @@
         </surefire.args>
         <javaModuleName>org.mule.service.http</javaModuleName>
 
-        <asyncHttpClientVersion>1.14-MULE-027</asyncHttpClientVersion>
-        <grizzlyVersion>2.3.36-MULE-026</grizzlyVersion>
+        <asyncHttpClientVersion>1.14-MULE-028</asyncHttpClientVersion>
+        <grizzlyVersion>2.3.36-MULE-027</grizzlyVersion>
         <bouncycastle.version>1.78.1</bouncycastle.version>
 
         <nettyHttpServiceVersion>0.1.2-SNAPSHOT</nettyHttpServiceVersion>
@@ -99,17 +99,14 @@
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
             <artifactId>grizzly-http-server</artifactId>
-            <version>${grizzlyVersion}</version>
         </dependency>
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
             <artifactId>grizzly-http-servlet</artifactId>
-            <version>${grizzlyVersion}</version>
         </dependency>
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
             <artifactId>connection-pool</artifactId>
-            <version>${grizzlyVersion}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.mail</groupId>
@@ -121,19 +118,11 @@
         </dependency>
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
-            <artifactId>grizzly-http-client</artifactId>
-            <version>${asyncHttpClientVersion}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>grizzly-websockets</artifactId>
         </dependency>
         <dependency>
             <groupId>org.mule.glassfish.grizzly</groupId>
-            <artifactId>grizzly-websockets</artifactId>
-            <version>${grizzlyVersion}</version>
+            <artifactId>grizzly-http-client</artifactId>
         </dependency>
 
         <dependency>
@@ -233,6 +222,37 @@
                 <version>${muleBomVersion}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.mule.glassfish.grizzly</groupId>
+                <artifactId>grizzly-http-server</artifactId>
+                <version>${grizzlyVersion}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mule.glassfish.grizzly</groupId>
+                <artifactId>grizzly-http-servlet</artifactId>
+                <version>${grizzlyVersion}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mule.glassfish.grizzly</groupId>
+                <artifactId>connection-pool</artifactId>
+                <version>${grizzlyVersion}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mule.glassfish.grizzly</groupId>
+                <artifactId>grizzly-websockets</artifactId>
+                <version>${grizzlyVersion}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mule.glassfish.grizzly</groupId>
+                <artifactId>grizzly-http-client</artifactId>
+                <version>${asyncHttpClientVersion}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
         </dependencies>
     </dependencyManagement>
