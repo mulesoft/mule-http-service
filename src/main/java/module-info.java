@@ -36,8 +36,9 @@ module org.mule.service.http {
   requires org.slf4j;
 
   requires org.mule.service.http.netty;
+    requires net.bytebuddy;
 
-  // Allow invocation and injection into providers by the Mule Runtime
+    // Allow invocation and injection into providers by the Mule Runtime
   exports org.mule.service.http.impl.provider to
       org.mule.runtime.service,
       com.mulesoft.mule.service.http.ee;

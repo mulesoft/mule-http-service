@@ -9,6 +9,8 @@ package org.mule.service.http.impl.util;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import net.bytebuddy.implementation.bytecode.Throw;
+
 /**
  * Output stream to be used in conjunction with a {@link TimedPipedOutputStream}.
  *
@@ -20,6 +22,10 @@ public class TimedPipedOutputStream extends OutputStream {
 
   public void connect(TimedPipedInputStream sink) {
     this.sink = sink;
+  }
+
+  public void cancel(Throwable error) {
+    sink.cancel(error);
   }
 
   @Override
