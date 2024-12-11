@@ -162,7 +162,8 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
   }
 
   @Test
-  public void cancelWritingWithException() throws IOException {
+  @Issue("W-17370109")
+  public void cancelWritingWithExceptionPropagatesTheExceptionToReader() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
     TimedPipedInputStream in = new TimedPipedInputStream(500, 10, HOURS, out);
     out.write("Partial data".getBytes());
