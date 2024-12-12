@@ -30,11 +30,11 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import jakarta.mail.BodyPart;
-import jakarta.mail.Header;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMultipart;
-import jakarta.mail.util.ByteArrayDataSource;
+import javax.mail.BodyPart;
+import javax.mail.Header;
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMultipart;
+import javax.mail.util.ByteArrayDataSource;
 
 public class HttpParser {
 
