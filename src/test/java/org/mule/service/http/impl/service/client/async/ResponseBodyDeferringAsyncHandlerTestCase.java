@@ -27,7 +27,10 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.sameInstance;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
+import static org.junit.internal.matchers.ThrowableCauseMatcher.hasCause;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeastOnce;
@@ -67,6 +70,7 @@ import com.ning.http.client.providers.grizzly.GrizzlyResponseBodyPart;
 import com.ning.http.client.providers.grizzly.PauseHandler;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Issue;
+import io.qameta.allure.Issues;
 import io.qameta.allure.Story;
 import org.junit.After;
 import org.junit.Before;
@@ -170,23 +174,28 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   }
 
   @Test
-  @Issue("MULE-19208")
+  @Issues({@Issue("MULE-19208"), @Issue("W-17370109")})
   public void handlerClosesPipedStreamIfAnErrorOccurredBetweenTwoParts() throws Exception {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     ResponseBodyDeferringAsyncHandler handler =
         new ResponseBodyDeferringAsyncHandler(future, BUFFER_SIZE, workersExecutor, nonBlockingStreamWriter);
     GrizzlyResponseBodyPart bodyPartBeforeError = mockBodyPart(false, new byte[0]);
+    Throwable theError = new TimeoutException("Timeout exceeded");
     GrizzlyResponseBodyPart bodyPartAfterError = mockBodyPart(false, new byte[0]);
 
     handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
     assertThat(handler.onBodyPartReceived(bodyPartBeforeError), is(CONTINUE));
-    handler.onThrowable(new TimeoutException("Timeout exceeded"));
+    handler.onThrowable(theError);
     assertThat(handler.onBodyPartReceived(bodyPartAfterError), is(ABORT));
 
     prober.check(new JUnitLambdaProbe(() -> {
-      // When the TimedPipedInputStream is closed by writer, read returns -1 indicating EOF.
-      byte[] result = new byte[16];
-      return future.get().getEntity().getContent().read(result) == -1;
+      // When the TimedPipedInputStream is errored by writer, read throws an exception.
+      IOException ioException = assertThrows(IOException.class, () -> {
+        byte[] result = new byte[16];
+        future.get().getEntity().getContent().read(result);
+      });
+      assertThat(ioException, hasCause(sameInstance(theError)));
+      return true;
     }));
   }
 
