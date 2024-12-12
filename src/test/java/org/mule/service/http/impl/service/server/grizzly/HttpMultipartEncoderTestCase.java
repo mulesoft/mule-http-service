@@ -20,8 +20,8 @@ import static org.mule.service.http.impl.service.server.grizzly.HttpMultipartEnc
 import java.util.ArrayList;
 import java.util.List;
 
-import jakarta.mail.BodyPart;
-import jakarta.mail.internet.MimeMultipart;
+import javax.mail.BodyPart;
+import javax.mail.internet.MimeMultipart;
 
 import org.junit.Before;
 import org.junit.Test;
