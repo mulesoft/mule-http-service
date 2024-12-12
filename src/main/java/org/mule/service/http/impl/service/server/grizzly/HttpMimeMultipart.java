@@ -6,7 +6,7 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import jakarta.mail.internet.MimeMultipart;
+import javax.mail.internet.MimeMultipart;
 
 public class HttpMimeMultipart extends MimeMultipart {
 
