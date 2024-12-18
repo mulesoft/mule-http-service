@@ -26,6 +26,9 @@ import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
 
+// Archeology comment: This class was added to support Server Side Events (SSE). It sends a response with an "infinite"
+// content-length (not chunked), and closes the connection once all the data was sent. A better technology to implement
+// this use-case is WebSockets.
 final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandler {
 
   private final MemoryManager memoryManager;

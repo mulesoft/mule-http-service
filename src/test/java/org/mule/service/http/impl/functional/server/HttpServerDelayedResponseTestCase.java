@@ -49,8 +49,13 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * This test validates that a server response can be delayed as long as needed by deferring its body writing. As it is tested, it
- * also validates that a streaming enabled client can handle such response by first analyzing its metadata and then awaiting for
+ * also validates that a streaming enabled client can handle such response by first analyzing its metadata and then waiting for
  * the body parts.
+ *
+ * <p>
+ * Archeology comment: This behavior was added to support Server Side Events (SSE). The implementation sends a response with an
+ * "infinite" content-length (not chunked), and closes the connection once all the data was sent. A better technology to implement
+ * this use-case is WebSockets.
  */
 public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCase {
 
