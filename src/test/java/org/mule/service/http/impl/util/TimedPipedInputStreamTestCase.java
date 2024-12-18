@@ -6,16 +6,21 @@
  */
 package org.mule.service.http.impl.util;
 
+import static org.mule.functional.junit4.matchers.ThrowableMessageMatcher.hasMessage;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.RESPONSES;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
+import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
-import static org.junit.rules.ExpectedException.none;
+import static org.junit.internal.matchers.ThrowableCauseMatcher.hasCause;
 
 import org.mule.runtime.api.util.concurrent.Latch;
 import org.mule.tck.junit4.AbstractMuleTestCase;
@@ -27,15 +32,10 @@ import java.util.concurrent.TimeoutException;
 import io.qameta.allure.Issue;
 import io.qameta.allure.Stories;
 import io.qameta.allure.Story;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 @Stories({@Story(RESPONSES), @Story(STREAMING)})
 public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
-
-  @Rule
-  public ExpectedException expectedException = none();
 
   private final ExecutorService writerExecutor = newSingleThreadExecutor();
 
@@ -103,14 +103,12 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
 
   @Test
   @Issue("MULE-19232")
-  public void throwsExceptionAfterTimeoutWhenRequestingByte() throws IOException {
+  public void throwsExceptionAfterTimeoutWhenRequestingByte() {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
     TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
 
-    expectedException.expect(instanceOf(IOException.class));
-    expectedException.expectCause(instanceOf(TimeoutException.class));
-    // noinspection ResultOfMethodCallIgnored, since it must throw an exception.
-    in.read();
+    IOException ioException = assertThrows(IOException.class, in::read);
+    assertThat(ioException, hasCause(instanceOf(TimeoutException.class)));
   }
 
   @Test
@@ -127,10 +125,8 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
     assertThat(in.read(), is(3));
 
     // After the data is gone, read operation throws exception.
-    expectedException.expect(instanceOf(IOException.class));
-    expectedException.expectCause(instanceOf(TimeoutException.class));
-    // noinspection ResultOfMethodCallIgnored, since it must throw an exception.
-    in.read();
+    IOException ioException = assertThrows(IOException.class, in::read);
+    assertThat(ioException, hasCause(instanceOf(TimeoutException.class)));
   }
 
   @Test
@@ -165,4 +161,17 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
     assertThat(sb.toString(), is(testData));
   }
 
+  @Test
+  @Issue("W-17370109")
+  public void cancelWritingWithExceptionPropagatesTheExceptionToReader() throws IOException {
+    TimedPipedOutputStream out = new TimedPipedOutputStream();
+    TimedPipedInputStream in = new TimedPipedInputStream(500, 10, HOURS, out);
+    out.write("Partial data".getBytes());
+
+    out.cancel(new RuntimeException("Expected exception"));
+
+    IOException ioException = assertThrows(IOException.class, in::read);
+    assertThat(ioException, hasCause(allOf(instanceOf(RuntimeException.class),
+                                           hasMessage("Expected exception"))));
+  }
 }

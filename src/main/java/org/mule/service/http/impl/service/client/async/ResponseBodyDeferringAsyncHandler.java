@@ -32,7 +32,6 @@ import org.mule.service.http.impl.util.TimedPipedInputStream;
 import org.mule.service.http.impl.util.TimedPipedOutputStream;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
@@ -43,15 +42,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
-import com.ning.http.client.providers.grizzly.PauseHandler;
 import com.ning.http.client.Response;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
+import com.ning.http.client.providers.grizzly.PauseHandler;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +81,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private int bufferSize;
   private final NonBlockingStreamWriter nonBlockingStreamWriter;
   private final ExecutorService workerScheduler;
-  private OutputStream output;
+  private TimedPipedOutputStream output;
   private Optional<TimedPipedInputStream> input = empty();
   private final CompletableFuture<HttpResponse> future;
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
@@ -98,7 +98,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
-  private final AtomicBoolean throwableReceived = new AtomicBoolean(false);
+  private final AtomicReference<Throwable> throwableReceived = new AtomicReference<>();
 
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
                                            ExecutorService workerScheduler,
@@ -112,12 +112,12 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   @Override
   public void onThrowable(Throwable t) {
-    throwableReceived.set(true);
+    throwableReceived.set(t);
     try {
       MDC.setContextMap(mdc);
       LOGGER.debug("Error caught handling response body", t);
       try {
-        closeOut();
+        cancelOut(t);
       } catch (IOException e) {
         LOGGER.debug("Error closing HTTP response stream", e);
       }
@@ -148,6 +148,16 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     }
   }
 
+  private void cancelOut(Throwable t) throws IOException {
+    if (output != null) {
+      try {
+        output.flush();
+      } finally {
+        output.cancel(t);
+      }
+    }
+  }
+
   @Override
   public STATE onStatusReceived(HttpResponseStatus responseStatus) throws Exception {
     try {
@@ -164,7 +174,11 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   private STATE closeAndAbort() throws IOException {
-    closeOut();
+    if (throwableReceived.get() != null) {
+      cancelOut(throwableReceived.get());
+    } else {
+      closeOut();
+    }
     return ABORT;
   }
 
@@ -298,7 +312,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   private boolean errorDetected() {
-    return future.isCompletedExceptionally() || throwableReceived.get();
+    return future.isCompletedExceptionally() || throwableReceived.get() != null;
   }
 
   protected void closeOut() throws IOException {

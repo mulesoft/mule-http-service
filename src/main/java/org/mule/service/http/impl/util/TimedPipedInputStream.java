@@ -39,6 +39,7 @@ public class TimedPipedInputStream extends InputStream {
 
   private boolean closedByWriter = false;
   private boolean closedByReader = false;
+  private Throwable error = null;
 
   public TimedPipedInputStream(int bufferSize, long timeout, TimeUnit timeUnit, TimedPipedOutputStream origin) {
     this.ringBuffer = new byte[bufferSize];
@@ -143,7 +144,7 @@ public class TimedPipedInputStream extends InputStream {
     long initialNanos = nanoTime();
     long finalNanos = initialNanos + timeoutNanos;
 
-    while (length <= 0 && nanoTime() < finalNanos && !closedByReader) {
+    while (length <= 0 && nanoTime() < finalNanos && !closedByReader && error == null) {
       if (closedByWriter) {
         return 0;
       }
@@ -151,6 +152,9 @@ public class TimedPipedInputStream extends InputStream {
     }
     if (closedByReader) {
       throw new IOException("Pipe closed");
+    }
+    if (error != null) {
+      throw new IOException(error);
     }
 
     return length;
@@ -221,6 +225,11 @@ public class TimedPipedInputStream extends InputStream {
 
   public synchronized boolean isClosed() {
     return closedByReader || closedByWriter;
+  }
+
+  public synchronized void cancel(Throwable error) {
+    this.error = error;
+    notifyAll();
   }
 
   private class CircularInteger {

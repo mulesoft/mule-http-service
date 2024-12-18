@@ -6,13 +6,19 @@
  */
 package org.mule.service.http.impl.functional.server;
 
-import static java.lang.Thread.sleep;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mule.runtime.core.api.config.MuleProperties.MULE_HOME_DIRECTORY_PROPERTY;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.PROPERTY_PREFIX;
+
+import static java.lang.Thread.sleep;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThrows;
+import static org.junit.internal.matchers.ThrowableMessageMatcher.hasMessage;
+
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
@@ -59,7 +65,7 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
   @Rule
   public SystemProperty muleHome = new SystemProperty(MULE_HOME_DIRECTORY_PROPERTY, getMuleHome());
 
-  private PollingProber pollingProber = new PollingProber(PROBE_TIMEOUT_MILLIS1, POLL_DELAY_MILLIS);
+  private final PollingProber pollingProber = new PollingProber(PROBE_TIMEOUT_MILLIS1, POLL_DELAY_MILLIS);
   private Writer writer;
   private HttpClient client;
 
@@ -69,7 +75,7 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
 
   @BeforeClass
   public static void createHttpPropertiesFile() throws Exception {
-    PrintWriter writer = new PrintWriter(getHttpPropertiesFile(), "UTF-8");
+    PrintWriter writer = new PrintWriter(getHttpPropertiesFile(), UTF_8);
     writer.println(PROPERTY_PREFIX + "serverTimeout=" + CONNECTION_TIMEOUT_MILLIS);
     writer.close();
   }
@@ -159,7 +165,11 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
 
     writer.close();
 
-    pollingProber.check(new JUnitLambdaProbe(() -> reader.readLine() == null));
+    pollingProber.check(new JUnitLambdaProbe(() -> {
+      IOException exception = assertThrows(IOException.class, reader::readLine);
+      assertThat(exception, hasMessage(containsString("Remotely closed")));
+      return true;
+    }));
   }
 
   private HttpRequest getRequest() {

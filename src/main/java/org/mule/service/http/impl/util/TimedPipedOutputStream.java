@@ -22,6 +22,10 @@ public class TimedPipedOutputStream extends OutputStream {
     this.sink = sink;
   }
 
+  public void cancel(Throwable error) {
+    sink.cancel(error);
+  }
+
   @Override
   public void write(int b) throws IOException {
     sink.receive(b);
