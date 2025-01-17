@@ -35,7 +35,6 @@
 
         <asyncHttpClientVersion>1.14-MULE-028</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-027</grizzlyVersion>
-        <bouncycastle.version>1.78.1</bouncycastle.version>
 
         <nettyHttpServiceVersion>0.3.0-SNAPSHOT</nettyHttpServiceVersion>
 
