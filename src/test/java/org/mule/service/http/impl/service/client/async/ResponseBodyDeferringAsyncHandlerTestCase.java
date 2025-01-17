@@ -95,7 +95,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
   private final PollingProber prober = new PollingProber(PROBE_TIMEOUT, POLL_DELAY);
 
   private final ExecutorService workersExecutor = newFixedThreadPool(5);
-  private final NonBlockingStreamWriter nonBlockingStreamWriter = new NonBlockingStreamWriter();
+  private final NonBlockingStreamWriter nonBlockingStreamWriter = new NonBlockingStreamWriter(100, true);
 
   private static final String READ_TIMEOUT_PROPERTY_NAME = "mule.http.responseStreaming.pipeReadTimeoutMillis";
 
