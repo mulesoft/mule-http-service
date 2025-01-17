@@ -39,7 +39,7 @@ import org.slf4j.Logger;
  */
 public class NonBlockingStreamWriter implements Runnable {
 
-  private static final boolean KILL_SWITCH = getBoolean("mule.http.responseStreaming.nonBlockingWriter");
+  private static final boolean KILL_SWITCH = getBoolean("mule.http.client.responseStreaming.nonBlockingWriter");
 
   private static final Logger LOGGER = getLogger(NonBlockingStreamWriter.class);
   private static final int DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS = 100;
