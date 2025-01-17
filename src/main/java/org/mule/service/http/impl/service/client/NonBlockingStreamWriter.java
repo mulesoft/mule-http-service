@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import static java.lang.Boolean.getBoolean;
 import static java.lang.Math.min;
 import static java.lang.Thread.currentThread;
 import static java.lang.Thread.sleep;
@@ -38,12 +39,18 @@ import org.slf4j.Logger;
  */
 public class NonBlockingStreamWriter implements Runnable {
 
+  private static final boolean killSwitch = getBoolean("mule.http.responseStreaming.force.blocking");
+
   private static final Logger LOGGER = getLogger(NonBlockingStreamWriter.class);
   private static final int DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS = 100;
 
   private final AtomicBoolean isStopped = new AtomicBoolean(false);
   private final BlockingQueue<InternalWriteTask> tasks = new LinkedBlockingQueue<>();
   private final int timeToSleepWhenCouldNotWriteMillis;
+
+  public static boolean isEnabled() {
+    return !killSwitch;
+  }
 
   public NonBlockingStreamWriter(int timeToSleepWhenCouldNotWriteMillis) {
     this.timeToSleepWhenCouldNotWriteMillis = timeToSleepWhenCouldNotWriteMillis;
