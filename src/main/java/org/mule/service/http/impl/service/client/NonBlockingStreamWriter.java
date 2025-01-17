@@ -39,7 +39,7 @@ import org.slf4j.Logger;
  */
 public class NonBlockingStreamWriter implements Runnable {
 
-  private static final boolean killSwitch = getBoolean("mule.http.responseStreaming.force.blocking");
+  private static final boolean KILL_SWITCH = getBoolean("mule.http.responseStreaming.nonBlockingWriter");
 
   private static final Logger LOGGER = getLogger(NonBlockingStreamWriter.class);
   private static final int DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS = 100;
@@ -47,17 +47,19 @@ public class NonBlockingStreamWriter implements Runnable {
   private final AtomicBoolean isStopped = new AtomicBoolean(false);
   private final BlockingQueue<InternalWriteTask> tasks = new LinkedBlockingQueue<>();
   private final int timeToSleepWhenCouldNotWriteMillis;
+  private final boolean isEnabled;
 
-  public static boolean isEnabled() {
-    return !killSwitch;
-  }
-
-  public NonBlockingStreamWriter(int timeToSleepWhenCouldNotWriteMillis) {
+  public NonBlockingStreamWriter(int timeToSleepWhenCouldNotWriteMillis, boolean isEnabled) {
     this.timeToSleepWhenCouldNotWriteMillis = timeToSleepWhenCouldNotWriteMillis;
+    this.isEnabled = isEnabled;
   }
 
   public NonBlockingStreamWriter() {
-    this(DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS);
+    this(DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS, KILL_SWITCH);
+  }
+
+  public boolean isEnabled() {
+    return isEnabled;
   }
 
   /**
