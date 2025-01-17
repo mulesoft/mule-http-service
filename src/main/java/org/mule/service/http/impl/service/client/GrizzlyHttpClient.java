@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import static org.mule.runtime.api.config.MuleRuntimeFeature.NTLM_AVOID_SEND_PAYLOAD_ON_TYPE_1;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.runtime.api.util.MuleSystemProperties.ENABLE_MULE_REDIRECT_PROPERTY;
@@ -33,6 +34,7 @@ import static com.ning.http.client.providers.grizzly.GrizzlyAsyncHttpProviderCon
 import static org.glassfish.grizzly.http.HttpCodecFilter.DEFAULT_MAX_HTTP_PACKET_HEADER_SIZE;
 import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
 
+import org.mule.runtime.api.config.FeatureFlaggingService;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -150,8 +152,10 @@ public class GrizzlyHttpClient implements HttpClient {
   private final RedirectUtils redirectUtils;
   private static final boolean isStrict302Handling = defaultStrict302Handling();
   private final RequestHeaderPopulator headerPopulator;
+  private final FeatureFlaggingService featureFlaggingService;
 
-  public GrizzlyHttpClient(HttpClientConfiguration config, SchedulerService schedulerService, SchedulerConfig schedulersConfig) {
+  public GrizzlyHttpClient(HttpClientConfiguration config, SchedulerService schedulerService, SchedulerConfig schedulersConfig,
+                           FeatureFlaggingService featureFlaggingService) {
     this.tlsContextFactory = config.getTlsContextFactory();
     this.proxyConfig = config.getProxyConfig();
     this.clientSocketProperties = config.getClientSocketProperties();
@@ -169,6 +173,7 @@ public class GrizzlyHttpClient implements HttpClient {
     this.headerPopulator = new RequestHeaderPopulator(usePersistentConnections);
 
     this.nonBlockingStreamWriter = new NonBlockingStreamWriter();
+    this.featureFlaggingService = featureFlaggingService;
   }
 
   @Override
@@ -192,6 +197,8 @@ public class GrizzlyHttpClient implements HttpClient {
     configureTlsContext(builder);
     configureProxy(builder);
     configureConnections(builder);
+
+    builder.setNtlmAvoidSendPayloadOnType1(featureFlaggingService.isEnabled(NTLM_AVOID_SEND_PAYLOAD_ON_TYPE_1));
 
     AsyncHttpClientConfig config = builder.build();
     asyncHttpClient = new AsyncHttpClient(new GrizzlyAsyncHttpProvider(config), config);
