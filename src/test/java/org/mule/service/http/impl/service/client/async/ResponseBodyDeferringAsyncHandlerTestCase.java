@@ -37,6 +37,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -334,7 +335,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
         new ResponseBodyDeferringAsyncHandler(future, smallBufferSize, workersExecutor, nonBlockingStreamWriter);
 
     GrizzlyResponseBodyPart intermediatePart = mockBodyPart(false, "Hello ".getBytes());
-    GrizzlyResponseBodyPart lastPart = mockBodyPart(true, "world".getBytes());
+    GrizzlyResponseBodyPart lastPart = mockBodyPart(true, "world!".getBytes());
 
     assertThat(handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS)), is(CONTINUE));
     assertThat(handler.onBodyPartReceived(intermediatePart), is(CONTINUE));
@@ -368,7 +369,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     // Eventually, the whole response can be consumed from the pipe
     prober.check(new JUnitLambdaProbe(() -> {
       synchronized (responseAsString) {
-        assertThat(responseAsString.toString(), is("Hello world"));
+        assertThat(responseAsString.toString(), is("Hello world!"));
       }
       return true;
     }));
