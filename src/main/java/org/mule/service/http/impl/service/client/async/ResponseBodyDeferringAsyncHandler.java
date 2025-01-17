@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
+import com.damnhandy.uri.template.UriTemplate;
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
@@ -99,6 +100,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   private final AtomicReference<Throwable> throwableReceived = new AtomicReference<>();
+  private final AtomicBoolean lastPartReceived = new AtomicBoolean(false);
 
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
                                            ExecutorService workerScheduler,
@@ -238,6 +240,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     // body arrived, can handle the partial response
     try {
       MDC.setContextMap(mdc);
+      if (bodyPart.isLast()) {
+        lastPartReceived.set(true);
+      }
       if (errorDetected()) {
         return closeAndAbort();
       }
@@ -281,19 +286,25 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       pauseHandler.requestPause();
       nonBlockingStreamWriter
           .addDataToWrite(output, bodyPart.getBodyPartBytes(), this::availableSpaceInPipe)
-          .whenComplete(resumeCallback(pauseHandler));
+          .whenComplete(resumeCallback(pauseHandler, bodyPart.isLast()));
     } else {
       bodyPart.writeTo(output);
+      if (bodyPart.isLast()) {
+        closeOut();
+      }
     }
     return CONTINUE;
   }
 
-  private BiConsumer<Void, Throwable> resumeCallback(final PauseHandler pauseHandler) {
+  private BiConsumer<Void, Throwable> resumeCallback(final PauseHandler pauseHandler, boolean isLastPart) {
     return (ignored, error) -> {
       if (error != null) {
         onThrowable(error);
       }
       try {
+        if (isLastPart) {
+          closeOut();
+        }
         pauseHandler.resume();
       } catch (Exception e) {
         onThrowable(e);
@@ -329,9 +340,12 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   public Response onCompleted() throws IOException {
     try {
       MDC.setContextMap(mdc);
-      // there may have been no body, handle partial response
+      LOGGER.debug("Completed response");
+      // there may have been no a body, handle partial response
       handleIfNecessary();
-      closeOut();
+      if (!lastPartReceived.get()) {
+        closeOut();
+      }
       return null;
     } finally {
       MDC.clear();
