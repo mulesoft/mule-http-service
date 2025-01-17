@@ -102,6 +102,6 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
     GrizzlyHttpClient.refreshSystemProperties();
     return new GrizzlyHttpClient(mock(HttpClientConfiguration.class, RETURNS_DEEP_STUBS),
                                  schedulerService,
-                                 schedulerConfig);
+                                 schedulerConfig, f -> false);
   }
 }
