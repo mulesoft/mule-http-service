@@ -6,6 +6,7 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import org.mule.runtime.api.config.FeatureFlaggingService;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.http.api.client.HttpClient;
@@ -24,8 +25,9 @@ public class HttpClientConnectionManager {
     this.schedulerService = schedulerService;
   }
 
-  public HttpClient create(HttpClientConfiguration config, SchedulerConfig schedulerConfig) {
-    return new GrizzlyHttpClient(config, schedulerService, schedulerConfig);
+  public HttpClient create(HttpClientConfiguration config, SchedulerConfig schedulerConfig,
+                           FeatureFlaggingService featureFlaggingService) {
+    return new GrizzlyHttpClient(config, schedulerService, schedulerConfig, featureFlaggingService);
   }
 
 }

@@ -22,6 +22,7 @@ import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.disposeIfNeeded
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
 import static org.slf4j.LoggerFactory.getLogger;
 import org.mule.runtime.api.artifact.Registry;
+import org.mule.runtime.api.config.FeatureFlaggingService;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.Startable;
 import org.mule.runtime.api.lifecycle.Stoppable;
@@ -149,12 +150,13 @@ public class HttpServiceImplementation implements HttpService, Startable, Stoppa
 
   @Override
   public HttpClientFactory getClientFactory() {
-    return config -> clientConnectionManager.create(config, config());
+    return config -> clientConnectionManager.create(config, config(), feature -> false);
   }
 
   @Inject
-  public HttpClientFactory getClientFactory(@Named(OBJECT_SCHEDULER_BASE_CONFIG) SchedulerConfig schedulersConfig) {
-    return config -> clientConnectionManager.create(config, schedulersConfig);
+  public HttpClientFactory getClientFactory(@Named(OBJECT_SCHEDULER_BASE_CONFIG) SchedulerConfig schedulersConfig,
+                                            FeatureFlaggingService featureFlaggingService) {
+    return config -> clientConnectionManager.create(config, schedulersConfig, featureFlaggingService);
   }
 
   protected HttpClientConnectionManager createClientConnectionManager() {
