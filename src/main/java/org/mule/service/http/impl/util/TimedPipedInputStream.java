@@ -115,6 +115,9 @@ public class TimedPipedInputStream extends InputStream {
       // There is space in the buffer, notify writers.
       length -= bytesToCopy;
       notifyAll();
+      synchronized (TimedPipedInputStream.class) {
+        TimedPipedInputStream.class.notifyAll();
+      }
       return bytesToCopy;
     } catch (InterruptedException e) {
       currentThread().interrupt();

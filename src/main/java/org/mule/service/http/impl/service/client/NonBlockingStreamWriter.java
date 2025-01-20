@@ -9,12 +9,12 @@ package org.mule.service.http.impl.service.client;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Math.min;
 import static java.lang.Thread.currentThread;
-import static java.lang.Thread.sleep;
 
 import static org.slf4j.LoggerFactory.getLogger;
 import static org.slf4j.MDC.getCopyOfContextMap;
 
 import org.mule.service.http.impl.service.util.ThreadContext;
+import org.mule.service.http.impl.util.TimedPipedInputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -92,7 +92,9 @@ public class NonBlockingStreamWriter implements Runnable {
 
         if (!couldWriteSomething && !isStopped.get()) {
           LOGGER.trace("Giving some time to the other threads to consume from pipes...");
-          sleep(timeToSleepWhenCouldNotWriteMillis);
+          synchronized (TimedPipedInputStream.class) {
+            TimedPipedInputStream.class.wait(timeToSleepWhenCouldNotWriteMillis);
+          }
         }
       } catch (InterruptedException e) {
         if (!isStopped.get()) {
@@ -130,7 +132,7 @@ public class NonBlockingStreamWriter implements Runnable {
       if (remainingAfterExecute < remainingBeforeExecute) {
         couldWriteSomething = true;
       }
-      task = tasks.poll(100, TimeUnit.MILLISECONDS);
+      task = tasks.poll();
     }
 
     tasks.addAll(tasksWithPendingData);
