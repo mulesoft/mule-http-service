@@ -343,6 +343,8 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       // there may have been no a body, handle partial response
       handleIfNecessary();
       if (!lastPartReceived.get()) {
+        // If the last part was not received yet, it won't be received. It's because AHC doesn't call the onBodyPartReceived for
+        // the last part if it's empty. In that case, we need to close the pipe here.
         closeOut();
       }
       return null;
