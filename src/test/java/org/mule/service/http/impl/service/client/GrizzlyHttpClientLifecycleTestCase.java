@@ -68,7 +68,7 @@ public class GrizzlyHttpClientLifecycleTestCase extends AbstractMuleTestCase {
     when(schedulerConfig.withName(anyString())).thenReturn(schedulerConfig);
 
     HttpClient client = new GrizzlyHttpClient(mock(HttpClientConfiguration.class, RETURNS_DEEP_STUBS),
-                                              schedulerService, schedulerConfig);
+                                              schedulerService, schedulerConfig, f -> false);
     client.start();
     verify(schedulerService, times(1)).customScheduler(any(), eq(DEFAULT_SELECTOR_THREAD_COUNT));
   }
@@ -76,7 +76,7 @@ public class GrizzlyHttpClientLifecycleTestCase extends AbstractMuleTestCase {
   private HttpClient validateClientUsage() {
     HttpClient client = new GrizzlyHttpClient(mock(HttpClientConfiguration.class, RETURNS_DEEP_STUBS),
                                               mock(SchedulerService.class),
-                                              mock(SchedulerConfig.class));
+                                              mock(SchedulerConfig.class), f -> false);
 
     expectedException.expect(IllegalStateException.class);
     expectedException.expectMessage("The client must be started before use.");
