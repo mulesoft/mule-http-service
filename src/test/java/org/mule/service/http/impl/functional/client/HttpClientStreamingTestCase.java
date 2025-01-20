@@ -234,7 +234,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   private void testMdcPropagation(boolean shouldStream, boolean shouldThrowException) throws IOException {
     HttpClient client =
         ((HttpServiceImplementation) service)
-            .getClientFactory(SchedulerConfig.config().withName("test-scheduler").withMaxConcurrentTasks(5))
+            .getClientFactory(SchedulerConfig.config().withName("test-scheduler").withMaxConcurrentTasks(5), f -> false)
             .create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(shouldStream).build());
     client.start();
     final Reference<HttpResponse> responseReference = new Reference<>();
