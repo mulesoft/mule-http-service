@@ -340,7 +340,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     try {
       MDC.setContextMap(mdc);
       LOGGER.debug("Completed response");
-      // there may have been no a body, handle partial response
+      // there may have been no body, handle partial response
       handleIfNecessary();
       if (!lastPartReceived.get()) {
         // If the last part was not received yet, it won't be received. It's because AHC doesn't call the onBodyPartReceived for
