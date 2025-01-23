@@ -99,6 +99,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   }
 
   private final AtomicReference<Throwable> throwableReceived = new AtomicReference<>();
+  private final AtomicBoolean lastPartReceived = new AtomicBoolean(false);
 
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
                                            ExecutorService workerScheduler,
@@ -238,6 +239,9 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
     // body arrived, can handle the partial response
     try {
       MDC.setContextMap(mdc);
+      if (bodyPart.isLast()) {
+        lastPartReceived.set(true);
+      }
       if (errorDetected()) {
         return closeAndAbort();
       }
@@ -281,19 +285,25 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       pauseHandler.requestPause();
       nonBlockingStreamWriter
           .addDataToWrite(output, bodyPart.getBodyPartBytes(), this::availableSpaceInPipe)
-          .whenComplete(resumeCallback(pauseHandler));
+          .whenComplete(resumeCallback(pauseHandler, bodyPart.isLast()));
     } else {
       bodyPart.writeTo(output);
+      if (bodyPart.isLast()) {
+        closeOut();
+      }
     }
     return CONTINUE;
   }
 
-  private BiConsumer<Void, Throwable> resumeCallback(final PauseHandler pauseHandler) {
+  private BiConsumer<Void, Throwable> resumeCallback(final PauseHandler pauseHandler, boolean isLastPart) {
     return (ignored, error) -> {
       if (error != null) {
         onThrowable(error);
       }
       try {
+        if (isLastPart) {
+          closeOut();
+        }
         pauseHandler.resume();
       } catch (Exception e) {
         onThrowable(e);
@@ -329,9 +339,14 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   public Response onCompleted() throws IOException {
     try {
       MDC.setContextMap(mdc);
+      LOGGER.debug("Completed response");
       // there may have been no body, handle partial response
       handleIfNecessary();
-      closeOut();
+      if (!lastPartReceived.get()) {
+        // If the last part was not received yet, it won't be received. It's because AHC doesn't call the onBodyPartReceived for
+        // the last part if it's empty. In that case, we need to close the pipe here.
+        closeOut();
+      }
       return null;
     } finally {
       MDC.clear();
