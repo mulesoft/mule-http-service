@@ -59,7 +59,7 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
   @Before
   public void setUp() {
     // not scheduling always to test the sync test cases
-    nonBlockingStreamWriter = new NonBlockingStreamWriter(TEST_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS);
+    nonBlockingStreamWriter = new NonBlockingStreamWriter(TEST_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS, true);
   }
 
   @After
@@ -206,7 +206,7 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
   @Test
   public void interruptTheThreadAfterStopWillInterruptTheSleep() throws InterruptedException {
     int ridiculouslyBigSleepMillis = Integer.MAX_VALUE;
-    NonBlockingStreamWriter writer = new NonBlockingStreamWriter(ridiculouslyBigSleepMillis);
+    NonBlockingStreamWriter writer = new NonBlockingStreamWriter(ridiculouslyBigSleepMillis, true);
     Thread threadOutsideTheStaticExecutor = new Thread(writer);
     threadOutsideTheStaticExecutor.start();
 

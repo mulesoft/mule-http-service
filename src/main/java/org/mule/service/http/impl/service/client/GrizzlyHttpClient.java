@@ -179,8 +179,9 @@ public class GrizzlyHttpClient implements HttpClient {
         .withName(name), DEFAULT_SELECTOR_THREAD_COUNT);
     workerScheduler = getWorkerScheduler(schedulersConfig.withName(name + ".requester.workers"));
 
-    if (streamingEnabled) {
+    if (streamingEnabled && nonBlockingStreamWriter.isEnabled()) {
       // Only use a dedicated thread to the stream writer if streaming is enabled.
+      // Also, only use it if the feature is enabled.
       workerScheduler.submit(nonBlockingStreamWriter);
     }
 
