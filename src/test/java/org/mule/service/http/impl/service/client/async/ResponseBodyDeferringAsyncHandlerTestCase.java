@@ -325,7 +325,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
         new ResponseBodyDeferringAsyncHandler(future, smallBufferSize, workersExecutor, nonBlockingStreamWriter);
 
     GrizzlyResponseBodyPart intermediatePart = mockBodyPart(false, "Hello ".getBytes());
-    GrizzlyResponseBodyPart lastPart = mockBodyPart(true, "world".getBytes());
+    GrizzlyResponseBodyPart lastPart = mockBodyPart(true, "world!".getBytes());
 
     assertThat(handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS)), is(CONTINUE));
     assertThat(handler.onBodyPartReceived(intermediatePart), is(CONTINUE));
@@ -359,7 +359,7 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     // Eventually, the whole response can be consumed from the pipe
     prober.check(new JUnitLambdaProbe(() -> {
       synchronized (responseAsString) {
-        assertThat(responseAsString.toString(), is("Hello world"));
+        assertThat(responseAsString.toString(), is("Hello world!"));
       }
       return true;
     }));
@@ -412,6 +412,49 @@ public class ResponseBodyDeferringAsyncHandlerTestCase extends AbstractMuleTestC
     }));
 
     MDC.remove(randomKey);
+  }
+
+  @Test
+  @Issue("W-17617940")
+  public void writeLastPartAsyncAfterOnComplete() throws Exception {
+    // use default timeout for this test
+    clearProperty(READ_TIMEOUT_PROPERTY_NAME);
+    refreshSystemProperties();
+
+    int smallBufferSize = 5;
+
+    CompletableFuture<HttpResponse> future = new CompletableFuture<>();
+    ResponseBodyDeferringAsyncHandler handler =
+        new ResponseBodyDeferringAsyncHandler(future, smallBufferSize, workersExecutor, nonBlockingStreamWriter);
+
+    GrizzlyResponseBodyPart intermediatePart = mockBodyPart(false, "Hel".getBytes());
+    GrizzlyResponseBodyPart lastPart = mockBodyPart(true, "lo world!".getBytes());
+
+    // The writing of the last part will be scheduled because it doesn't fit into the pipe.
+    // As we didn't start the writer thread yet, the onCompleted will be executed before the last part is written.
+    handler.onStatusReceived(mock(HttpResponseStatus.class, RETURNS_DEEP_STUBS));
+    handler.onBodyPartReceived(intermediatePart);
+    handler.onBodyPartReceived(lastPart);
+    handler.onCompleted();
+
+    // Get the "full" pipe (available = buffer size)
+    InputStream pipe = future.get().getEntity().getContent();
+    assertThat(pipe.available(), is(smallBufferSize));
+
+    // Now we run the writer and consume the pipe asynchronously.
+    StringBuilder responseAsString = new StringBuilder();
+    testExecutor.submit(() -> consumePipe(pipe, responseAsString));
+    workersExecutor.submit(nonBlockingStreamWriter);
+
+    // Eventually, the whole response is consumed from the pipe with no errors.
+    prober.check(new JUnitLambdaProbe(() -> {
+      synchronized (responseAsString) {
+        assertThat(responseAsString.toString(), is("Hello world!"));
+      }
+      return true;
+    }));
+
+    nonBlockingStreamWriter.stop();
   }
 
   private static void consumePipe(InputStream pipe, StringBuilder responseStringBuilder) {
