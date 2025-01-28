@@ -37,7 +37,7 @@
         <grizzlyVersion>2.3.36-MULE-027</grizzlyVersion>
         <bouncycastle.version>1.78.1</bouncycastle.version>
 
-        <nettyHttpServiceVersion>0.2.0-rc3</nettyHttpServiceVersion>
+        <nettyHttpServiceVersion>0.2.0-rc4</nettyHttpServiceVersion>
 
         <skipExportTests>false</skipExportTests>
         <formatterConfigPath>formatter.xml</formatterConfigPath>
