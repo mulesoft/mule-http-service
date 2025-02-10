@@ -28,6 +28,7 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.qameta.allure.Issue;
 import io.qameta.allure.Stories;
@@ -39,10 +40,13 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
 
   private final ExecutorService writerExecutor = newSingleThreadExecutor();
 
+  private final AtomicInteger timesCallbackWasCalled = new AtomicInteger();
+  private final Runnable onSpaceCallback = timesCallbackWasCalled::incrementAndGet;
+
   @Test
   public void itBehavesInAFIFOWayWhenWritingBytes() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
-    TimedPipedInputStream in = new TimedPipedInputStream(2, 10, MILLISECONDS, out);
+    TimedPipedInputStream in = new TimedPipedInputStream(2, 10, MILLISECONDS, out, onSpaceCallback);
 
     out.write(1);
     out.write(2);
@@ -61,7 +65,7 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
   @Test
   public void itBehavesInAFIFOWayWhenWritingBuffers() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
-    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
+    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out, onSpaceCallback);
 
     byte[] receiveBuf = new byte[2];
 
@@ -85,7 +89,7 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
   @Issue("MULE-19232")
   public void returnZeroAfterTimeoutWhenUsingBuffer() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
-    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
+    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out, onSpaceCallback);
 
     byte[] receiveBuf = new byte[2];
 
@@ -105,7 +109,7 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
   @Issue("MULE-19232")
   public void throwsExceptionAfterTimeoutWhenRequestingByte() {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
-    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
+    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out, onSpaceCallback);
 
     IOException ioException = assertThrows(IOException.class, in::read);
     assertThat(ioException, hasCause(instanceOf(TimeoutException.class)));
@@ -115,7 +119,7 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
   @Issue("MULE-19232")
   public void throwsExceptionAfterTimeoutWhenRequestingByteAfterSomeBytes() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
-    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
+    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out, onSpaceCallback);
 
     out.write(new byte[] {1, 2, 3});
 
@@ -133,7 +137,7 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
   public void readerAndWriterInDifferentThreadsWithAPayloadThatDoesNotFitIntoTheBuffer()
       throws IOException, InterruptedException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
-    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out);
+    TimedPipedInputStream in = new TimedPipedInputStream(5, 10, MILLISECONDS, out, onSpaceCallback);
     String testData = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut " +
         "labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco " +
         "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in " +
@@ -165,7 +169,7 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
   @Issue("W-17370109")
   public void cancelWritingWithExceptionPropagatesTheExceptionToReader() throws IOException {
     TimedPipedOutputStream out = new TimedPipedOutputStream();
-    TimedPipedInputStream in = new TimedPipedInputStream(500, 10, HOURS, out);
+    TimedPipedInputStream in = new TimedPipedInputStream(500, 10, HOURS, out, onSpaceCallback);
     out.write("Partial data".getBytes());
 
     out.cancel(new RuntimeException("Expected exception"));
@@ -173,5 +177,36 @@ public class TimedPipedInputStreamTestCase extends AbstractMuleTestCase {
     IOException ioException = assertThrows(IOException.class, in::read);
     assertThat(ioException, hasCause(allOf(instanceOf(RuntimeException.class),
                                            hasMessage("Expected exception"))));
+  }
+
+  @Test
+  @Issue("W-17627284")
+  public void callbackIsCalledWhenSpaceIsGenerated() throws IOException {
+    String payloadThatFillsTheBuffer = "Lorem ipsum dolor sit amet";
+
+    TimedPipedOutputStream out = new TimedPipedOutputStream();
+    TimedPipedInputStream in = new TimedPipedInputStream(payloadThatFillsTheBuffer.length(), 10, HOURS, out, onSpaceCallback);
+    out.write(payloadThatFillsTheBuffer.getBytes());
+
+    assertThat(timesCallbackWasCalled.get(), is(0));
+
+    byte[] readBuf = new byte[2];
+
+    // The first read actually generates space in the buffer.
+    in.read(readBuf);
+    assertThat(timesCallbackWasCalled.get(), is(1));
+
+    // Subsequent reads generate more space in the buffer, but the buffer wasn't full anymore
+    in.read(readBuf);
+    assertThat(timesCallbackWasCalled.get(), is(1));
+    in.read(readBuf);
+    assertThat(timesCallbackWasCalled.get(), is(1));
+
+    // Fill the buffer again...
+    out.write(payloadThatFillsTheBuffer.getBytes(), 0, 6);
+
+    // And now the first read is generating space again
+    in.read(readBuf);
+    assertThat(timesCallbackWasCalled.get(), is(2));
   }
 }

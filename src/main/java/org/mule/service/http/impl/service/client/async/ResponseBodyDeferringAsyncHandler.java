@@ -256,8 +256,11 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
           return CONTINUE;
         } else {
           output = new TimedPipedOutputStream();
-          input =
-              of(new TimedPipedInputStream(bufferSize, PIPE_READ_TIMEOUT_MILLIS, MILLISECONDS, (TimedPipedOutputStream) output));
+          input = of(new TimedPipedInputStream(bufferSize, PIPE_READ_TIMEOUT_MILLIS, MILLISECONDS, output, () -> {
+            if (null != nonBlockingStreamWriter) {
+              nonBlockingStreamWriter.notifyAvailableSpace();
+            }
+          }));
         }
       }
       handleIfNecessary();
