@@ -9,7 +9,7 @@ package org.mule.service.http.impl.service.client;
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Math.min;
 import static java.lang.Thread.currentThread;
-import static java.lang.Thread.sleep;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import static org.slf4j.LoggerFactory.getLogger;
 import static org.slf4j.MDC.getCopyOfContextMap;
@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -39,13 +38,12 @@ import org.slf4j.Logger;
  */
 public class NonBlockingStreamWriter implements Runnable {
 
-  private static final boolean KILL_SWITCH = getBoolean("mule.http.client.responseStreaming.nonBlockingWriter");
-
   private static final Logger LOGGER = getLogger(NonBlockingStreamWriter.class);
   private static final int DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS = 100;
 
   private final AtomicBoolean isStopped = new AtomicBoolean(false);
   private final BlockingQueue<InternalWriteTask> tasks = new LinkedBlockingQueue<>();
+  private final Object availableSpaceMonitor = new Object();
   private final int timeToSleepWhenCouldNotWriteMillis;
   private final boolean isEnabled;
 
@@ -55,7 +53,7 @@ public class NonBlockingStreamWriter implements Runnable {
   }
 
   public NonBlockingStreamWriter() {
-    this(DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS, KILL_SWITCH);
+    this(DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS, getBoolean("mule.http.client.responseStreaming.nonBlockingWriter"));
   }
 
   public boolean isEnabled() {
@@ -92,13 +90,25 @@ public class NonBlockingStreamWriter implements Runnable {
 
         if (!couldWriteSomething && !isStopped.get()) {
           LOGGER.trace("Giving some time to the other threads to consume from pipes...");
-          sleep(timeToSleepWhenCouldNotWriteMillis);
+          synchronized (availableSpaceMonitor) {
+            availableSpaceMonitor.wait(timeToSleepWhenCouldNotWriteMillis);
+          }
         }
       } catch (InterruptedException e) {
         if (!isStopped.get()) {
           LOGGER.warn("Non blocking writer thread was interrupted before it was stopped. It will resume the execution", e);
         }
+        currentThread().interrupt();
       }
+    }
+  }
+
+  /**
+   * Wake up the writer thread to avoid sleeping too much and cause degradations.
+   */
+  public void notifyAvailableSpace() {
+    synchronized (availableSpaceMonitor) {
+      availableSpaceMonitor.notifyAll();
     }
   }
 
@@ -111,7 +121,7 @@ public class NonBlockingStreamWriter implements Runnable {
 
   /**
    * Iterates all the pending write tasks and executes them.
-   * 
+   *
    * @return <code>true</code> if it could write at least one byte, or <code>false</code> otherwise.
    * @throws InterruptedException if the thread was interrupted.
    */
@@ -119,8 +129,8 @@ public class NonBlockingStreamWriter implements Runnable {
     List<InternalWriteTask> tasksWithPendingData = new ArrayList<>(tasks.size());
     boolean couldWriteSomething = false;
 
-    InternalWriteTask task = tasks.poll(100, TimeUnit.MILLISECONDS);
-    while (task != null) {
+    InternalWriteTask task = tasks.poll(100, MILLISECONDS);
+    while (null != task) {
       int remainingBeforeExecute = task.remaining();
       boolean couldComplete = task.execute();
       int remainingAfterExecute = task.remaining();
@@ -130,7 +140,7 @@ public class NonBlockingStreamWriter implements Runnable {
       if (remainingAfterExecute < remainingBeforeExecute) {
         couldWriteSomething = true;
       }
-      task = tasks.poll(100, TimeUnit.MILLISECONDS);
+      task = tasks.poll();
     }
 
     tasks.addAll(tasksWithPendingData);
@@ -170,11 +180,11 @@ public class NonBlockingStreamWriter implements Runnable {
     }
 
     public boolean execute() {
-      try (ThreadContext threadContext = new ThreadContext(callerTCCL, callerMDC)) {
+      try (ThreadContext ignored = new ThreadContext(callerTCCL, callerMDC)) {
         int remainingBytes = totalBytesToWrite - alreadyWritten;
         int bytesToWriteInThisExecution = min(availableSpace.get(), remainingBytes);
 
-        while (bytesToWriteInThisExecution > 0) {
+        while (0 < bytesToWriteInThisExecution) {
           try {
             destinationStream.write(dataToWrite, alreadyWritten, bytesToWriteInThisExecution);
           } catch (Exception e) {
@@ -194,7 +204,7 @@ public class NonBlockingStreamWriter implements Runnable {
           return true;
         }
 
-        if (bytesToWriteInThisExecution == -1) {
+        if (-1 == bytesToWriteInThisExecution) {
           LOGGER.trace("Destination stream closed (id: {})", id);
           toCompleteWhenAllDataIsWritten.completeExceptionally(new IOException("Pipe closed"));
           return true;
