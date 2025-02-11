@@ -7,6 +7,7 @@
 package org.mule.service.http.impl.service.client;
 
 import static org.mule.functional.junit4.matchers.ThrowableMessageMatcher.hasMessage;
+import static org.mule.tck.MuleTestUtils.testWithSystemProperty;
 
 import static java.lang.System.currentTimeMillis;
 import static java.lang.Thread.sleep;
@@ -19,6 +20,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -43,6 +45,7 @@ import java.util.function.Supplier;
 
 import io.qameta.allure.Issue;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.MDC;
@@ -65,6 +68,28 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
   @After
   public void tearDown() {
     nonBlockingStreamWriter.stop();
+  }
+
+  @AfterClass
+  public static void tearDownClass() {
+    executorService.shutdownNow();
+  }
+
+  @Test
+  @Issue("W-17624200")
+  public void isEnabledVariants() throws Exception {
+    // Receiving true...
+    assertThat(new NonBlockingStreamWriter(1, true).isEnabled(), is(true));
+
+    // Receiving false...
+    assertThat(new NonBlockingStreamWriter(1, false).isEnabled(), is(false));
+
+    // Default system property is false...
+    assertThat(new NonBlockingStreamWriter().isEnabled(), is(false));
+
+    // Honor system property...
+    testWithSystemProperty("mule.http.client.responseStreaming.nonBlockingWriter", "true",
+                           () -> assertThat(new NonBlockingStreamWriter().isEnabled(), is(true)));
   }
 
   @Test
@@ -155,6 +180,44 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
   }
 
   @Test
+  @Issue("W-17627284")
+  public void whenTheWriterIsNotifiedThenItDoesntSleepTooMuch() throws ExecutionException, InterruptedException {
+    // If we don't notify the writer, then this test will never end because the following timeout is ridiculously big...
+    int ridiculouslyBigSleepMillis = Integer.MAX_VALUE;
+    NonBlockingStreamWriter writer = new NonBlockingStreamWriter(ridiculouslyBigSleepMillis, true);
+
+    int enoughTimeToThisTrivialOperationInMilliseconds = 100;
+
+    ByteArrayOutputStream irrelevantSink = new ByteArrayOutputStream();
+    Supplier<Integer> sequenceWithSeveralZeroesInTheMiddle =
+        new SequenceProvider(SOME_DATA.length - 5, 0, 0, 0, 0, 0, 0, 0, 0, 5);
+    CompletableFuture<Void> future = writer.addDataToWrite(irrelevantSink, SOME_DATA, sequenceWithSeveralZeroesInTheMiddle);
+    assertThat("The writer is not scheduled anywhere yet, so the future shouldn't be completed",
+               future.isDone(), is(false));
+
+    // We schedule the writer task, and start notifying that there could be space in the sink. The writer should check if there is
+    // actually space but it shouldn't sleep.
+    long millisBeforeSchedule = currentTimeMillis();
+    executorService.submit(writer);
+    while (!future.isDone()) {
+      writer.notifyAvailableSpace();
+    }
+
+    // Now the future has to be completed, because the loop finished.
+    future.get();
+
+    // The full operation should take a short time...
+    long millisAfterComplete = currentTimeMillis();
+    int elapsedMillis = (int) (millisAfterComplete - millisBeforeSchedule);
+    assertThat("We returned 0 several times but we were constantly notifying that there was space in the sink, so it shouldn't take too much time",
+               elapsedMillis, is(lessThan(enoughTimeToThisTrivialOperationInMilliseconds)));
+
+    assertThat(irrelevantSink.toByteArray(), is(SOME_DATA));
+
+    writer.stop();
+  }
+
+  @Test
   public void writesAllProgressivelyAsync() throws ExecutionException, InterruptedException {
     executorService.submit(nonBlockingStreamWriter);
     ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -242,6 +305,13 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
     assertThat(out.getMDCOnLastWrite(), is(mockMdc));
   }
 
+  /**
+   * The {@link NonBlockingStreamWriter} receives a {@link Supplier<Integer>} to retrieve the available space in the sink
+   * {@link OutputStream}. This class is an utility to mock that supplier.
+   * <p>
+   * Note: If the supplier returns {@code 0}, then the writer will interpret that there is not enough space to write, so this
+   * utility can be also used to emulate that situation.
+   */
   private static class SequenceProvider implements Supplier<Integer> {
 
     private final Queue<Integer> sequence;

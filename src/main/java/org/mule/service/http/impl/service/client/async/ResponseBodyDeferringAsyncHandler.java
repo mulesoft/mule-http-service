@@ -32,7 +32,6 @@ import org.mule.service.http.impl.util.TimedPipedInputStream;
 import org.mule.service.http.impl.util.TimedPipedOutputStream;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
@@ -49,9 +48,9 @@ import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
-import com.ning.http.client.providers.grizzly.PauseHandler;
 import com.ning.http.client.Response;
 import com.ning.http.client.providers.grizzly.GrizzlyResponseHeaders;
+import com.ning.http.client.providers.grizzly.PauseHandler;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +80,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private int bufferSize;
   private final NonBlockingStreamWriter nonBlockingStreamWriter;
   private final ExecutorService workerScheduler;
-  private OutputStream output;
+  private TimedPipedOutputStream output;
   private Optional<TimedPipedInputStream> input = empty();
   private final CompletableFuture<HttpResponse> future;
   private final Response.ResponseBuilder responseBuilder = new Response.ResponseBuilder();
@@ -242,8 +241,11 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
           return CONTINUE;
         } else {
           output = new TimedPipedOutputStream();
-          input =
-              of(new TimedPipedInputStream(bufferSize, PIPE_READ_TIMEOUT_MILLIS, MILLISECONDS, (TimedPipedOutputStream) output));
+          input = of(new TimedPipedInputStream(bufferSize, PIPE_READ_TIMEOUT_MILLIS, MILLISECONDS, output, () -> {
+            if (null != nonBlockingStreamWriter) {
+              nonBlockingStreamWriter.notifyAvailableSpace();
+            }
+          }));
         }
       }
       handleIfNecessary();
