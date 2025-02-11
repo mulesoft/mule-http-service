@@ -28,6 +28,9 @@ public class TimedPipedInputStream extends InputStream {
   private byte[] ringBuffer;
   private final int ringBufferSize;
 
+  // Callback to notify that there is available space in the pipe.
+  private final Runnable spaceAvailableCallback;
+
   // Read timeout in nanoseconds.
   private final long timeoutNanos;
 
@@ -41,11 +44,13 @@ public class TimedPipedInputStream extends InputStream {
   private boolean closedByReader = false;
   private Throwable error = null;
 
-  public TimedPipedInputStream(int bufferSize, long timeout, TimeUnit timeUnit, TimedPipedOutputStream origin) {
+  public TimedPipedInputStream(int bufferSize, long timeout, TimeUnit timeUnit, TimedPipedOutputStream origin,
+                               Runnable spaceAvailableCallback) {
     this.ringBuffer = new byte[bufferSize];
     this.ringBufferSize = bufferSize;
     this.timeoutNanos = timeUnit.toNanos(timeout);
     this.head = new CircularInteger(ringBufferSize, 0);
+    this.spaceAvailableCallback = spaceAvailableCallback;
     origin.connect(this);
   }
 
@@ -98,6 +103,7 @@ public class TimedPipedInputStream extends InputStream {
       return 0;
     }
     try {
+      boolean wasFull = length == ringBufferSize;
       int bytesToCopy = min(awaitDataAvailable(), len);
       if (bytesToCopy == 0 && closedByWriter) {
         notifyAll();
@@ -115,6 +121,9 @@ public class TimedPipedInputStream extends InputStream {
       // There is space in the buffer, notify writers.
       length -= bytesToCopy;
       notifyAll();
+      if (wasFull && 0 < bytesToCopy) {
+        spaceAvailableCallback.run();
+      }
       return bytesToCopy;
     } catch (InterruptedException e) {
       currentThread().interrupt();
