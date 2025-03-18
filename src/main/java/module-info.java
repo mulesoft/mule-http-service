@@ -25,7 +25,6 @@ module org.mule.service.http {
 
   requires jakarta.activation;
   requires jakarta.mail;
-  requires java.inject;
   requires java.logging;
 
   requires com.github.benmanes.caffeine;
