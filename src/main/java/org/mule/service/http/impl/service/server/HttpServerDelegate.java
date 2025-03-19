@@ -14,9 +14,13 @@ import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.ws.WebSocketHandler;
 import org.mule.runtime.http.api.server.ws.WebSocketHandlerManager;
+import org.mule.runtime.http.api.sse.server.SseClient;
+import org.mule.runtime.http.api.sse.server.SseEndpointManager;
+import org.mule.runtime.http.api.sse.server.SseRequestContext;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.function.Consumer;
 
 /**
  * Base class for applying the delegate design pattern around an {@link HttpServer}
@@ -93,5 +97,15 @@ public class HttpServerDelegate implements HttpServer {
   @Override
   public void disableTls() {
     delegate.disableTls();
+  }
+
+  @Override
+  public SseEndpointManager sse(String ssePath, Consumer<SseRequestContext> onRequest, Consumer<SseClient> onClient) {
+    return delegate.sse(ssePath, onRequest, onClient);
+  }
+
+  @Override
+  public SseEndpointManager sse(String ssePath, Consumer<SseClient> sseClientHandler) {
+    return delegate.sse(ssePath, sseClientHandler);
   }
 }
