@@ -19,7 +19,6 @@ import org.mule.runtime.core.api.util.IOUtils;
 import org.mule.runtime.core.api.util.UUID;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
-import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -29,9 +28,10 @@ import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.probe.PollingProber;
 import org.slf4j.MDC;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 import static java.lang.Thread.currentThread;
@@ -60,8 +60,18 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
   private static Latch latch;
 
-  private HttpClientConfiguration.Builder clientBuilder = new HttpClientConfiguration.Builder().setName("streaming-test");
-  private PollingProber pollingProber = new PollingProber(TIMEOUT_MILLIS, POLL_DELAY_MILLIS);
+  private final Executor MDC_AWARE_EXECUTOR = runnable -> {
+    Map<String, String> contextMap = MDC.getCopyOfContextMap();
+    CompletableFuture.runAsync(() -> {
+      if (contextMap != null)
+        MDC.setContextMap(contextMap);
+      runnable.run();
+      MDC.clear();
+    });
+  };
+
+  private final HttpClientConfiguration.Builder clientBuilder = new HttpClientConfiguration.Builder().setName("streaming-test");
+  private final PollingProber pollingProber = new PollingProber(TIMEOUT_MILLIS, POLL_DELAY_MILLIS);
 
   public HttpClientStreamingTestCase(String serviceToLoad) {
     super(serviceToLoad);
@@ -74,7 +84,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
   @Test
   @Description("Uses a streaming HTTP client to send a non blocking request which will finish before the stream is released.")
-  public void nonBlockingStreaming() throws Exception {
+  public void nonBlockingStreaming() {
     HttpClient client =
         service.getClientFactory().create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(true).build());
     client.start();
@@ -93,25 +103,25 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
   @Test
   @Description("Uses a streaming HTTP client to send a non blocking request and asserts that MDC values are propagated to the response handler when the request fails due to timeout.")
-  public void nonBlockingStreamingMDCPropagationOnError() throws Exception {
+  public void nonBlockingStreamingMDCPropagationOnError() {
     testMdcPropagation(true, true);
   }
 
   @Test
   @Description("Uses a non streaming HTTP client to send a non blocking request and asserts that MDC values are propagated to the response handler when the request fails due to timeout.")
-  public void nonBlockingNoStreamingMDCPropagationOnError() throws Exception {
+  public void nonBlockingNoStreamingMDCPropagationOnError() {
     testMdcPropagation(false, true);
   }
 
   @Test
   @Description("Uses a streaming HTTP client to send a non blocking request and asserts that MDC values are propagated to the response handler when the request is executed successfully.")
-  public void nonBlockingStreamingMDCPropagationNoError() throws Exception {
+  public void nonBlockingStreamingMDCPropagationNoError() {
     testMdcPropagation(true, false);
   }
 
   @Test
   @Description("Uses a non streaming HTTP client to send a non blocking request and asserts that MDC values are propagated to the response handler when the request is executed successfully.")
-  public void nonBlockingNoStreamingMDCPropagationNoError() throws Exception {
+  public void nonBlockingNoStreamingMDCPropagationNoError() {
     testMdcPropagation(false, false);
   }
 
@@ -169,7 +179,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   @Test
   @Issue("MULE-19072")
   @Description("The client should use other thread-pool than the uber to avoid a deadlock when using a PipedInputStream")
-  public void responseStreamingDoesNotUseUberPoolToWritePartsToThePipe() throws IOException {
+  public void responseStreamingDoesNotUseUberPoolToWritePartsToThePipe() {
     HttpClient client =
         service.getClientFactory().create(clientBuilder.setResponseBufferSize(KB.toBytes(10)).setStreaming(true).build());
     client.start();
@@ -198,7 +208,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     return getRequest(getUri());
   }
 
-  private void verifyStreamed(HttpResponse response) throws IOException {
+  private void verifyStreamed(HttpResponse response) {
     assertThat(response.getStatusCode(), is(OK.getStatusCode()));
     latch.release();
     verifyBody(response);
@@ -214,7 +224,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     verifyBody(responseReference.get());
   }
 
-  private void verifyBody(HttpResponse response) throws IOException {
+  private void verifyBody(HttpResponse response) {
     assertThat(IOUtils.toString(response.getEntity().getContent()).length(), is(RESPONSE_SIZE));
   }
 
@@ -227,11 +237,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
         .build();
   }
 
-  protected HttpRequestOptions getDefaultOptions(int responseTimeout) {
-    return HttpRequestOptions.builder().responseTimeout(responseTimeout).build();
-  }
-
-  private void testMdcPropagation(boolean shouldStream, boolean shouldThrowException) throws IOException {
+  private void testMdcPropagation(boolean shouldStream, boolean shouldThrowException) {
     HttpClient client =
         ((HttpServiceImplementation) service)
             .getClientFactory(SchedulerConfig.config().withName("test-scheduler").withMaxConcurrentTasks(5), f -> false)
@@ -249,20 +255,20 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     try {
       client.sendAsync(shouldThrowException ? getRequest("http://localhost:9999") : getRequest(),
                        getDefaultOptions(RESPONSE_TIMEOUT))
-          .whenComplete(
-                        (response, exception) -> {
-                          if (shouldThrowException) {
-                            responseReference
-                                .set(HttpResponse.builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build());
-                          } else {
-                            responseReference.set(response);
-                          }
-                          // since assertions won't fail here we need to capture this variables to assert later on.
-                          capture.put("exception", exception);
-                          capture.put("transactionId",
-                                      MDC.get("transactionId"));
-                          capture.put("currentThread", currentThread().getName());
-                        });
+          .whenCompleteAsync(
+                             (response, exception) -> {
+                               if (shouldThrowException) {
+                                 responseReference
+                                     .set(HttpResponse.builder().statusCode(INTERNAL_SERVER_ERROR.getStatusCode()).build());
+                               } else {
+                                 responseReference.set(response);
+                               }
+                               // since assertions won't fail here we need to capture this variables to assert later on.
+                               capture.put("exception", exception);
+                               capture.put("transactionId",
+                                           MDC.get("transactionId"));
+                               capture.put("currentThread", currentThread().getName());
+                             }, MDC_AWARE_EXECUTOR);
 
       pollingProber.check(new ResponseReceivedProbe(responseReference));
       assertThat(capture.get("exception"), shouldThrowException ? notNullValue() : nullValue());
@@ -271,6 +277,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
       assertThat(responseReference.get().getStatusCode(),
                  shouldThrowException ? is(INTERNAL_SERVER_ERROR.getStatusCode()) : is(OK.getStatusCode()));
     } finally {
+      MDC.clear();
       client.stop();
     }
   }
