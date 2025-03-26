@@ -16,7 +16,7 @@ import org.mule.runtime.http.api.HttpService;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.service.http.netty.impl.service.NettyHttpServiceImplementation;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 public class HttpServiceProvider implements ServiceProvider {
 

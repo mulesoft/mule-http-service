@@ -6,10 +6,6 @@
  */
 package org.mule.service.http.impl.service;
 
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
-import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
-import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.scheduler.SchedulerConfig.config;
 import static org.mule.runtime.core.api.config.MuleProperties.APP_NAME_PROPERTY;
@@ -20,7 +16,14 @@ import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.DOMAIN;
 import static org.mule.runtime.core.api.config.bootstrap.ArtifactType.POLICY;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.disposeIfNeeded;
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
+
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+
+import static org.glassfish.grizzly.CloseReason.LOCALLY_CLOSED_REASON;
+import static org.glassfish.grizzly.CloseReason.REMOTELY_CLOSED_REASON;
 import static org.slf4j.LoggerFactory.getLogger;
+
 import org.mule.runtime.api.artifact.Registry;
 import org.mule.runtime.api.config.FeatureFlaggingService;
 import org.mule.runtime.api.exception.MuleException;
@@ -45,11 +48,11 @@ import org.mule.service.http.impl.service.util.DefaultRequestMatcherRegistryBuil
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import javax.inject.Inject;
-import javax.inject.Named;
-
 import org.glassfish.grizzly.CloseReason;
 import org.slf4j.Logger;
+
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 /**
  * Implementation of {@link HttpService} that uses Grizzly to create {@link HttpServer}s and its Async HTTP Client provider to
