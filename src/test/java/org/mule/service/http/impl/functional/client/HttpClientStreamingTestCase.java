@@ -30,9 +30,12 @@ import org.mule.tck.probe.PollingProber;
 import org.slf4j.MDC;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.lang.Thread.currentThread;
 import static java.lang.Thread.sleep;
@@ -60,6 +63,8 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
   private static Latch latch;
 
+  private Latch beforeResponseLatch;
+  private AtomicBoolean serverShouldThrowException;
   private HttpClientConfiguration.Builder clientBuilder = new HttpClientConfiguration.Builder().setName("streaming-test");
   private PollingProber pollingProber = new PollingProber(TIMEOUT_MILLIS, POLL_DELAY_MILLIS);
 
@@ -220,11 +225,20 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
 
   @Override
   protected HttpResponse setUpHttpResponse(HttpRequest request) {
-    return HttpResponse.builder()
-        .statusCode(OK.getStatusCode())
-        .reasonPhrase(OK.getReasonPhrase())
-        .entity(new InputStreamHttpEntity(new FillAndWaitStream(latch)))
-        .build();
+    if (Objects.nonNull(beforeResponseLatch)) {
+      try {
+        beforeResponseLatch.await();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    if (serverShouldThrowException != null && serverShouldThrowException.get()) {
+      throw new RuntimeException("Forced Timeout");
+    } else {
+      return HttpResponse.builder().statusCode(OK.getStatusCode()).reasonPhrase(OK.getReasonPhrase())
+          .entity(new InputStreamHttpEntity(new FillAndWaitStream(latch))).build();
+    }
   }
 
   protected HttpRequestOptions getDefaultOptions(int responseTimeout) {
@@ -232,6 +246,8 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
   }
 
   private void testMdcPropagation(boolean shouldStream, boolean shouldThrowException) throws IOException {
+    serverShouldThrowException = new AtomicBoolean(shouldThrowException);
+    beforeResponseLatch = new Latch();
     HttpClient client =
         ((HttpServiceImplementation) service)
             .getClientFactory(SchedulerConfig.config().withName("test-scheduler").withMaxConcurrentTasks(5), f -> false)
@@ -247,7 +263,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     MDC.put("transactionId", transactionId);
     MDC.put("currentThread", currentThread().getName());
     try {
-      client.sendAsync(shouldThrowException ? getRequest("http://localhost:9999") : getRequest(),
+      client.sendAsync(getRequest(),
                        getDefaultOptions(RESPONSE_TIMEOUT))
           .whenComplete(
                         (response, exception) -> {
@@ -264,6 +280,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
                           capture.put("currentThread", currentThread().getName());
                         });
 
+      beforeResponseLatch.release();
       pollingProber.check(new ResponseReceivedProbe(responseReference));
       assertThat(capture.get("exception"), shouldThrowException ? notNullValue() : nullValue());
       assertThat(MDC.get("transactionId"), is(capture.get("transactionId")));
@@ -272,6 +289,8 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
                  shouldThrowException ? is(INTERNAL_SERVER_ERROR.getStatusCode()) : is(OK.getStatusCode()));
     } finally {
       client.stop();
+      beforeResponseLatch = null;
+      serverShouldThrowException = null;
     }
   }
 
