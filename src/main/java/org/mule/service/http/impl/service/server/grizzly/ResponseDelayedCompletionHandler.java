@@ -42,19 +42,12 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
                                    ResponseStatusCallback responseStatusCallback) {
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
-    httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
-    memoryManager = ctx.getConnection().getTransport().getMemoryManager();
+    this.httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
+    this.memoryManager = ctx.getConnection().getTransport().getMemoryManager();
     this.responseStatusCallback = responseStatusCallback;
   }
 
-  public void start() {
-    // TODO - MULE-15051: Analyse how to either support this entirely or using a Connection close approach
-    httpResponsePacket.setContentLength(MAX_VALUE);
-    httpResponsePacket.setChunked(false);
-    final HttpContent content = httpResponsePacket.httpContentBuilder().build();
-
-    ctx.write(content, this);
-  }
+  public void start() {}
 
   public Writer buildWriter(Charset encoding) {
     return new Writer() {
@@ -75,7 +68,12 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
 
         arraycopy(bytes, 0, bufferByteArray, offset, bytes.length);
         stringBuilder.setLength(0);
-        ctx.write(buffer, ResponseDelayedCompletionHandler.this);
+
+        final HttpContent content = httpResponsePacket.httpContentBuilder()
+            .last(false)
+            .content(buffer)
+            .build();
+        ctx.write(content, ResponseDelayedCompletionHandler.this);
       }
 
       @Override

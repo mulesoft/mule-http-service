@@ -27,11 +27,14 @@ import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BU
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
 import org.mule.service.http.impl.service.client.NonBlockingStreamWriter;
+import org.mule.service.http.impl.service.client.sse.NoOpProgressiveBodyDataListener;
+import org.mule.service.http.impl.service.client.sse.ProgressiveBodyDataListener;
 import org.mule.service.http.impl.service.util.ThreadContext;
 import org.mule.service.http.impl.util.TimedPipedInputStream;
 import org.mule.service.http.impl.util.TimedPipedOutputStream;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
@@ -80,6 +83,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private volatile Response response;
   private int bufferSize;
   private final NonBlockingStreamWriter nonBlockingStreamWriter;
+  private final ProgressiveBodyDataListener dataListener;
   private final ExecutorService workerScheduler;
   private TimedPipedOutputStream output;
   private Optional<TimedPipedInputStream> input = empty();
@@ -101,13 +105,22 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private final AtomicReference<Throwable> throwableReceived = new AtomicReference<>();
   private final AtomicBoolean lastPartReceived = new AtomicBoolean(false);
 
+  // TODO: Remove this constructor...
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
                                            ExecutorService workerScheduler,
                                            NonBlockingStreamWriter nonBlockingStreamWriter) {
+    this(future, userDefinedBufferSize, workerScheduler, nonBlockingStreamWriter, new NoOpProgressiveBodyDataListener());
+  }
+
+  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
+                                           ExecutorService workerScheduler,
+                                           NonBlockingStreamWriter nonBlockingStreamWriter,
+                                           ProgressiveBodyDataListener dataListener) {
     this.future = future;
     this.bufferSize = userDefinedBufferSize;
     this.workerScheduler = workerScheduler;
     this.nonBlockingStreamWriter = nonBlockingStreamWriter;
+    this.dataListener = dataListener;
     this.mdc = MDC.getCopyOfContextMap();
   }
 
@@ -249,10 +262,12 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         if (bodyPart.isLast()) {
           // no need to stream response, we already have it all
           if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Single part (size = {}bytes).", bodyPart.getBodyByteBuffer().remaining());
+            LOGGER.debug("Single part (size = {} bytes).", bodyPart.getBodyByteBuffer().remaining());
           }
           responseBuilder.accumulate(bodyPart);
           handleIfNecessary();
+          dataListener.onDataAvailable(bodyPart.length());
+          dataListener.onEndOfStream();
           return CONTINUE;
         } else {
           output = new TimedPipedOutputStream();
@@ -288,24 +303,28 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
       pauseHandler.requestPause();
       nonBlockingStreamWriter
           .addDataToWrite(output, bodyPart.getBodyPartBytes(), this::availableSpaceInPipe)
-          .whenComplete(resumeCallback(pauseHandler, bodyPart.isLast()));
+          .whenComplete(resumeCallback(pauseHandler, bodyPart));
     } else {
       bodyPart.writeTo(output);
+      dataListener.onDataAvailable(bodyLength);
       if (bodyPart.isLast()) {
         closeOut();
+        dataListener.onEndOfStream();
       }
     }
     return CONTINUE;
   }
 
-  private BiConsumer<Void, Throwable> resumeCallback(final PauseHandler pauseHandler, boolean isLastPart) {
+  private BiConsumer<Void, Throwable> resumeCallback(final PauseHandler pauseHandler, HttpResponseBodyPart bodyPart) {
     return (ignored, error) -> {
       if (error != null) {
         onThrowable(error);
       }
       try {
-        if (isLastPart) {
+        dataListener.onDataAvailable(bodyPart.length());
+        if (bodyPart.isLast()) {
           closeOut();
+          dataListener.onEndOfStream();
         }
         pauseHandler.resume();
       } catch (Exception e) {
@@ -349,6 +368,7 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
         // If the last part was not received yet, it won't be received. It's because AHC doesn't call the onBodyPartReceived for
         // the last part if it's empty. In that case, we need to close the pipe here.
         closeOut();
+        dataListener.onEndOfStream();
       }
       return null;
     } finally {
@@ -384,15 +404,21 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
   private void completeResponseFuture() {
     response = responseBuilder.build();
     try {
-      if (input.isPresent()) {
-        future.complete(httpResponseCreator.create(response, input.get()));
-      } else {
-        future.complete(httpResponseCreator.create(response, response.getResponseBodyAsStream()));
-      }
+      InputStream is = createResponseInputStream();
+      dataListener.onStreamCreated(is);
+      future.complete(httpResponseCreator.create(response, is));
     } catch (IOException e) {
       // Make sure all resources are accounted for and since we've set the handled flag, handle the future explicitly
       onThrowable(e);
       future.completeExceptionally(e);
+    }
+  }
+
+  private InputStream createResponseInputStream() throws IOException {
+    if (input.isPresent()) {
+      return input.get();
+    } else {
+      return response.getResponseBodyAsStream();
     }
   }
 

@@ -29,13 +29,19 @@ import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.RequestHandlerManager;
 import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
+import org.mule.runtime.http.api.sse.server.SseClient;
+import org.mule.runtime.http.api.sse.server.SseEndpointManager;
+import org.mule.runtime.http.api.sse.server.SseRequestContext;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
+import org.mule.service.http.impl.service.server.sse.SseHandlerManagerAdapter;
+import org.mule.service.http.impl.service.server.sse.SseRequestHandler;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.glassfish.grizzly.CloseListener;
@@ -185,6 +191,13 @@ public class GrizzlyHttpServer implements HttpServer, Supplier<ExecutorService> 
         .methodRequestMatcher(acceptAll())
         .path(path)
         .build());
+  }
+
+  @Override
+  public SseEndpointManager sse(String ssePath,
+                                Consumer<SseRequestContext> onRequest,
+                                Consumer<SseClient> onClient) {
+    return new SseHandlerManagerAdapter(addRequestHandler(ssePath, new SseRequestHandler(onRequest, onClient)));
   }
 
   private RequestHandler preservingTCCL(final RequestHandler requestHandler) {
