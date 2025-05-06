@@ -8,8 +8,7 @@
 
     <Loggers>
         <!-- HTTP Wire logging -->
-        <AsyncLogger name="org.mule.service.http.impl.service.HttpMessageLogger" level="DEBUG" />
-        <AsyncLogger name="org.mule.service.http.impl.service.client" level="ALL" />
+        <AsyncLogger name="org.mule.service.http.impl.service.HttpMessageLogger" level="INFO" />
 
         <!-- Mule classes -->
         <AsyncLogger name="org.mule" level="WARN"/>

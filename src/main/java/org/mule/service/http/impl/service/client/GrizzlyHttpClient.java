@@ -51,13 +51,13 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.sse.client.SseSource;
 import org.mule.runtime.http.api.sse.client.SseSourceConfig;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
+import org.mule.service.http.common.client.sse.DefaultSseSource;
+import org.mule.service.http.common.client.sse.InternalClient;
+import org.mule.service.http.common.client.sse.NoOpProgressiveBodyDataListener;
+import org.mule.service.http.common.client.sse.ProgressiveBodyDataListener;
 import org.mule.service.http.impl.service.client.async.PreservingClassLoaderAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
-import org.mule.service.http.impl.service.client.sse.DefaultSseSource;
-import org.mule.service.http.impl.service.client.sse.InternalClient;
-import org.mule.service.http.impl.service.client.sse.NoOpProgressiveBodyDataListener;
-import org.mule.service.http.impl.service.client.sse.ProgressiveBodyDataListener;
 import org.mule.service.http.impl.service.util.RedirectUtils;
 
 import java.io.IOException;

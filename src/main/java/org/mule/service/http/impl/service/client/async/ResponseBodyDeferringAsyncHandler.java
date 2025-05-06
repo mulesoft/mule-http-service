@@ -25,10 +25,10 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
 
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.service.http.common.client.sse.NoOpProgressiveBodyDataListener;
+import org.mule.service.http.common.client.sse.ProgressiveBodyDataListener;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
 import org.mule.service.http.impl.service.client.NonBlockingStreamWriter;
-import org.mule.service.http.impl.service.client.sse.NoOpProgressiveBodyDataListener;
-import org.mule.service.http.impl.service.client.sse.ProgressiveBodyDataListener;
 import org.mule.service.http.impl.service.util.ThreadContext;
 import org.mule.service.http.impl.util.TimedPipedInputStream;
 import org.mule.service.http.impl.util.TimedPipedOutputStream;
