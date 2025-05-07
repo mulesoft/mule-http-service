@@ -21,6 +21,7 @@
         <!-- Add visibility required by the tests exclusively -->
         <surefire.args>
             -XX:+IgnoreUnrecognizedVMOptions
+            --add-exports=org.mule.service.http/org.mule.service.http.impl.service=ALL-UNNAMED
             --add-exports=org.mule.service.http/org.mule.service.http.impl.functional=ALL-UNNAMED
             --add-exports=org.mule.service.http/org.mule.service.http.impl.functional.client=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.config.builders=ALL-UNNAMED
@@ -29,6 +30,7 @@
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.serialization=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.registry=ALL-UNNAMED
               --add-opens=jakarta.mail/com.sun.mail.util=org.mule.service.http
+            --add-exports=org.mule.service.http.netty/org.mule.service.http.netty.impl.service=ALL-UNNAMED
             ${surefire.test.unit.open.args}
         </surefire.args>
         <javaModuleName>org.mule.service.http</javaModuleName>
@@ -147,6 +149,12 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.mule.services</groupId>
+            <artifactId>mule-netty-http-service</artifactId>
+            <type>test-jar</type>
+            <version>${nettyHttpServiceVersion}</version>
+        </dependency>
         <dependency>
             <groupId>org.mule.tests</groupId>
             <artifactId>mule-tests-unit</artifactId>
