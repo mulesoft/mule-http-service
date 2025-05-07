@@ -25,7 +25,6 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.glassfish.grizzly.nio.transport.TCPNIOTransport.MAX_RECEIVE_BUFFER_SIZE;
 
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.service.http.common.client.sse.NoOpProgressiveBodyDataListener;
 import org.mule.service.http.common.client.sse.ProgressiveBodyDataListener;
 import org.mule.service.http.impl.service.client.HttpResponseCreator;
 import org.mule.service.http.impl.service.client.NonBlockingStreamWriter;
@@ -104,13 +103,6 @@ public class ResponseBodyDeferringAsyncHandler implements AsyncHandler<Response>
 
   private final AtomicReference<Throwable> throwableReceived = new AtomicReference<>();
   private final AtomicBoolean lastPartReceived = new AtomicBoolean(false);
-
-  // TODO: Remove this constructor...
-  public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
-                                           ExecutorService workerScheduler,
-                                           NonBlockingStreamWriter nonBlockingStreamWriter) {
-    this(future, userDefinedBufferSize, workerScheduler, nonBlockingStreamWriter, new NoOpProgressiveBodyDataListener());
-  }
 
   public ResponseBodyDeferringAsyncHandler(CompletableFuture<HttpResponse> future, int userDefinedBufferSize,
                                            ExecutorService workerScheduler,
