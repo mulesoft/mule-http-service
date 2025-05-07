@@ -30,6 +30,7 @@
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.internal.serialization=ALL-UNNAMED
             --add-exports=org.mule.runtime.core/org.mule.runtime.core.privileged.registry=ALL-UNNAMED
               --add-opens=jakarta.mail/com.sun.mail.util=org.mule.service.http
+            --add-exports=org.mule.service.http.netty/org.mule.service.http.netty.impl.service=ALL-UNNAMED
             ${surefire.test.unit.open.args}
         </surefire.args>
         <javaModuleName>org.mule.service.http</javaModuleName>
