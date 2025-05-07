@@ -23,7 +23,7 @@ import io.qameta.allure.Story;
 @Story(SSE)
 @Story(SSE_SOURCE)
 @Story(SSE_ENDPOINT)
-public class GrizzlySseTestCase extends org.mule.service.http.common.sse.SseTestCase {
+public class GrizzlySseTestCase extends org.mule.service.http.test.common.sse.SseTestCase {
 
   public GrizzlySseTestCase(String serviceToLoad) {
     super(HttpServiceImplementation.class.getName());
