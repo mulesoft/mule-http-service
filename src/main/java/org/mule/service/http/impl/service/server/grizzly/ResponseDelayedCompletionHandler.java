@@ -6,10 +6,12 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.lang.Integer.MAX_VALUE;
-import static java.lang.System.arraycopy;
-import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+
+import static java.lang.System.arraycopy;
+
+import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
+
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
@@ -46,8 +48,6 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
     this.memoryManager = ctx.getConnection().getTransport().getMemoryManager();
     this.responseStatusCallback = responseStatusCallback;
   }
-
-  public void start() {}
 
   public Writer buildWriter(Charset encoding) {
     return new Writer() {
