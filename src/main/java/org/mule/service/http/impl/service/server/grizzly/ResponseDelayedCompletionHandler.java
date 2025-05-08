@@ -6,10 +6,12 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.lang.Integer.MAX_VALUE;
-import static java.lang.System.arraycopy;
-import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+
+import static java.lang.System.arraycopy;
+
+import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
+
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
@@ -39,18 +41,9 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
                                    ResponseStatusCallback responseStatusCallback) {
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
-    httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
-    memoryManager = ctx.getConnection().getTransport().getMemoryManager();
+    this.httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
+    this.memoryManager = ctx.getConnection().getTransport().getMemoryManager();
     this.responseStatusCallback = responseStatusCallback;
-  }
-
-  public void start() {
-    // TODO - MULE-15051: Analyse how to either support this entirely or using a Connection close approach
-    httpResponsePacket.setContentLength(MAX_VALUE);
-    httpResponsePacket.setChunked(false);
-    final HttpContent content = httpResponsePacket.httpContentBuilder().build();
-
-    ctx.write(content, this);
   }
 
   public Writer buildWriter(Charset encoding) {
@@ -72,7 +65,12 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
 
         arraycopy(bytes, 0, bufferByteArray, offset, bytes.length);
         stringBuilder.setLength(0);
-        ctx.write(buffer, ResponseDelayedCompletionHandler.this);
+
+        final HttpContent content = httpResponsePacket.httpContentBuilder()
+            .last(false)
+            .content(buffer)
+            .build();
+        ctx.write(content, ResponseDelayedCompletionHandler.this);
       }
 
       @Override

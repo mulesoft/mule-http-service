@@ -6,17 +6,20 @@
  */
 package org.mule.service.http.impl.functional.server;
 
-import static java.lang.Thread.sleep;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mule.runtime.core.api.config.MuleProperties.MULE_HOME_DIRECTORY_PROPERTY;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.config.ContainerTcpServerSocketProperties.PROPERTY_PREFIX;
+
+import static java.lang.Thread.sleep;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
-import org.mule.runtime.http.api.domain.entity.ByteArrayHttpEntity;
+import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
@@ -26,6 +29,7 @@ import org.mule.tck.probe.JUnitLambdaProbe;
 import org.mule.tck.probe.PollingProber;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -99,7 +103,8 @@ public class HttpServerDelayedResponseTestCase extends AbstractHttpServerTestCas
     setUpServer();
     server.addRequestHandler("/test", (request, callback) -> {
       writer = callback.startResponse(HttpResponse.builder()
-          .entity(new ByteArrayHttpEntity("ignored".getBytes()))
+          .entity(new InputStreamHttpEntity(new ByteArrayInputStream("ignored".getBytes())))
+          .addHeader("Transfer-Encoding", "chunked")
           .build(),
                                       new IgnoreResponseStatusCallback(),
                                       UTF_8);

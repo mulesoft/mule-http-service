@@ -24,7 +24,13 @@ public interface AllureConstants {
       String PROXIES = "Proxies";
       String CLIENT_AUTHENTICATION = "Client Authentication";
       String TLS = "TLS";
-    }
 
+      String SSE = "Server Sent Events (SSE)";
+
+      String SSE_SOURCE = "SSE Source";
+      String SSE_RETRY = "SSE Retry Mechanism";
+      String SSE_ENDPOINT = "SSE Endpoint";
+      String SSE_PROTOCOL = "SSE Protocol";
+    }
   }
 }

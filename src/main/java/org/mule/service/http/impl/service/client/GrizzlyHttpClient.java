@@ -24,6 +24,7 @@ import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
 import static java.lang.String.valueOf;
 import static java.lang.System.getProperty;
+import static java.util.concurrent.CompletableFuture.failedFuture;
 
 import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultMaxRedirects;
 import static com.ning.http.client.AsyncHttpClientConfigDefaults.defaultStrict302Handling;
@@ -47,7 +48,13 @@ import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.client.proxy.ProxyConfig;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
+import org.mule.runtime.http.api.sse.client.SseSource;
+import org.mule.runtime.http.api.sse.client.SseSourceConfig;
 import org.mule.runtime.http.api.tcp.TcpClientSocketProperties;
+import org.mule.service.http.common.client.sse.DefaultSseSource;
+import org.mule.service.http.common.client.sse.InternalClient;
+import org.mule.service.http.common.client.sse.NoOpProgressiveBodyDataListener;
+import org.mule.service.http.common.client.sse.ProgressiveBodyDataListener;
 import org.mule.service.http.impl.service.client.async.PreservingClassLoaderAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseAsyncHandler;
 import org.mule.service.http.impl.service.client.async.ResponseBodyDeferringAsyncHandler;
@@ -82,7 +89,7 @@ import com.ning.http.client.uri.Uri;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GrizzlyHttpClient implements HttpClient {
+public class GrizzlyHttpClient implements HttpClient, InternalClient {
 
   private static final int DEFAULT_SELECTOR_THREAD_COUNT =
       getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
@@ -445,18 +452,12 @@ public class GrizzlyHttpClient implements HttpClient {
 
   @Override
   public CompletableFuture<HttpResponse> sendAsync(HttpRequest request, HttpRequestOptions options) {
-    checkState(asyncHttpClient != null, "The client must be started before use.");
-    try {
-      return sendAsync(request, createGrizzlyRequest(request, options), options, 0);
-    } catch (Throwable e) {
-      CompletableFuture ex = new CompletableFuture();
-      ex.completeExceptionally(e);
-      return ex;
-    }
+    return doSendAsync(request, options, new NoOpProgressiveBodyDataListener());
   }
 
   private CompletableFuture<HttpResponse> sendAsync(HttpRequest request, Request grizzlyRequest,
-                                                    HttpRequestOptions options, int currentRedirects) {
+                                                    HttpRequestOptions options, ProgressiveBodyDataListener dataListener,
+                                                    int currentRedirects) {
     CompletableFuture<HttpResponse> future = new CompletableFuture<>();
     try {
       AsyncHandler<Response> asyncHandler;
@@ -466,7 +467,8 @@ public class GrizzlyHttpClient implements HttpClient {
         asyncHandler =
             new PreservingClassLoaderAsyncHandler<>(new ResponseBodyDeferringAsyncHandler(auxFuture, responseBufferSize,
                                                                                           workerScheduler,
-                                                                                          nonBlockingStreamWriter));
+                                                                                          nonBlockingStreamWriter,
+                                                                                          dataListener));
       } else {
         asyncHandler = new PreservingClassLoaderAsyncHandler<>(new ResponseAsyncHandler(auxFuture));
       }
@@ -475,7 +477,7 @@ public class GrizzlyHttpClient implements HttpClient {
         if (response != null) {
           if (redirectUtils.shouldFollowRedirect(response, options, enableMuleRedirect)) {
             try {
-              handleRedirectAsync(request, response, options, currentRedirects, future);
+              handleRedirectAsync(request, response, options, dataListener, currentRedirects, future);
             } catch (Throwable e) {
               future.completeExceptionally(e);
             }
@@ -504,6 +506,7 @@ public class GrizzlyHttpClient implements HttpClient {
   }
 
   private void handleRedirectAsync(HttpRequest request, HttpResponse response, HttpRequestOptions options,
+                                   ProgressiveBodyDataListener dataListener,
                                    int currentRedirects, CompletableFuture<HttpResponse> future)
       throws IOException {
     if (currentRedirects >= MAX_REDIRECTS) {
@@ -513,7 +516,7 @@ public class GrizzlyHttpClient implements HttpClient {
 
     HttpRequest redirectRequest = redirectUtils.createRedirectRequest(response, request, options);
     Request grizzlyRequest = createGrizzlyRedirectRequest(redirectRequest, response, options);
-    sendAsync(redirectRequest, grizzlyRequest, options, currentRedirects + 1)
+    sendAsync(redirectRequest, grizzlyRequest, options, dataListener, currentRedirects + 1)
         .whenComplete((redirectResponse, redirectException) -> {
           if (redirectResponse != null) {
             future.complete(redirectResponse);
@@ -570,6 +573,17 @@ public class GrizzlyHttpClient implements HttpClient {
     headerPopulator.populateHeaders(request, builder);
   }
 
+  @Override
+  public CompletableFuture<HttpResponse> doSendAsync(HttpRequest request, HttpRequestOptions options,
+                                                     ProgressiveBodyDataListener dataListener) {
+    checkState(asyncHttpClient != null, "The client must be started before use.");
+    try {
+      return sendAsync(request, createGrizzlyRequest(request, options), options, dataListener, 0);
+    } catch (Throwable e) {
+      return failedFuture(e);
+    }
+  }
+
   @FunctionalInterface
   protected interface RequestConfigurer {
 
@@ -608,5 +622,13 @@ public class GrizzlyHttpClient implements HttpClient {
                                                                 CUSTOM_MAX_HTTP_PACKET_HEADER_SIZE)),
                                      e);
     }
+  }
+
+  @Override
+  public SseSource sseSource(SseSourceConfig config) {
+    if (!streamingEnabled) {
+      throw new IllegalStateException("SSE source requires streaming enabled for client '%s'".formatted(name));
+    }
+    return new DefaultSseSource(config, this, workerScheduler);
   }
 }

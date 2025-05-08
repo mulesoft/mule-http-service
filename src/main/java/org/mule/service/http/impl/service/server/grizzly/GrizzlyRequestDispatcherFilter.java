@@ -6,12 +6,6 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.lang.String.valueOf;
-import static java.nio.charset.Charset.defaultCharset;
-import static org.glassfish.grizzly.http.util.HttpStatus.CONINTUE_100;
-import static org.glassfish.grizzly.http.util.HttpStatus.EXPECTATION_FAILED_417;
-import static org.glassfish.grizzly.http.util.HttpStatus.SERVICE_UNAVAILABLE_503;
-import static org.glassfish.grizzly.memory.Buffers.wrap;
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
 import static org.mule.runtime.http.api.HttpConstants.Method.HEAD;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
@@ -21,6 +15,14 @@ import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
 import static org.mule.runtime.http.api.HttpHeaders.Names.EXPECT;
 import static org.mule.runtime.http.api.HttpHeaders.Values.CONTINUE;
 import static org.mule.service.http.impl.service.server.grizzly.MuleSslFilter.SSL_SESSION_ATTRIBUTE_KEY;
+
+import static java.lang.String.valueOf;
+import static java.nio.charset.Charset.defaultCharset;
+
+import static org.glassfish.grizzly.http.util.HttpStatus.CONINTUE_100;
+import static org.glassfish.grizzly.http.util.HttpStatus.EXPECTATION_FAILED_417;
+import static org.glassfish.grizzly.http.util.HttpStatus.SERVICE_UNAVAILABLE_503;
+import static org.glassfish.grizzly.memory.Buffers.wrap;
 
 import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -33,6 +35,16 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.RequestHandlerProvider;
 
+import java.io.IOException;
+import java.io.Writer;
+import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ssl.SSLSession;
+
 import org.glassfish.grizzly.filterchain.BaseFilter;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.filterchain.FilterChainEvent;
@@ -43,16 +55,6 @@ import org.glassfish.grizzly.http.HttpEvents.OutgoingHttpUpgradeEvent;
 import org.glassfish.grizzly.http.HttpHeader;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
-
-import java.io.IOException;
-import java.io.Writer;
-import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.net.ssl.SSLSession;
 
 /**
  * Grizzly filter that dispatches the request to the right request handler
@@ -155,7 +157,6 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
             ResponseDelayedCompletionHandler responseCompletionHandler =
                 new ResponseDelayedCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
                                                      responseStatusCallback);
-            responseCompletionHandler.start();
             return responseCompletionHandler.buildWriter(encoding);
           }
         });
