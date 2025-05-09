@@ -41,7 +41,6 @@
         <nettyHttpServiceVersion>0.3.0-SNAPSHOT</nettyHttpServiceVersion>
 
         <skipExportTests>false</skipExportTests>
-        <formatterConfigPath>formatter.xml</formatterConfigPath>
     </properties>
 
     <scm>
