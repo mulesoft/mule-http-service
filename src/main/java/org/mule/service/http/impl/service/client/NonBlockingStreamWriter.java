@@ -64,7 +64,7 @@ public class NonBlockingStreamWriter implements Runnable {
    * Tries to write from <code>dataToWrite</code> to <code>destinationStream</code>, as many bytes as the
    * <code>availableSpace</code> supplier says it's possible to write. If the supplier returns <code>0</code>, it schedules a task
    * to try later.
-   * 
+   *
    * @param destinationStream where the data has to be written.
    * @param dataToWrite       the data to write.
    * @param availableSpace    a supplier that says how many bytes can be written to the stream without blocking.

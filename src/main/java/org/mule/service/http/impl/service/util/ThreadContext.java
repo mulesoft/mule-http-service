@@ -19,13 +19,13 @@ import org.slf4j.MDC;
  * and the previous class loader and mdc are restored.
  * <p>
  * Usage example:
- * 
+ *
  * <pre>
  * {@code
- *   try (ThreadContext tc = new ThreadContext(theClassLoader, theMDC)) {
- *     // The code in this scope will use theClassLoader and theMDC.
- *   }
- *   // Out of the scope, the code will use the outer class loader and mdc.
+ * try (ThreadContext tc = new ThreadContext(theClassLoader, theMDC)) {
+ *   // The code in this scope will use theClassLoader and theMDC.
+ * }
+ * // Out of the scope, the code will use the outer class loader and mdc.
  * }
  * </pre>
  *

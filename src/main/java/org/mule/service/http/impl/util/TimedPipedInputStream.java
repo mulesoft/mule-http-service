@@ -78,7 +78,7 @@ public class TimedPipedInputStream extends InputStream {
 
   /**
    * See {@link InputStream}, but it may return 0 if no byte has been read after the specified timeout.
-   * 
+   *
    * @param b Destination buffer.
    * @return the total number of bytes read into the buffer, <code>0</code> if there is no available data after the timeout is
    *         reached, or <code>-1</code> if there is no more data because the end of the stream has been reached.
@@ -91,7 +91,7 @@ public class TimedPipedInputStream extends InputStream {
 
   /**
    * See {@link InputStream}, but it may return 0 if no byte has been read after the specified timeout.
-   * 
+   *
    * @param b Destination buffer.
    * @return the total number of bytes read into the buffer, <code>0</code> if there is no available data after the timeout is
    *         reached, or <code>-1</code> if there is no more data because the end of the stream has been reached.

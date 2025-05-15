@@ -22,7 +22,7 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 
 /**
  * Base test class for post streaming in NTLM
- * 
+ *
  */
 public abstract class AbstractNtlmHttpClientPostStreamingTestCase extends HttpClientPostStreamingTestCase {
 
