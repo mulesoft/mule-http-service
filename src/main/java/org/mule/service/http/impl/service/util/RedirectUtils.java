@@ -74,7 +74,7 @@ public class RedirectUtils {
 
   /**
    * Copy from RedirectHandler#sendAsGet.
-   * 
+   *
    * @param statusCode
    * @return false if the status code is 301, 307 or 308, or true if it is 302 or 303.
    */
@@ -85,7 +85,7 @@ public class RedirectUtils {
   /**
    * Create a new request with the params of the original and the new URI from the LOCATION header. This method is copy from
    * AhcEventFilter#RedirectHandler.newRequest. The set-cookie header is handle in GrizzlyHttpClient.createGrizzlyRedirectRequest
-   * 
+   *
    * @param response HttpResponse
    * @param request  HttpRequest
    * @return an HttpRequest request.

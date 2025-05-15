@@ -53,7 +53,7 @@ public class RequestHeaderPopulator {
 
   /**
    * Populates the headers in a {@link RequestBuilder} with the ones configured in a {@link HttpRequest}.
-   * 
+   *
    * @param request the {@link HttpRequest} from Mule HTTP API.
    * @param builder the {@link RequestBuilder} from Grizzly AHC.
    */
