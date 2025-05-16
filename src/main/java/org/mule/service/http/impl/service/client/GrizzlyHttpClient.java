@@ -584,6 +584,11 @@ public class GrizzlyHttpClient implements HttpClient, InternalClient {
     }
   }
 
+  @Override
+  public String getName() {
+    return name;
+  }
+
   @FunctionalInterface
   protected interface RequestConfigurer {
 
