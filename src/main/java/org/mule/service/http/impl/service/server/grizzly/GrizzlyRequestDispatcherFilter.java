@@ -33,6 +33,7 @@ import org.mule.runtime.http.api.server.ServerAddress;
 import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.runtime.http.api.sse.server.SseClient;
+import org.mule.runtime.http.api.sse.server.SseClientConfig;
 import org.mule.service.http.common.server.sse.SseResponseStarter;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.RequestHandlerProvider;
@@ -163,8 +164,8 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
           }
 
           @Override
-          public SseClient startSseResponse() {
-            return new SseResponseStarter().startResponse(this);
+          public SseClient startSseResponse(SseClientConfig config) {
+            return new SseResponseStarter().startResponse(config, this);
           }
         });
         return ctx.getSuspendAction();

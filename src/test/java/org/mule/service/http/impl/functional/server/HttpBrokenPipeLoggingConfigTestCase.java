@@ -41,6 +41,7 @@ import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import org.mule.runtime.http.api.sse.server.SseClient;
+import org.mule.runtime.http.api.sse.server.SseClientConfig;
 import org.mule.runtime.http.api.utils.RequestMatcherRegistry;
 import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.HttpServerDelegate;
@@ -59,16 +60,12 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.Charset;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Consumer;
 
 import com.github.valfirst.slf4jtest.TestLogger;
-
+import io.qameta.allure.Description;
 import org.junit.Before;
 import org.junit.Test;
-
-import io.qameta.allure.Description;
 
 public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestCase {
 
@@ -253,8 +250,8 @@ public class HttpBrokenPipeLoggingConfigTestCase extends AbstractHttpServerTestC
       }
 
       @Override
-      public SseClient startSseResponse() {
-        return responseCallback.startSseResponse();
+      public SseClient startSseResponse(SseClientConfig config) {
+        return responseCallback.startSseResponse(config);
       }
     };
   }
