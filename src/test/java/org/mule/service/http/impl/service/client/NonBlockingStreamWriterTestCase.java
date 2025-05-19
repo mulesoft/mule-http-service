@@ -84,12 +84,12 @@ public class NonBlockingStreamWriterTestCase extends AbstractMuleTestCase {
     // Receiving false...
     assertThat(new NonBlockingStreamWriter(1, false).isEnabled(), is(false));
 
-    // Default system property is false...
-    assertThat(new NonBlockingStreamWriter().isEnabled(), is(false));
+    // Default system property is true...
+    assertThat(new NonBlockingStreamWriter().isEnabled(), is(true));
 
     // Honor system property...
-    testWithSystemProperty("mule.http.client.responseStreaming.nonBlockingWriter", "true",
-                           () -> assertThat(new NonBlockingStreamWriter().isEnabled(), is(true)));
+    testWithSystemProperty("mule.http.client.responseStreaming.nonBlockingWriter", "false",
+                           () -> assertThat(new NonBlockingStreamWriter().isEnabled(), is(false)));
   }
 
   @Test

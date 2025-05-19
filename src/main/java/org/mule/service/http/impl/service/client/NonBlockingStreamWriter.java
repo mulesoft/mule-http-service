@@ -6,8 +6,9 @@
  */
 package org.mule.service.http.impl.service.client;
 
-import static java.lang.Boolean.getBoolean;
+import static java.lang.Boolean.parseBoolean;
 import static java.lang.Math.min;
+import static java.lang.System.getProperty;
 import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -53,7 +54,13 @@ public class NonBlockingStreamWriter implements Runnable {
   }
 
   public NonBlockingStreamWriter() {
-    this(DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS, getBoolean("mule.http.client.responseStreaming.nonBlockingWriter"));
+    this(DEFAULT_TIME_TO_SLEEP_WHEN_COULD_NOT_WRITE_MILLIS, getEnabledSwitchValue());
+  }
+
+  // Since 4.10.0, defaults to true.
+  // Up to 4.9.x, defaults to false.
+  private static boolean getEnabledSwitchValue() {
+    return parseBoolean(getProperty("mule.http.client.responseStreaming.nonBlockingWriter", "true"));
   }
 
   public boolean isEnabled() {
