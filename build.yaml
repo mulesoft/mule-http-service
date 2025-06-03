@@ -1,5 +1,6 @@
 upstreamProjects:
   Mule-runtime/mule/master
+  Mule-runtime/mule-http-netty-service/master
 mavenSettingsXmlId: mule-runtime-maven-settings-MuleSettings
 projectType: runtime
 mavenTool: "3.9.9"
