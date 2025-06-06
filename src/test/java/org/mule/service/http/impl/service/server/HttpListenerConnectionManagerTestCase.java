@@ -18,9 +18,10 @@ import org.mule.runtime.api.scheduler.SchedulerService;
 import org.mule.runtime.http.api.server.HttpServerConfiguration;
 import org.mule.service.http.impl.service.server.grizzly.GrizzlyServerManager;
 
+import org.junit.jupiter.api.Test;
+
 import io.qameta.allure.Description;
 import io.qameta.allure.Issue;
-import org.junit.Test;
 
 public class HttpListenerConnectionManagerTestCase {
 
@@ -29,7 +30,7 @@ public class HttpListenerConnectionManagerTestCase {
   @Test
   @Issue("MULE-19779")
   @Description("Tests that, when specified, the read timeout is set to a custom value")
-  public void setCustomReadTimeoutTo20secs() throws Exception {
+  void setCustomReadTimeoutTo20secs() throws Exception {
     SchedulerService schedulerServiceMock = mock(SchedulerService.class);
     SchedulerConfig schedulerConfigMock = mock(SchedulerConfig.class);
     Scheduler scheduler = mock(Scheduler.class);
@@ -52,13 +53,14 @@ public class HttpListenerConnectionManagerTestCase {
     httpListenerConnectionManager.initialise();
     httpListenerConnectionManager.create(serverConfiguration, "context", () -> shutdownTimeout);
 
-    verify(grizzlyServerManager).createServerFor(any(), any(), any(boolean.class), any(int.class), any(), any(), eq(readTimeout));
+    verify(grizzlyServerManager).createServerFor(any(), any(), any(boolean.class), any(int.class), any(), any(),
+                                                 eq(readTimeout));
   }
 
   @Test
   @Issue("MULE-19779")
   @Description("Tests that by default the read timeout is set to 30 seconds")
-  public void setDefaultReadTimeoutTo30secs() throws Exception {
+  void setDefaultReadTimeoutTo30secs() throws Exception {
     SchedulerService schedulerServiceMock = mock(SchedulerService.class);
     SchedulerConfig schedulerConfigMock = mock(SchedulerConfig.class);
     Scheduler scheduler = mock(Scheduler.class);
@@ -80,7 +82,8 @@ public class HttpListenerConnectionManagerTestCase {
     httpListenerConnectionManager.initialise();
     httpListenerConnectionManager.create(serverConfiguration, "context", () -> shutdownTimeout);
 
-    verify(grizzlyServerManager).createServerFor(any(), any(), any(boolean.class), any(int.class), any(), any(), eq(readTimeout));
+    verify(grizzlyServerManager).createServerFor(any(), any(), any(boolean.class), any(int.class), any(), any(),
+                                                 eq(readTimeout));
   }
 
   class TestHttpListenerConnectionManager extends HttpListenerConnectionManager {

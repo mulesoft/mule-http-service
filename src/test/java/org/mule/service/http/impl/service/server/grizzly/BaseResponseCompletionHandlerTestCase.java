@@ -14,6 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import org.mule.runtime.api.connection.SourceRemoteConnectionException;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
@@ -24,7 +25,7 @@ import java.io.IOException;
 import org.glassfish.grizzly.Connection;
 import org.glassfish.grizzly.filterchain.FilterChainContext;
 import org.glassfish.grizzly.http.HttpRequestPacket;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMuleTestCase {
 
@@ -40,7 +41,7 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
   protected abstract BaseResponseCompletionHandler getHandler();
 
   @Test
-  public void failedTaskAvoidsResponse() {
+  void failedTaskAvoidsResponse() {
     when(connection.isOpen()).thenReturn(false);
     getHandler().failed(new IOException(ERROR));
     verify(callback, never()).responseSendFailure(any(Throwable.class));
@@ -48,7 +49,7 @@ public abstract class BaseResponseCompletionHandlerTestCase extends AbstractMule
   }
 
   @Test
-  public void cancelledTaskResponse() {
+  void cancelledTaskResponse() {
     when(connection.isOpen()).thenReturn(true);
     getHandler().cancelled();
     verify(callback, atLeastOnce()).responseSendFailure(any(Throwable.class));

@@ -6,22 +6,30 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.lang.Runtime.getRuntime;
-import static java.lang.Thread.currentThread;
-import static java.util.concurrent.Executors.newCachedThreadPool;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.http.client.fluent.Request.Get;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
 import static org.mule.runtime.core.api.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
 import static org.mule.service.http.impl.service.server.grizzly.GrizzlyHttpServer.setReplaceCtxClassloader;
-import static org.mule.tck.probe.PollingProber.DEFAULT_POLLING_INTERVAL;
+import static org.mule.tck.junit4.matcher.Eventually.eventually;
+import static org.mule.tck.util.CollectableReference.collectedByGc;
+
+import static java.lang.Runtime.getRuntime;
+import static java.lang.Thread.currentThread;
+import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
+import static org.apache.http.client.fluent.Request.Get;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.core.Is.is;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -39,14 +47,11 @@ import org.mule.service.http.impl.service.server.HttpListenerRegistry;
 import org.mule.service.http.impl.service.server.ServerIdentifier;
 import org.mule.tck.junit4.AbstractMuleContextTestCase;
 import org.mule.tck.junit4.rule.DynamicPort;
-import org.mule.tck.probe.JUnitLambdaProbe;
-import org.mule.tck.probe.PollingProber;
+import org.mule.tck.util.CollectableReference;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.lang.ref.PhantomReference;
-import java.lang.ref.ReferenceQueue;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -57,7 +62,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleContextTestCase {
 
@@ -69,8 +73,6 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
 
   @Rule
   public DynamicPort listenerPort = new DynamicPort("listener.port");
-  @Rule
-  public ExpectedException expectedException = ExpectedException.none();
 
   protected ExecutorService selectorPool;
   protected ExecutorService workerPool;
@@ -97,7 +99,8 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
 
   protected GrizzlyServerManager createServerManager(HttpListenerRegistry registry,
                                                      DefaultTcpServerSocketProperties socketProperties) {
-    return new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService, registry,
+    return new GrizzlyServerManager(selectorPool, workerPool, idleTimeoutExecutorService,
+                                    registry,
                                     socketProperties, getRuntime().availableProcessors());
   }
 
@@ -118,7 +121,8 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
 
     final HttpServer server =
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                      () -> muleContext.getSchedulerService().ioScheduler(),
+                                      true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
                                       new ServerIdentifier("context", "name"),
                                       () -> muleContext.getConfiguration().getShutdownTimeout());
@@ -160,7 +164,8 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     ServerIdentifier identifier = new ServerIdentifier("context", "name");
     final HttpServer createdServer =
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                      () -> muleContext.getSchedulerService().ioScheduler(),
+                                      true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
                                       identifier, () -> muleContext.getConfiguration().getShutdownTimeout());
     final HttpServer foundServer = serverManager.lookupServer(new ServerIdentifier("context", "name"));
@@ -173,16 +178,16 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     String name = "name";
     ServerIdentifier identifier = new ServerIdentifier("context", name);
     HttpServer server = serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-                                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                                      () -> muleContext.getSchedulerService().ioScheduler(),
+                                                      true,
                                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
                                                       identifier, () -> muleContext.getConfiguration().getShutdownTimeout());
-    try {
-      expectedException.expect(ServerNotFoundException.class);
-      expectedException.expectMessage(is("Server 'name' could not be found."));
-      serverManager.lookupServer(new ServerIdentifier("otherContext", name));
-    } finally {
-      server.dispose();
-    }
+
+    var thrown = assertThrows(ServerNotFoundException.class,
+                              () -> serverManager.lookupServer(new ServerIdentifier("otherContext", name)));
+    assertThat(thrown.getMessage(), is("Server 'name' could not be found."));
+
+    server.dispose();
   }
 
   @Test
@@ -220,23 +225,17 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
     HttpServer server = getServer(serverAddress, identifier);
     server.start();
 
-    RequestHandler requestHandler = new DummyRequestHandler();
-    PhantomReference<RequestHandler> requestHandlerRef = new PhantomReference<>(requestHandler, new ReferenceQueue<>());
+    CollectableReference<RequestHandler> requestHandlerRef = new CollectableReference<>(new DummyRequestHandler());
 
-    server.addRequestHandler(TEST_PATH, requestHandler);
+    server.addRequestHandler(TEST_PATH, requestHandlerRef.get());
     server.stop();
     server.dispose();
 
-    requestHandler = null;
-    new PollingProber(GC_POLLING_TIMEOUT, DEFAULT_POLLING_INTERVAL).check(new JUnitLambdaProbe(() -> {
-      System.gc();
-      assertThat(requestHandlerRef.isEnqueued(), is(true));
-      return true;
-    }, "A hard reference is being mantained to the requestHandler."));
+    assertThat(requestHandlerRef, is(eventually(collectedByGc()).atMostIn(GC_POLLING_TIMEOUT, MILLISECONDS)));
 
-    expectedException.expect(ServerNotFoundException.class);
-    expectedException.expectMessage(is("Server 'name' could not be found."));
-    serverManager.lookupServer(identifier);
+    var thrown = assertThrows(ServerNotFoundException.class,
+                              () -> serverManager.lookupServer(identifier));
+    assertThat(thrown.getMessage(), is("Server 'name' could not be found."));
   }
 
   private static final class DummyRequestHandler implements RequestHandler {
@@ -327,7 +326,8 @@ public abstract class AbstractGrizzlyServerManagerTestCase extends AbstractMuleC
 
     final HttpServer server =
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                      () -> muleContext.getSchedulerService().ioScheduler(),
+                                      true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
                                       new ServerIdentifier("context", "name"),
                                       () -> muleContext.getConfiguration().getShutdownTimeout());

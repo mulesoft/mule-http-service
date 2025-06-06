@@ -8,21 +8,23 @@ package org.mule.service.http.impl.service.server;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsEqual.equalTo;
-import static org.junit.rules.ExpectedException.none;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
 import org.mule.runtime.http.api.server.HttpServer;
 import org.mule.runtime.http.api.server.HttpServerFactory;
 import org.mule.runtime.http.api.server.ServerNotFoundException;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatcher;
 
 public class ContextHttpServerFactoryAdapterTestCase {
@@ -35,25 +37,23 @@ public class ContextHttpServerFactoryAdapterTestCase {
   private ContextHttpServerFactory delegateFactory;
   private HttpServer mockedServer;
 
-  @Rule
-  public ExpectedException expectedException = none();
-
-  @Before
+  @BeforeEach
   public void setUp() {
     delegateFactory = mock(ContextHttpServerFactory.class);
     mockedServer = mock(HttpServer.class);
   }
 
   @Test
-  public void serverRegisteredWithContext() throws Exception {
+  void serverRegisteredWithContext() throws Exception {
     mockServerRegisteredWith(SERVER_CONTEXT, SERVER_ID);
     HttpServerFactory httpServerFactory =
-        new ContextHttpServerFactoryAdapter(SERVER_CONTEXT, empty(), delegateFactory, () -> TEST_SHUTDOWN_TIMEOUT);
+        new ContextHttpServerFactoryAdapter(SERVER_CONTEXT, empty(),
+                                            delegateFactory, () -> TEST_SHUTDOWN_TIMEOUT);
     assertThat(httpServerFactory.lookup(SERVER_ID), equalTo(mockedServer));
   }
 
   @Test
-  public void serverRegisteredWithParentContext() throws Exception {
+  void serverRegisteredWithParentContext() throws Exception {
     mockServerRegisteredWith(SERVER_PARENT_CONTEXT, SERVER_ID);
     HttpServerFactory httpServerFactory = new ContextHttpServerFactoryAdapter(SERVER_CONTEXT, of(SERVER_PARENT_CONTEXT),
                                                                               delegateFactory, () -> TEST_SHUTDOWN_TIMEOUT);
@@ -61,21 +61,20 @@ public class ContextHttpServerFactoryAdapterTestCase {
   }
 
   @Test
-  public void serverInDifferentParentContextNotFound() throws Exception {
+  void serverInDifferentParentContextNotFound() throws Exception {
     mockServerRegisteredWith("OTHER_PARENT", SERVER_ID);
     HttpServerFactory httpServerFactory = new ContextHttpServerFactoryAdapter(SERVER_CONTEXT, of(SERVER_PARENT_CONTEXT),
                                                                               delegateFactory, () -> TEST_SHUTDOWN_TIMEOUT);
-    expectedException.expect(ServerNotFoundException.class);
-    httpServerFactory.lookup(SERVER_ID);
+    assertThrows(ServerNotFoundException.class, () -> httpServerFactory.lookup(SERVER_ID));
   }
 
   @Test
-  public void serverInDifferentContextNotFound() throws Exception {
+  void serverInDifferentContextNotFound() throws Exception {
     mockServerRegisteredWith("OTHER_CONTEXT", SERVER_ID);
     HttpServerFactory httpServerFactory =
-        new ContextHttpServerFactoryAdapter(SERVER_CONTEXT, empty(), delegateFactory, () -> TEST_SHUTDOWN_TIMEOUT);
-    expectedException.expect(ServerNotFoundException.class);
-    httpServerFactory.lookup(SERVER_ID);
+        new ContextHttpServerFactoryAdapter(SERVER_CONTEXT, empty(),
+                                            delegateFactory, () -> TEST_SHUTDOWN_TIMEOUT);
+    assertThrows(ServerNotFoundException.class, () -> httpServerFactory.lookup(SERVER_ID));
   }
 
   private void mockServerRegisteredWith(String context, String serverId) throws Exception {

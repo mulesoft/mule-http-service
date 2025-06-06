@@ -20,7 +20,9 @@ import static java.util.Optional.of;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.rules.ExpectedException.none;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -37,9 +39,7 @@ import org.mule.service.http.impl.service.server.ContextHttpServerFactoryAdapter
 import java.lang.reflect.Field;
 import java.util.Optional;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttpServiceTestCase {
 
@@ -69,9 +69,6 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
   public HttpServiceImplementationServerFactoryTestCase(String serviceToLoad) {
     super(serviceToLoad);
   }
-
-  @Rule
-  public ExpectedException expectedException = none();
 
   @Test
   public void unknownArtifactTypeFallbackToOldBehaviour() throws Exception {
@@ -157,8 +154,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
 
     assertThat(appFactory.create(serverConfiguration), is(notNullValue()));
 
-    expectedException.expect(ServerNotFoundException.class);
-    policyFactory.lookup(serverConfiguration.getName());
+    assertThrows(ServerNotFoundException.class, () -> policyFactory.lookup(serverConfiguration.getName()));
   }
 
   @Test
@@ -170,8 +166,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
 
     assertThat(appFactory.create(serverConfiguration), is(notNullValue()));
 
-    expectedException.expect(ServerNotFoundException.class);
-    policyFactory.lookup(serverConfiguration.getName());
+    assertThrows(ServerNotFoundException.class, () -> policyFactory.lookup(serverConfiguration.getName()));
   }
 
   @Test
@@ -183,8 +178,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
 
     assertThat(domainFactory.create(serverConfiguration), is(notNullValue()));
 
-    expectedException.expect(ServerNotFoundException.class);
-    appFactory.lookup(serverConfiguration.getName());
+    assertThrows(ServerNotFoundException.class, () -> appFactory.lookup(serverConfiguration.getName()));
   }
 
   @Test
@@ -195,8 +189,7 @@ public class HttpServiceImplementationServerFactoryTestCase extends AbstractHttp
     HttpServerFactory factory2 = newAppServerFactory(app2, empty());
 
     assertThat(factory1.create(serverConfiguration), is(notNullValue()));
-    expectedException.expect(ServerNotFoundException.class);
-    factory2.lookup(serverConfiguration.getName());
+    assertThrows(ServerNotFoundException.class, () -> factory2.lookup(serverConfiguration.getName()));
   }
 
 

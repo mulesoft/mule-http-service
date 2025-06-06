@@ -22,14 +22,17 @@ import static org.glassfish.grizzly.http.util.Header.Authorization;
 import static org.glassfish.grizzly.http.util.Header.ContentLength;
 import static org.glassfish.grizzly.http.util.Header.Host;
 import static org.glassfish.grizzly.http.util.Header.ProxyAuthorization;
+
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.junit.MockitoJUnit.rule;
+import static org.mockito.quality.Strictness.LENIENT;
 
 import org.mule.runtime.api.util.MultiMap;
 import org.mule.runtime.http.api.client.HttpRequestOptions;
@@ -43,12 +46,10 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
-import java.util.stream.Collectors;
 
 import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.cookie.Cookie;
-import io.qameta.allure.Feature;
-import io.qameta.allure.Issue;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -57,13 +58,16 @@ import org.junit.runners.Parameterized;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoRule;
 
+import io.qameta.allure.Feature;
+import io.qameta.allure.Issue;
+
 @RunWith(Parameterized.class)
 @Feature(HTTP_SERVICE)
 @Issue("MULE-19908")
 public class RedirectUtilsTestCase extends AbstractMuleTestCase {
 
   @Rule
-  public MockitoRule mockitorule = rule();
+  public MockitoRule mockitorule = rule().strictness(LENIENT);
   @Mock
   private HttpResponse response;
 

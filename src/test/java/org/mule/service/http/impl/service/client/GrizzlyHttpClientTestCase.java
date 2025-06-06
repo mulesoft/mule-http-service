@@ -6,18 +6,22 @@
  */
 package org.mule.service.http.impl.service.client;
 
+import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
+import static org.mule.tck.junit4.rule.SystemProperty.callWithProperty;
+
 import static java.lang.Integer.parseInt;
+
 import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
+
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
-import static org.mule.tck.junit4.rule.SystemProperty.callWithProperty;
 
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
@@ -30,11 +34,13 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 import java.lang.reflect.Field;
 
 import com.ning.http.client.AsyncHttpClient;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import io.qameta.allure.Description;
 import io.qameta.allure.Issue;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
 
@@ -42,7 +48,7 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
   SchedulerConfig schedulerConfig;
   SchedulerConfig schedulerConfig2;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     schedulerService = mock(SchedulerService.class);
     schedulerConfig = mock(SchedulerConfig.class);
@@ -50,12 +56,13 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
 
     when(schedulerService.customScheduler(any())).thenReturn(mock(Scheduler.class));
     when(schedulerService.ioScheduler(any())).thenReturn(mock(Scheduler.class));
+    when(schedulerService.cpuIntensiveScheduler(any())).thenReturn(mock(Scheduler.class));
     when(schedulerConfig.withDirectRunCpuLightWhenTargetBusy(anyBoolean())).thenReturn(schedulerConfig2);
     when(schedulerConfig2.withMaxConcurrentTasks(anyInt())).thenReturn(mock(SchedulerConfig.class));
     when(schedulerConfig.withName(any())).thenReturn(mock(SchedulerConfig.class));
   }
 
-  @After
+  @AfterEach
   public void tearDown() {
     GrizzlyServerManager.refreshSystemProperties();
   }
@@ -65,7 +72,7 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
       "assigned correctly by default. We check that the variables are properly set because we are delegating the max headers" +
       " amount check to Grizzly")
   @Test
-  public void testMaxClientRequestHeadersIfNotSetBySystemPropertyIsSetByDefault() throws Throwable {
+  void testMaxClientRequestHeadersIfNotSetBySystemPropertyIsSetByDefault() throws Throwable {
     HttpClient client = refreshSystemPropertiesAndCreateGrizzlyHttpClient();
 
     client.start();
@@ -83,7 +90,7 @@ public class GrizzlyHttpClientTestCase extends AbstractMuleTestCase {
       "assigned correctly to Grizzly's AsyncHttpClient. We check that the variables are properly set because we are delegating the max headers"
       + " amount check to Grizzly")
   @Test
-  public void testMaxClientRequestHeadersCanBeSetBySystemProperty() throws Throwable {
+  void testMaxClientRequestHeadersCanBeSetBySystemProperty() throws Throwable {
     String maxSetRequestHeaders = "150";
     HttpClient client = callWithProperty(SYSTEM_PROPERTY_PREFIX + "http.MAX_CLIENT_REQUEST_HEADERS", maxSetRequestHeaders,
                                          this::refreshSystemPropertiesAndCreateGrizzlyHttpClient);
