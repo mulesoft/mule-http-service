@@ -6,18 +6,6 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.lang.Integer.parseInt;
-import static java.lang.Runtime.getRuntime;
-import static java.util.concurrent.Executors.newCachedThreadPool;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mule.runtime.api.util.MuleSystemProperties.SYSTEM_PROPERTY_PREFIX;
 import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
@@ -25,6 +13,22 @@ import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
 import static org.mule.tck.junit4.rule.SystemProperty.callWithProperty;
+
+import static java.lang.Integer.parseInt;
+import static java.lang.Runtime.getRuntime;
+import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
+import static org.glassfish.grizzly.http.util.MimeHeaders.MAX_NUM_HEADERS_DEFAULT;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -40,14 +44,14 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.concurrent.ExecutorService;
 
-import io.qameta.allure.Description;
-import io.qameta.allure.Issue;
-import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.http.HttpServerFilter;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.junit.After;
 import org.junit.Test;
 
+import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
+import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
 
 @Feature(HTTP_SERVICE)
@@ -63,7 +67,8 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
 
   @Override
   protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
-    return serverManager.createServerFor(address, () -> muleContext.getSchedulerService().ioScheduler(), true,
+    return serverManager.createServerFor(address, () -> muleContext.getSchedulerService().ioScheduler(),
+                                         true,
                                          (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), id,
                                          () -> muleContext.getConfiguration().getShutdownTimeout());
   }
@@ -115,7 +120,8 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
     long readTimeout = 20000L;
     final HttpServer createdServer =
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                      () -> muleContext.getSchedulerService().ioScheduler(),
+                                      true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), new ServerIdentifier("context", "name"),
                                       () -> muleContext.getConfiguration().getShutdownTimeout(), readTimeout);
     try {
@@ -207,8 +213,10 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
 
   private GrizzlyServerManager refreshSystemPropertiesAndCreateServerManager() {
     GrizzlyServerManager.refreshSystemProperties();
-    return new GrizzlyServerManager(newCachedThreadPool(), newCachedThreadPool(),
-                                    newCachedThreadPool(), new HttpListenerRegistry(),
+    return new GrizzlyServerManager(newCachedThreadPool(),
+                                    newCachedThreadPool(),
+                                    newCachedThreadPool(),
+                                    new HttpListenerRegistry(),
                                     new DefaultTcpServerSocketProperties(),
                                     getRuntime().availableProcessors());
   }
@@ -216,7 +224,8 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   private HttpServerFilter getHttpServerFilter(GrizzlyServerManager grizzlyServerManager) throws Throwable {
     ServerAddress serverAddress = new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber());
 
-    grizzlyServerManager.createServerFor(serverAddress, () -> muleContext.getSchedulerService().ioScheduler(), true,
+    grizzlyServerManager.createServerFor(serverAddress, () -> muleContext.getSchedulerService().ioScheduler(),
+                                         true,
                                          (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
                                          new ServerIdentifier("context", "name"),
                                          () -> muleContext.getConfiguration().getShutdownTimeout());
@@ -242,7 +251,8 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
   @Override
   protected HttpGrizzlyServerManagerTestDecorator createServerManager(HttpListenerRegistry registry,
                                                                       DefaultTcpServerSocketProperties socketProperties) {
-    return new HttpGrizzlyServerManagerTestDecorator(selectorPool, workerPool, idleTimeoutExecutorService, registry,
+    return new HttpGrizzlyServerManagerTestDecorator(selectorPool, workerPool, idleTimeoutExecutorService,
+                                                     registry,
                                                      socketProperties, getRuntime().availableProcessors());
   }
 
@@ -251,10 +261,13 @@ public class HttpGrizzlyServerManagerTestCase extends AbstractGrizzlyServerManag
 
     WorkManagerSourceExecutorProvider spiedExecutorProvider;
 
-    HttpGrizzlyServerManagerTestDecorator(ExecutorService selectorPool, ExecutorService workerPool,
-                                          ExecutorService idleTimeoutExecutorService, HttpListenerRegistry httpListenerRegistry,
+    HttpGrizzlyServerManagerTestDecorator(ExecutorService selectorPool,
+                                          ExecutorService workerPool,
+                                          ExecutorService idleTimeoutExecutorService,
+                                          HttpListenerRegistry httpListenerRegistry,
                                           TcpServerSocketProperties serverSocketProperties, int selectorCount) {
-      super(selectorPool, workerPool, idleTimeoutExecutorService, httpListenerRegistry, serverSocketProperties, selectorCount);
+      super(selectorPool, workerPool, idleTimeoutExecutorService,
+            httpListenerRegistry, serverSocketProperties, selectorCount);
     }
 
     @Override

@@ -6,15 +6,17 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mule.runtime.http.api.HttpConstants.ALL_INTERFACES_ADDRESS;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HTTP_SERVICE;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.SERVER_MANAGEMENT;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.http.api.server.HttpServer;
@@ -25,12 +27,12 @@ import org.mule.service.http.impl.service.server.ServerIdentifier;
 
 import java.lang.reflect.Field;
 
-import io.qameta.allure.Description;
-import io.qameta.allure.Issue;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.junit.Test;
 
+import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
+import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
 
 @Feature(HTTP_SERVICE)
@@ -41,7 +43,8 @@ public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerMana
 
   @Override
   protected HttpServer getServer(ServerAddress address, ServerIdentifier id) throws ServerCreationException {
-    return serverManager.createSslServerFor(tlsContextFactory, () -> muleContext.getSchedulerService().ioScheduler(), address,
+    return serverManager.createSslServerFor(tlsContextFactory, () -> muleContext.getSchedulerService().ioScheduler(),
+                                            address,
                                             true,
                                             (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS),
                                             id, () -> muleContext.getConfiguration().getShutdownTimeout());
@@ -94,7 +97,8 @@ public class HttpsGrizzlyServerManagerTestCase extends AbstractGrizzlyServerMana
     long readTimeout = 20000L;
     final HttpServer createdServer =
         serverManager.createServerFor(new DefaultServerAddress(ALL_INTERFACES_ADDRESS, listenerPort.getNumber()),
-                                      () -> muleContext.getSchedulerService().ioScheduler(), true,
+                                      () -> muleContext.getSchedulerService().ioScheduler(),
+                                      true,
                                       (int) SECONDS.toMillis(DEFAULT_TEST_TIMEOUT_SECS), new ServerIdentifier("context", "name"),
                                       () -> muleContext.getConfiguration().getShutdownTimeout(), readTimeout);
     try {

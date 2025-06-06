@@ -37,8 +37,8 @@ import java.io.InputStream;
 
 import org.glassfish.grizzly.Transport;
 import org.glassfish.grizzly.http.ProcessingState;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.qameta.allure.Feature;
 import io.qameta.allure.Issue;
@@ -51,11 +51,11 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
   private ResponseStreamingCompletionHandler handler;
   private InputStream mockStream;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     when(ctx.getConnection()).thenReturn(connection);
     when(connection.getTransport()).thenReturn(mock(Transport.class, RETURNS_DEEP_STUBS));
-    mockStream = spy(mock(InputStream.class));
+    mockStream = mock(InputStream.class);
     responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
     handler = new ResponseStreamingCompletionHandler(ctx,
                                                      currentThread().getContextClassLoader(),
@@ -70,7 +70,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
   }
 
   @Test
-  public void keepAliveConnection() {
+  void keepAliveConnection() {
     final MultiMap<String, String> headers = new MultiMap<>();
     headers.put(CONNECTION, KEEP_ALIVE);
     responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).headers(headers).build();
@@ -84,7 +84,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
   }
 
   @Test
-  public void cLoseConnection() {
+  void cLoseConnection() {
     final MultiMap<String, String> headers = new MultiMap<>();
     headers.put(CONNECTION, CLOSE);
     responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).headers(headers).build();
@@ -98,7 +98,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
   }
 
   @Test
-  public void completionHandlerFailsIfAReadOperationThrowsAMuleRuntimeException() throws IOException {
+  void completionHandlerFailsIfAReadOperationThrowsAMuleRuntimeException() throws IOException {
     responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
     when(request.getProcessingState()).thenReturn(new ProcessingState());
     handler = spy(new ResponseStreamingCompletionHandler(ctx,
@@ -114,7 +114,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
   }
 
   @Test
-  public void IOExceptionIsRethrownIfCauseOfFailure() throws IOException {
+  void IOExceptionIsRethrownIfCauseOfFailure() throws IOException {
     responseMock = HttpResponse.builder().entity(new InputStreamHttpEntity(mockStream)).build();
     when(request.getProcessingState()).thenReturn(new ProcessingState());
     handler = spy(new ResponseStreamingCompletionHandler(ctx,
@@ -129,7 +129,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
 
   @Test
   @Issue("MULE-19727")
-  public void handlerDoesntThrowNPEWhenConnectionIsNull() {
+  void handlerDoesntThrowNPEWhenConnectionIsNull() {
     // Given a valid handler.
     handler = new ResponseStreamingCompletionHandler(ctx,
                                                      currentThread().getContextClassLoader(),
@@ -144,7 +144,7 @@ public class ResponseStreamingCompletionHandlerTestCase extends BaseResponseComp
 
   @Test
   @Issue("MULE-19727")
-  public void failedMethodBehaviorIsExecutedOnlyOnceForTheSameHandler() throws IOException {
+  void failedMethodBehaviorIsExecutedOnlyOnceForTheSameHandler() throws IOException {
     // Given a valid handler.
     handler = new ResponseStreamingCompletionHandler(ctx,
                                                      currentThread().getContextClassLoader(),

@@ -8,7 +8,11 @@ package org.mule.service.http.impl.service.client;
 
 import static java.lang.Integer.getInteger;
 import static java.lang.Runtime.getRuntime;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.StringContains.containsString;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -20,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.scheduler.SchedulerService;
@@ -28,41 +33,40 @@ import org.mule.runtime.http.api.client.HttpClientConfiguration;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.tck.junit4.AbstractMuleTestCase;
 
-import java.util.concurrent.ExecutorService;
-
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 public class GrizzlyHttpClientLifecycleTestCase extends AbstractMuleTestCase {
-
-  @Rule
-  public ExpectedException expectedException = ExpectedException.none();
 
   private static final int DEFAULT_SELECTOR_THREAD_COUNT =
       getInteger(GrizzlyHttpClient.class.getName() + ".DEFAULT_SELECTOR_THREAD_COUNT",
                  Integer.max(getRuntime().availableProcessors(), 2));
 
   @Test
-  public void cannotSendWhenNotStarted() throws Exception {
+  void cannotSendWhenNotStarted() throws Exception {
     HttpClient client = validateClientUsage();
-    client.send(getHttpRequest());
+    final var httpRequest = getHttpRequest();
+    var thrown = assertThrows(IllegalStateException.class, () -> client.send(httpRequest));
+    assertThat(thrown.getMessage(), containsString("The client must be started before use."));
   }
 
   @Test
-  public void cannotSendAsyncWhenNotStarted() {
+  void cannotSendAsyncWhenNotStarted() {
     HttpClient client = validateClientUsage();
-    client.sendAsync(getHttpRequest());
+    final var httpRequest = getHttpRequest();
+    var thrown = assertThrows(IllegalStateException.class, () -> client.sendAsync(httpRequest));
+    assertThat(thrown.getMessage(), containsString("The client must be started before use."));
   }
 
   @Test
-  public void testSchedulerSize() {
+  void testSchedulerSize() {
     SchedulerService schedulerService = mock(SchedulerService.class);
     SchedulerConfig schedulerConfig = mock(SchedulerConfig.class);
     Scheduler selectorsScheduler = mock(Scheduler.class);
     when(schedulerService.customScheduler(any(), anyInt())).thenReturn(selectorsScheduler);
     Scheduler workersScheduler = mock(Scheduler.class);
     when(schedulerService.ioScheduler(any())).thenReturn(workersScheduler);
+    Scheduler alertingCheckScheduler = mock(Scheduler.class);
+    when(schedulerService.cpuIntensiveScheduler(any())).thenReturn(alertingCheckScheduler);
     when(schedulerConfig.withDirectRunCpuLightWhenTargetBusy(anyBoolean())).thenReturn(schedulerConfig);
     when(schedulerConfig.withMaxConcurrentTasks(anyInt())).thenReturn(schedulerConfig);
     when(schedulerConfig.withName(anyString())).thenReturn(schedulerConfig);
@@ -74,13 +78,9 @@ public class GrizzlyHttpClientLifecycleTestCase extends AbstractMuleTestCase {
   }
 
   private HttpClient validateClientUsage() {
-    HttpClient client = new GrizzlyHttpClient(mock(HttpClientConfiguration.class, RETURNS_DEEP_STUBS),
-                                              mock(SchedulerService.class),
-                                              mock(SchedulerConfig.class), f -> false);
-
-    expectedException.expect(IllegalStateException.class);
-    expectedException.expectMessage("The client must be started before use.");
-    return client;
+    return new GrizzlyHttpClient(mock(HttpClientConfiguration.class, RETURNS_DEEP_STUBS),
+                                 mock(SchedulerService.class),
+                                 mock(SchedulerConfig.class), f -> false);
   }
 
   private HttpRequest getHttpRequest() {
