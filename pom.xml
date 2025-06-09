@@ -15,7 +15,7 @@
 
     <artifactId>mule-service-http</artifactId>
     <packaging>mule-service</packaging>
-    <version>1.11.6</version>
+    <version>1.11.6-WITH-W-18622349</version>
 
     <properties>
         <!-- Add visibility required by the tests exclusively -->
