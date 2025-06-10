@@ -11,6 +11,7 @@ import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static java.lang.System.arraycopy;
 
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
+import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -19,6 +20,7 @@ import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.Charset;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.WriteResult;
@@ -27,11 +29,14 @@ import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
+import org.slf4j.Logger;
 
 // Archeology comment: This class was added to support Server Side Events (SSE). It sends a response with an "infinite"
 // content-length (not chunked), and closes the connection once all the data was sent. A better technology to implement
 // this use-case is WebSockets.
 final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandler {
+
+  private static final Logger LOGGER = getLogger(ResponseDelayedCompletionHandler.class);
 
   private final MemoryManager memoryManager;
   protected final FilterChainContext ctx;
@@ -39,10 +44,13 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
   private final HttpResponsePacket httpResponsePacket;
   private final ResponseStatusCallback responseStatusCallback;
 
+  private boolean isDone = false;
+
   ResponseDelayedCompletionHandler(FilterChainContext ctx, ClassLoader ctxClassLoader, HttpRequestPacket request,
                                    HttpResponse httpResponse,
                                    ResponseStatusCallback responseStatusCallback) {
     this.ctx = ctx;
+    LOGGER.debug("CREANDO SSE PARA STREAMABLE ctx: {}", ctx);
     this.ctxClassLoader = ctxClassLoader;
     this.httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
     this.memoryManager = ctx.getConnection().getTransport().getMemoryManager();
@@ -51,6 +59,15 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
 
   public Writer buildWriter(Charset encoding) {
     return new Writer() {
+
+      static AtomicLong idGenerator = new AtomicLong();
+      private final Long id = createID();
+
+      private static Long createID() {
+        Long id = idGenerator.incrementAndGet();
+        LOGGER.debug("Opening SSE Stream {}", id);
+        return id;
+      }
 
       private final StringBuilder stringBuilder = new StringBuilder();
 
@@ -78,9 +95,10 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
 
       @Override
       public void close() throws IOException {
+        LOGGER.debug("Closing SSE Stream {}", id);
         ctx.write(httpResponsePacket.httpTrailerBuilder().build(), ResponseDelayedCompletionHandler.this);
-        responseStatusCallback.responseSendSuccessfully();
         ctx.notifyDownstream(RESPONSE_COMPLETE_EVENT);
+        responseStatusCallback.responseSendSuccessfully();
         resume();
       }
     };
@@ -89,6 +107,13 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
   @Override
   public void completed(WriteResult result) {
     // Nothing to do, completion will be associated to writer being closed
+    // if (isDone) {
+    // LOGGER.debug("MATANDO SSE PARA STREAMABLE {}", ctx.getConnection() == null ? "null" :
+    // ctx.getConnection().getPeerAddress());
+    // ctx.notifyDownstream(RESPONSE_COMPLETE_EVENT);
+    // responseStatusCallback.responseSendSuccessfully();
+    // resume();
+    // }
   }
 
   /**

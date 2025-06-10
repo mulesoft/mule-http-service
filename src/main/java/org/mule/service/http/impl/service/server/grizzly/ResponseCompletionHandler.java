@@ -6,11 +6,13 @@
  */
 package org.mule.service.http.impl.service.server.grizzly;
 
-import static org.glassfish.grizzly.http.Method.HEAD;
-import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_TYPE;
+
+import static org.glassfish.grizzly.http.Method.HEAD;
+import static org.glassfish.grizzly.http.Protocol.HTTP_1_0;
+import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.api.connection.SourceRemoteConnectionException;
 import org.mule.runtime.api.exception.MuleRuntimeException;
@@ -28,11 +30,14 @@ import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpServerFilter;
 import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.memory.Buffers;
+import org.slf4j.Logger;
 
 /**
  * {@link org.glassfish.grizzly.CompletionHandler}, responsible for asynchronous response writing
  */
 public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
+
+  private static final Logger LOGGER = getLogger(ResponseCompletionHandler.class);
 
   private final FilterChainContext ctx;
   private final ClassLoader ctxClassLoader;
@@ -46,6 +51,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
                                    final HttpRequestPacket httpRequestPacket,
                                    final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
     checkArgument((!(httpResponse.getEntity().isStreaming())), "HTTP response entity cannot be stream based");
+    LOGGER.debug("CREANDO RESPONDER PARA NO-SSE ctx: {}", ctx);
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
     this.protocol = httpRequestPacket.getProtocol();
@@ -103,6 +109,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
    * @throws java.io.IOException
    */
   public void sendResponse() throws IOException {
+    LOGGER.debug("ResponseCompletionHandler#sendResponse {}", contentSend);
     if (!contentSend) {
       contentSend = true;
       isDone = httpResponsePacket.getRequest().getMethod().equals(HEAD) || !httpResponsePacket.isChunked();
@@ -132,6 +139,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   }
 
   private void doComplete() {
+    LOGGER.debug("ResponseCompletionHandler#doComplete");
     ctx.notifyDownstream(HttpServerFilter.RESPONSE_COMPLETE_EVENT);
     responseStatusCallback.responseSendSuccessfully();
     resume();

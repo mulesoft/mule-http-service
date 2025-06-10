@@ -44,6 +44,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLSession;
@@ -126,48 +127,8 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
             createRequestContext(ctx, (ctx.getAttributes().getAttribute(HTTPS.getScheme()) == null) ? HTTP.getScheme()
                 : HTTPS.getScheme(), httpRequest);
         final RequestHandler requestHandler = requestHandlerProvider.getRequestHandler(serverAddress, httpRequest);
-        requestHandler.handleRequest(requestContext, new HttpResponseReadyCallback() {
-
-          @Override
-          public void responseReady(HttpResponse response, ResponseStatusCallback responseStatusCallback) {
-            try {
-              if (httpRequest.getMethod().equals(HEAD.name())) {
-                if (response.getEntity().isStreaming()) {
-                  response.getEntity().getContent().close();
-                }
-                response = new HttpResponseBuilder(response).entity(new EmptyHttpEntity()).build();
-              }
-
-              // We need to notify the request adapter when the response has been sent, this way it can be protected
-              // against further reading attempts
-              final ResponseStatusCallback requestAdapterNotifyingResponseStatusCallback =
-                  new RequestAdapterNotifyingResponseStatusCallback(httpRequest, responseStatusCallback);
-
-              if (response.getEntity().isStreaming()) {
-                new ResponseStreamingCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                                       requestAdapterNotifyingResponseStatusCallback).start();
-              } else {
-                new ResponseCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                              requestAdapterNotifyingResponseStatusCallback).start();
-              }
-            } catch (Exception e) {
-              responseStatusCallback.responseSendFailure(e);
-            }
-          }
-
-          @Override
-          public Writer startResponse(HttpResponse response, ResponseStatusCallback responseStatusCallback, Charset encoding) {
-            ResponseDelayedCompletionHandler responseCompletionHandler =
-                new ResponseDelayedCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                                     responseStatusCallback);
-            return responseCompletionHandler.buildWriter(encoding);
-          }
-
-          @Override
-          public SseClient startSseResponse(SseClientConfig config) {
-            return new SseResponseStarter().startResponse(config, this);
-          }
-        });
+        requestHandler.handleRequest(requestContext,
+                                     new GrizzlyHttpResponseReadyCallback(httpRequest, ctx, requestHandler, request));
         return ctx.getSuspendAction();
       } else {
         return ctx.getInvokeAction();
@@ -256,6 +217,84 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
     public void onErrorSendingResponse(Throwable throwable) {
       httpRequestAdapter.responseSent();
       delegate.onErrorSendingResponse(throwable);
+    }
+  }
+
+
+  private static class GrizzlyHttpResponseReadyCallback implements HttpResponseReadyCallback {
+
+    private final AtomicBoolean headerSent = new AtomicBoolean(false);
+    private final GrizzlyHttpRequestAdapter httpRequest;
+    private final FilterChainContext ctx;
+    private final RequestHandler requestHandler;
+    private final HttpRequestPacket request;
+
+    public GrizzlyHttpResponseReadyCallback(GrizzlyHttpRequestAdapter httpRequest, FilterChainContext ctx,
+                                            RequestHandler requestHandler,
+                                            HttpRequestPacket request) {
+      this.httpRequest = httpRequest;
+      this.ctx = ctx;
+      this.requestHandler = requestHandler;
+      this.request = request;
+    }
+
+    @Override
+    public void responseReady(HttpResponse response, ResponseStatusCallback responseStatusCallback) {
+      if (headerSent.compareAndSet(false, true)) {
+        try {
+          if (httpRequest.getMethod().equals(HEAD.name())) {
+            if (response.getEntity().isStreaming()) {
+              response.getEntity().getContent().close();
+            }
+            response = new HttpResponseBuilder(response).entity(new EmptyHttpEntity()).build();
+          }
+
+          // We need to notify the request adapter when the response has been sent, this way it can be protected
+          // against further reading attempts
+          final ResponseStatusCallback requestAdapterNotifyingResponseStatusCallback =
+              new RequestAdapterNotifyingResponseStatusCallback(httpRequest, responseStatusCallback);
+
+          if (response.getEntity().isStreaming()) {
+            new ResponseStreamingCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
+                                                   requestAdapterNotifyingResponseStatusCallback).start();
+          } else {
+            new ResponseCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
+                                          requestAdapterNotifyingResponseStatusCallback).start();
+          }
+        } catch (Exception e) {
+          responseStatusCallback.responseSendFailure(e);
+        }
+      } else {
+        responseStatusCallback.responseSendFailure(new IllegalStateException("Response already sent"));
+      }
+    }
+
+    @Override
+    public Writer startResponse(HttpResponse response, ResponseStatusCallback responseStatusCallback, Charset encoding) {
+      if (headerSent.compareAndSet(false, true)) {
+        ResponseDelayedCompletionHandler responseCompletionHandler =
+            new ResponseDelayedCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
+                                                 responseStatusCallback);
+        return responseCompletionHandler.buildWriter(encoding);
+      } else {
+        responseStatusCallback.responseSendFailure(new IllegalStateException("Response already sent"));
+        return new Writer() {
+
+          @Override
+          public void write(char[] cbuf, int off, int len) {}
+
+          @Override
+          public void flush() {}
+
+          @Override
+          public void close() {}
+        };
+      }
+    }
+
+    @Override
+    public SseClient startSseResponse(SseClientConfig config) {
+      return new SseResponseStarter().startResponse(config, this);
     }
   }
 }
