@@ -71,6 +71,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
                                             final HttpRequestPacket request,
                                             final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
     checkArgument((httpResponse.getEntity().isStreaming()), "HTTP response entity must be stream based");
+    LOGGER.debug("Creating response sending handler for ctx: {} (streaming entity)", ctx);
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
     httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
@@ -144,8 +145,9 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       final int length = buffer.remaining();
 
       int bytesRead = inputStream.read(bufferByteArray, offset, length);
-      final HttpContent content;
+      LOGGER.debug("Could read {} bytes from input stream (requested {}). ctx: {}", bytesRead, length, ctx);
 
+      final HttpContent content;
       if (bytesRead == -1) {
         content = httpResponsePacket.httpTrailerBuilder().build();
         isDone = true;
@@ -222,6 +224,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
   }
 
   private void doComplete() {
+    LOGGER.debug("Finishing streaming response handler for ctx: {}", ctx);
     markConnectionToDelegateWritesInConfiguredExecutor(false);
     close();
     responseStatusCallback.responseSendSuccessfully();
@@ -244,6 +247,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       setContextClassLoader(thread, currentClassLoader, newClassLoader);
     }
     try {
+      LOGGER.debug("Cancelling streaming response handler for ctx: {}", ctx);
       super.cancelled();
       markConnectionToDelegateWritesInConfiguredExecutor(false);
       close();
@@ -281,6 +285,7 @@ public class ResponseStreamingCompletionHandler extends BaseResponseCompletionHa
       setContextClassLoader(thread, currentClassLoader, newClassLoader);
     }
     try {
+      LOGGER.debug("Failed streaming response handler for ctx: {}", ctx);
       super.failed(throwable);
       markConnectionToDelegateWritesInConfiguredExecutor(false);
       close();

@@ -51,11 +51,11 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
                                    final HttpRequestPacket httpRequestPacket,
                                    final HttpResponse httpResponse, ResponseStatusCallback responseStatusCallback) {
     checkArgument((!(httpResponse.getEntity().isStreaming())), "HTTP response entity cannot be stream based");
-    LOGGER.debug("CREANDO RESPONDER PARA NO-SSE ctx: {}", ctx);
+    LOGGER.debug("Creating response sending handler for ctx: {} (non-streaming entity)", ctx);
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
     this.protocol = httpRequestPacket.getProtocol();
-    httpResponsePacket = buildHttpResponsePacket(httpRequestPacket, httpResponse);
+    this.httpResponsePacket = buildHttpResponsePacket(httpRequestPacket, httpResponse);
     this.httpResponseContent = buildResponseContent(httpResponse);
     this.responseStatusCallback = responseStatusCallback;
   }
@@ -109,14 +109,15 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
    * @throws java.io.IOException
    */
   public void sendResponse() throws IOException {
-    LOGGER.debug("ResponseCompletionHandler#sendResponse {}", contentSend);
     if (!contentSend) {
       contentSend = true;
       isDone = httpResponsePacket.getRequest().getMethod().equals(HEAD) || !httpResponsePacket.isChunked();
+      LOGGER.debug("About to send response (isDone = {}) for ctx: {}", isDone, ctx);
       ctx.write(httpResponseContent, this);
       return;
     }
     isDone = true;
+    LOGGER.debug("About to send response trailer for ctx: {}", ctx);
     ctx.write(httpResponsePacket.httpTrailerBuilder().build(), this);
   }
 
@@ -139,7 +140,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
   }
 
   private void doComplete() {
-    LOGGER.debug("ResponseCompletionHandler#doComplete");
+    LOGGER.debug("Completing response sending for ctx: {}", ctx);
     ctx.notifyDownstream(HttpServerFilter.RESPONSE_COMPLETE_EVENT);
     responseStatusCallback.responseSendSuccessfully();
     resume();
@@ -150,6 +151,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
    */
   @Override
   public void cancelled() {
+    LOGGER.debug("Cancelling response sending for ctx: {}", ctx);
     super.cancelled();
     responseStatusCallback.responseSendFailure(new Exception("http response transferring cancelled"));
     resume();
@@ -162,6 +164,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
    */
   @Override
   public void failed(Throwable throwable) {
+    LOGGER.debug("Failed sending response for ctx: {}", ctx, throwable);
     super.failed(throwable);
     responseStatusCallback.onErrorSendingResponse(ctx.getConnection().isOpen() ? throwable
         : new SourceRemoteConnectionException(CLIENT_CONNECTION_CLOSED_MESSAGE, throwable));
@@ -172,6 +175,7 @@ public class ResponseCompletionHandler extends BaseResponseCompletionHandler {
    * Resume the HttpRequestPacket processing
    */
   private void resume() {
+    LOGGER.debug("Resuming context: {}", ctx);
     ctx.resume(ctx.getStopAction());
   }
 

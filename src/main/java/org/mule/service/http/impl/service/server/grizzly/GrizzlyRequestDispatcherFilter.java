@@ -7,7 +7,6 @@
 package org.mule.service.http.impl.service.server.grizzly;
 
 import static org.mule.runtime.api.metadata.MediaType.TEXT;
-import static org.mule.runtime.http.api.HttpConstants.Method.HEAD;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTP;
 import static org.mule.runtime.http.api.HttpConstants.Protocol.HTTPS;
 import static org.mule.runtime.http.api.HttpHeaders.Names.CONTENT_LENGTH;
@@ -24,27 +23,16 @@ import static org.glassfish.grizzly.http.util.HttpStatus.EXPECTATION_FAILED_417;
 import static org.glassfish.grizzly.http.util.HttpStatus.SERVICE_UNAVAILABLE_503;
 import static org.glassfish.grizzly.memory.Buffers.wrap;
 
-import org.mule.runtime.http.api.domain.entity.EmptyHttpEntity;
-import org.mule.runtime.http.api.domain.message.response.HttpResponse;
-import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 import org.mule.runtime.http.api.domain.request.ServerConnection;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.server.ServerAddress;
-import org.mule.runtime.http.api.server.async.HttpResponseReadyCallback;
-import org.mule.runtime.http.api.server.async.ResponseStatusCallback;
-import org.mule.runtime.http.api.sse.server.SseClient;
-import org.mule.runtime.http.api.sse.server.SseClientConfig;
-import org.mule.service.http.common.server.sse.SseResponseStarter;
 import org.mule.service.http.impl.service.server.DefaultServerAddress;
 import org.mule.service.http.impl.service.server.RequestHandlerProvider;
 
 import java.io.IOException;
-import java.io.Writer;
 import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLSession;
@@ -184,117 +172,5 @@ public class GrizzlyRequestDispatcherFilter extends BaseFilter {
   private boolean isWebSocketUpgrade(HttpHeader header) {
     final String upgrade = header.getHeader("upgrade");
     return "WebSocket".equalsIgnoreCase(upgrade);
-  }
-
-  /**
-   * Wrapper for a {@link ResponseStatusCallback} which will notify the given {@link GrizzlyHttpRequestAdapter} about the response
-   * having been sent (either successfully or unsuccessfully).
-   */
-  private static class RequestAdapterNotifyingResponseStatusCallback implements ResponseStatusCallback {
-
-    private final GrizzlyHttpRequestAdapter httpRequestAdapter;
-    private final ResponseStatusCallback delegate;
-
-    public RequestAdapterNotifyingResponseStatusCallback(GrizzlyHttpRequestAdapter httpRequestAdapter,
-                                                         ResponseStatusCallback delegate) {
-      this.httpRequestAdapter = httpRequestAdapter;
-      this.delegate = delegate;
-    }
-
-    @Override
-    public void responseSendFailure(Throwable throwable) {
-      httpRequestAdapter.responseSent();
-      delegate.responseSendFailure(throwable);
-    }
-
-    @Override
-    public void responseSendSuccessfully() {
-      httpRequestAdapter.responseSent();
-      delegate.responseSendSuccessfully();
-    }
-
-    @Override
-    public void onErrorSendingResponse(Throwable throwable) {
-      httpRequestAdapter.responseSent();
-      delegate.onErrorSendingResponse(throwable);
-    }
-  }
-
-
-  private static class GrizzlyHttpResponseReadyCallback implements HttpResponseReadyCallback {
-
-    private final AtomicBoolean headerSent = new AtomicBoolean(false);
-    private final GrizzlyHttpRequestAdapter httpRequest;
-    private final FilterChainContext ctx;
-    private final RequestHandler requestHandler;
-    private final HttpRequestPacket request;
-
-    public GrizzlyHttpResponseReadyCallback(GrizzlyHttpRequestAdapter httpRequest, FilterChainContext ctx,
-                                            RequestHandler requestHandler,
-                                            HttpRequestPacket request) {
-      this.httpRequest = httpRequest;
-      this.ctx = ctx;
-      this.requestHandler = requestHandler;
-      this.request = request;
-    }
-
-    @Override
-    public void responseReady(HttpResponse response, ResponseStatusCallback responseStatusCallback) {
-      if (headerSent.compareAndSet(false, true)) {
-        try {
-          if (httpRequest.getMethod().equals(HEAD.name())) {
-            if (response.getEntity().isStreaming()) {
-              response.getEntity().getContent().close();
-            }
-            response = new HttpResponseBuilder(response).entity(new EmptyHttpEntity()).build();
-          }
-
-          // We need to notify the request adapter when the response has been sent, this way it can be protected
-          // against further reading attempts
-          final ResponseStatusCallback requestAdapterNotifyingResponseStatusCallback =
-              new RequestAdapterNotifyingResponseStatusCallback(httpRequest, responseStatusCallback);
-
-          if (response.getEntity().isStreaming()) {
-            new ResponseStreamingCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                                   requestAdapterNotifyingResponseStatusCallback).start();
-          } else {
-            new ResponseCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                          requestAdapterNotifyingResponseStatusCallback).start();
-          }
-        } catch (Exception e) {
-          responseStatusCallback.responseSendFailure(e);
-        }
-      } else {
-        responseStatusCallback.responseSendFailure(new IllegalStateException("Response already sent"));
-      }
-    }
-
-    @Override
-    public Writer startResponse(HttpResponse response, ResponseStatusCallback responseStatusCallback, Charset encoding) {
-      if (headerSent.compareAndSet(false, true)) {
-        ResponseDelayedCompletionHandler responseCompletionHandler =
-            new ResponseDelayedCompletionHandler(ctx, requestHandler.getContextClassLoader(), request, response,
-                                                 responseStatusCallback);
-        return responseCompletionHandler.buildWriter(encoding);
-      } else {
-        responseStatusCallback.responseSendFailure(new IllegalStateException("Response already sent"));
-        return new Writer() {
-
-          @Override
-          public void write(char[] cbuf, int off, int len) {}
-
-          @Override
-          public void flush() {}
-
-          @Override
-          public void close() {}
-        };
-      }
-    }
-
-    @Override
-    public SseClient startSseResponse(SseClientConfig config) {
-      return new SseResponseStarter().startResponse(config, this);
-    }
   }
 }
