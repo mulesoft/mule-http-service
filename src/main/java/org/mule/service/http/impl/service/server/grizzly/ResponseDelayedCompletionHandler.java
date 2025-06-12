@@ -11,6 +11,7 @@ import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static java.lang.System.arraycopy;
 
 import static org.glassfish.grizzly.http.HttpServerFilter.RESPONSE_COMPLETE_EVENT;
+import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.api.exception.DefaultMuleException;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
@@ -27,14 +28,17 @@ import org.glassfish.grizzly.http.HttpContent;
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.http.HttpResponsePacket;
 import org.glassfish.grizzly.memory.MemoryManager;
+import org.slf4j.Logger;
 
-// Archeology comment: This class was added to support Server Side Events (SSE). It sends a response with an "infinite"
-// content-length (not chunked), and closes the connection once all the data was sent. A better technology to implement
-// this use-case is WebSockets.
+/**
+ * Utility class to support Server Sent Events (SSE).
+ */
 final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandler {
 
+  private static final Logger LOGGER = getLogger(ResponseDelayedCompletionHandler.class);
+
   private final MemoryManager memoryManager;
-  protected final FilterChainContext ctx;
+  private final FilterChainContext ctx;
   private final ClassLoader ctxClassLoader;
   private final HttpResponsePacket httpResponsePacket;
   private final ResponseStatusCallback responseStatusCallback;
@@ -42,6 +46,7 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
   ResponseDelayedCompletionHandler(FilterChainContext ctx, ClassLoader ctxClassLoader, HttpRequestPacket request,
                                    HttpResponse httpResponse,
                                    ResponseStatusCallback responseStatusCallback) {
+    LOGGER.debug("Creating response sending handler for ctx: {} (delayed entity)", ctx);
     this.ctx = ctx;
     this.ctxClassLoader = ctxClassLoader;
     this.httpResponsePacket = buildHttpResponsePacket(request, httpResponse);
@@ -73,14 +78,17 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
             .last(false)
             .content(buffer)
             .build();
+
+        LOGGER.debug("About to write data in delayed responder for ctx: {}", ctx);
         ctx.write(content, ResponseDelayedCompletionHandler.this);
       }
 
       @Override
       public void close() throws IOException {
+        LOGGER.debug("Closing writer of delayed responder for ctx: {}", ctx);
         ctx.write(httpResponsePacket.httpTrailerBuilder().build(), ResponseDelayedCompletionHandler.this);
-        responseStatusCallback.responseSendSuccessfully();
         ctx.notifyDownstream(RESPONSE_COMPLETE_EVENT);
+        responseStatusCallback.responseSendSuccessfully();
         resume();
       }
     };
@@ -96,6 +104,7 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
    */
   @Override
   public void cancelled() {
+    LOGGER.debug("Cancelling delayed responder for ctx: {}", ctx);
     super.cancelled();
     responseStatusCallback
         .responseSendFailure(new DefaultMuleException(createStaticMessage("HTTP response sending task was cancelled")));
@@ -109,6 +118,7 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
    */
   @Override
   public void failed(Throwable throwable) {
+    LOGGER.debug("Failed on delayed responder for ctx: {}", ctx, throwable);
     super.failed(throwable);
     responseStatusCallback.onErrorSendingResponse(throwable);
     resume();
@@ -118,6 +128,7 @@ final class ResponseDelayedCompletionHandler extends BaseResponseCompletionHandl
    * Resume the HttpRequestPacket processing
    */
   private void resume() {
+    LOGGER.debug("Resuming ctx: {}", ctx);
     ctx.resume(ctx.getStopAction());
   }
 
