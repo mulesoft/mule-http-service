@@ -73,6 +73,7 @@ public class GrizzlyHttpResponseReadyCallback implements HttpResponseReadyCallba
                                         requestAdapterNotifyingResponseStatusCallback).start();
         }
       } catch (Exception e) {
+        httpHeaderSent.set(false);
         responseStatusCallback.responseSendFailure(e);
       }
     } else {
