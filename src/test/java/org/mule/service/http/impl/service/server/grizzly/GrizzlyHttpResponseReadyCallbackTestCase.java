@@ -10,7 +10,6 @@ import static java.nio.charset.Charset.defaultCharset;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -36,12 +35,10 @@ import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.Protocol;
 import org.glassfish.grizzly.memory.MemoryManager;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.Before;
+import org.junit.Test;
 
-class GrizzlyHttpResponseReadyCallbackTestCase extends AbstractMuleTestCase {
+public class GrizzlyHttpResponseReadyCallbackTestCase extends AbstractMuleTestCase {
 
   private GrizzlyHttpRequestAdapter httpRequest;
   private FilterChainContext ctx;
@@ -52,8 +49,8 @@ class GrizzlyHttpResponseReadyCallbackTestCase extends AbstractMuleTestCase {
 
   private GrizzlyHttpResponseReadyCallback readyCallback;
 
-  @BeforeEach
-  void setUp() {
+  @Before
+  public void setUp() {
     httpRequest = mock(GrizzlyHttpRequestAdapter.class);
     when(httpRequest.getMethod()).thenReturn("GET");
 
@@ -86,60 +83,84 @@ class GrizzlyHttpResponseReadyCallbackTestCase extends AbstractMuleTestCase {
   }
 
   @Test
-  void responseReadyStartsResponseWriting() {
+  public void responseReadyStartsResponseWriting() {
     callResponseReady();
     verify(ctx).write(any(HttpContent.class), any());
   }
 
   @Test
-  void startResponseStartsResponseWriting() throws IOException {
+  public void startResponseStartsResponseWriting() throws IOException {
     callStartResponse();
     verify(ctx).write(any(HttpContent.class), any());
   }
 
   @Test
-  void startSseResponseStartsResponseWriting() throws IOException {
+  public void startSseResponseStartsResponseWriting() throws IOException {
     callStartSseResponse();
     verify(ctx).write(any(HttpContent.class), any());
   }
 
-  @ParameterizedTest(name = "[{index}] {displayName} {arguments}")
-  @CsvSource(textBlock = """
-      responseReady,responseReady
-      responseReady,startResponse
-      responseReady,startSseResponse
-
-      startResponse,responseReady
-      startResponse,startResponse
-      startResponse,startSseResponse
-
-      startSseResponse,responseReady
-      startSseResponse,startResponse
-      startSseResponse,startSseResponse
-      """)
-  void canNotStartResponseTwice(String first, String second) throws IOException {
-    callStartMethod(first);
-    var error = assertThrows(IllegalStateException.class, () -> callStartMethod(second));
+  @Test
+  public void canNotStartResponseTwice_responseReady_responseReady() throws IOException {
+    callResponseReady();
+    var error = assertThrows(IllegalStateException.class, this::callResponseReady);
     assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
   }
 
-  private void callStartMethod(String method) throws IOException {
-    if ("responseReady".equals(method)) {
-      callResponseReady();
-      return;
-    }
+  @Test
+  public void canNotStartResponseTwice_responseReady_startResponse() throws IOException {
+    callResponseReady();
+    var error = assertThrows(IllegalStateException.class, this::callStartResponse);
+    assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
+  }
 
-    if ("startResponse".equals(method)) {
-      callStartResponse();
-      return;
-    }
+  @Test
+  public void canNotStartResponseTwice_responseReady_startSseResponse() throws IOException {
+    callResponseReady();
+    var error = assertThrows(IllegalStateException.class, this::callStartSseResponse);
+    assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
+  }
 
-    if ("startSseResponse".equals(method)) {
-      callStartSseResponse();
-      return;
-    }
+  @Test
+  public void canNotStartResponseTwice_startResponse_responseReady() throws IOException {
+    callStartResponse();
+    var error = assertThrows(IllegalStateException.class, this::callResponseReady);
+    assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
+  }
 
-    fail("Unknown method: " + method);
+  @Test
+  public void canNotStartResponseTwice_startResponse_startResponse() throws IOException {
+    callStartResponse();
+    var error = assertThrows(IllegalStateException.class, this::callStartResponse);
+    assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
+  }
+
+  @Test
+  public void canNotStartResponseTwice_startResponse_startSseResponse() throws IOException {
+    callStartResponse();
+    var error = assertThrows(IllegalStateException.class, this::callStartSseResponse);
+    assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
+  }
+
+  @Test
+  public void canNotStartResponseTwice_startSseResponse_responseReady() throws IOException {
+    callStartSseResponse();
+    var error = assertThrows(IllegalStateException.class, this::callResponseReady);
+    assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
+  }
+
+  @Test
+  public void canNotStartResponseTwice_startSseResponse_startResponse() throws IOException {
+    callStartSseResponse();
+    var error = assertThrows(IllegalStateException.class, this::callStartResponse);
+    assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
+  }
+
+  @Test
+  public void canNotStartResponseTwice_startSseResponse_startSseResponse() throws IOException {
+    callStartSseResponse();
+    var error = assertThrows(IllegalStateException.class, this::callStartSseResponse);
+    assertThat(error.getMessage(), Matchers.containsString("Response was already initiated for ctx "));
   }
 
   private void callStartResponse() throws IOException {
