@@ -9,14 +9,20 @@ package org.mule.service.http.impl.service.server.grizzly;
 import static java.nio.charset.Charset.defaultCharset;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
+import static org.junit.internal.matchers.ThrowableCauseMatcher.hasCause;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.runtime.http.api.domain.entity.HttpEntity;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.server.RequestHandler;
 import org.mule.runtime.http.api.sse.server.SseClientConfig;
@@ -25,6 +31,7 @@ import org.mule.tck.junit4.AbstractMuleTestCase;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import org.glassfish.grizzly.Buffer;
 import org.glassfish.grizzly.Connection;
@@ -100,6 +107,30 @@ class GrizzlyHttpResponseReadyCallbackTestCase extends AbstractMuleTestCase {
   @Test
   void startSseResponseStartsResponseWriting() throws IOException {
     callStartSseResponse();
+    verify(ctx).write(any(HttpContent.class), any());
+  }
+
+  @Test
+  void whenFirstResponseReadyFails_thenASecondResponseReadyIsAllowed() throws IOException {
+    var buggyEntityError = new IOException("Expected failure");
+    var buggyHttpEntity = mock(HttpEntity.class);
+    when(buggyHttpEntity.getBytes()).thenThrow(buggyEntityError);
+
+    var response = HttpResponse.builder()
+        .statusCode(200).reasonPhrase("OK")
+        .entity(buggyHttpEntity)
+        .build();
+    readyCallback.responseReady(response, responseStatusCallback);
+
+    var firstError = assertThrows(ExecutionException.class, responseFuture::get);
+    assertThat(firstError, hasCause(instanceOf(MuleRuntimeException.class)));
+    var runtimeException = firstError.getCause();
+    assertThat(runtimeException, hasCause(sameInstance(buggyEntityError)));
+
+    // Not yet...
+    verify(ctx, never()).write(any(HttpContent.class), any());
+
+    callResponseReady();
     verify(ctx).write(any(HttpContent.class), any());
   }
 
