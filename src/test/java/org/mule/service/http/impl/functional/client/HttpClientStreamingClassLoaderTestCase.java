@@ -6,31 +6,24 @@
  */
 package org.mule.service.http.impl.functional.client;
 
+import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
+
 import static java.lang.Thread.currentThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
-import static org.mule.runtime.api.util.DataUnit.KB;
-import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runners.Parameterized;
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.api.util.concurrent.Latch;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
@@ -50,10 +43,20 @@ import org.mule.service.http.impl.service.server.grizzly.GrizzlyHttpServer;
 import org.mule.service.http.impl.service.server.grizzly.ResponseStreamingCompletionHandler;
 import org.mule.tck.probe.PollingProber;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.junit.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.runners.Parameterized;
+
 import io.qameta.allure.Description;
 import io.qameta.allure.Issue;
 import io.qameta.allure.Story;
-import io.qameta.allure.junit4.DisplayName;
 
 @Story(STREAMING)
 @DisplayName("Validates ClassLoader manipulation when using the HTTP client against a streaming server.")
@@ -185,6 +188,7 @@ public class HttpClientStreamingClassLoaderTestCase extends AbstractHttpClientTe
     return getRequest(getUri());
   }
 
+  @Override
   protected RequestHandler getRequestHandler() {
     return new RequestHandler() {
 

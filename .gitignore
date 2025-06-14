@@ -28,3 +28,6 @@ testdir/
 hostkey.ser
 *.h2.db
 *.factorypath
+
+# allure
+.allure

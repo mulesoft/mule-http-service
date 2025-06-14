@@ -6,15 +6,13 @@
  */
 package org.mule.service.http.impl.functional.client;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.mule.runtime.api.util.DataUnit.KB;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import static org.slf4j.LoggerFactory.getLogger;
 
-import java.io.IOException;
-import java.lang.reflect.Field;
-
-import org.junit.Test;
 import org.mule.runtime.api.util.concurrent.Latch;
 import org.mule.runtime.http.api.client.HttpClient;
 import org.mule.runtime.http.api.client.HttpClientConfiguration;
@@ -24,11 +22,16 @@ import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.service.http.impl.service.client.GrizzlyHttpClient;
 import org.mule.tck.probe.PollingProber;
 import org.mule.tck.probe.Probe;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+
+import org.junit.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.slf4j.Logger;
 
 import io.qameta.allure.Description;
 import io.qameta.allure.Story;
-import io.qameta.allure.junit4.DisplayName;
 
 @Story(STREAMING)
 @DisplayName("Validates cases in streaming where POST bodies are consumed more than once")

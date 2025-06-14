@@ -25,12 +25,13 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
-import io.qameta.allure.Issue;
-import io.qameta.allure.Story;
-import io.qameta.allure.junit4.DisplayName;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.jupiter.api.DisplayName;
+
+import io.qameta.allure.Issue;
+import io.qameta.allure.Story;
 
 @Story(STREAMING)
 @DisplayName("Validates request streaming with a large payload")
