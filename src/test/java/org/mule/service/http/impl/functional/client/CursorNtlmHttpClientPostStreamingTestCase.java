@@ -12,8 +12,9 @@ import org.mule.weave.v2.el.ByteArrayBasedCursorStreamProvider;
 
 import java.io.InputStream;
 
+import org.junit.jupiter.api.DisplayName;
+
 import io.qameta.allure.Story;
-import io.qameta.allure.junit4.DisplayName;
 
 @Story(STREAMING)
 @DisplayName("Validates that the POST cursor body is preserved on NTLM authentication")

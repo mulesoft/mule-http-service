@@ -11,16 +11,17 @@ import static org.mule.runtime.http.api.HttpConstants.HttpStatus.TEMPORARY_REDIR
 import static org.mule.runtime.http.api.HttpConstants.Method.POST;
 import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
 
-import java.io.ByteArrayInputStream;
-
 import org.mule.runtime.http.api.client.HttpRequestOptions;
 import org.mule.runtime.http.api.domain.entity.InputStreamHttpEntity;
 import org.mule.runtime.http.api.domain.message.request.HttpRequest;
 import org.mule.runtime.http.api.domain.message.response.HttpResponse;
 import org.mule.runtime.http.api.domain.message.response.HttpResponseBuilder;
 
+import java.io.ByteArrayInputStream;
+
+import org.junit.jupiter.api.DisplayName;
+
 import io.qameta.allure.Story;
-import io.qameta.allure.junit4.DisplayName;
 
 @Story(STREAMING)
 @DisplayName("Validates that the POST body is preserved on redirect")
@@ -30,6 +31,7 @@ public class RedirectHttpClientPostStreamingTestCase extends HttpClientPostStrea
     super(serviceToLoad);
   }
 
+  @Override
   public HttpResponse setUpHttpResponse(HttpRequest request) {
     HttpResponseBuilder response = HttpResponse.builder();
     if (request.getUri().getPath().equals("/first")) {
