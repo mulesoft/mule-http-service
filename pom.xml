@@ -39,7 +39,7 @@
         <asyncHttpClientVersion>1.14-MULE-029</asyncHttpClientVersion>
         <grizzlyVersion>2.3.36-MULE-028</grizzlyVersion>
 
-        <nettyHttpServiceVersion>0.3.0-SNAPSHOT</nettyHttpServiceVersion>
+        <nettyHttpServiceVersion>0.3.0-20250619</nettyHttpServiceVersion>
 
         <skipExportTests>false</skipExportTests>
     </properties>
