@@ -10,9 +10,9 @@ import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.S
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.jupiter.api.DisplayName;
 
 import io.qameta.allure.Story;
-import io.qameta.allure.junit4.DisplayName;
 
 @Story(STREAMING)
 @DisplayName("Validates that the POST cursor body is preserved on NTLM authentication with streaming on request")

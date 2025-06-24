@@ -6,12 +6,24 @@
  */
 package org.mule.service.http.impl.functional.client;
 
-import io.qameta.allure.Description;
-import io.qameta.allure.Issue;
-import io.qameta.allure.Story;
-import io.qameta.allure.junit4.DisplayName;
-import org.junit.Before;
-import org.junit.Test;
+import static org.mule.runtime.api.util.DataUnit.KB;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
+import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
+import static org.mule.service.http.impl.functional.FillAndWaitStream.RESPONSE_SIZE;
+import static org.mule.tck.SimpleUnitTestSupportSchedulerService.UNIT_TEST_THREAD_GROUP;
+
+import static java.lang.Thread.currentThread;
+import static java.lang.Thread.sleep;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
+
 import org.mule.runtime.api.scheduler.SchedulerConfig;
 import org.mule.runtime.api.util.Reference;
 import org.mule.runtime.api.util.concurrent.Latch;
@@ -27,31 +39,22 @@ import org.mule.service.http.impl.functional.FillAndWaitStream;
 import org.mule.service.http.impl.functional.ResponseReceivedProbe;
 import org.mule.service.http.impl.service.HttpServiceImplementation;
 import org.mule.tck.probe.PollingProber;
-import org.slf4j.MDC;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static java.lang.Thread.currentThread;
-import static java.lang.Thread.sleep;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
-import static org.mule.runtime.api.util.DataUnit.KB;
-import static org.mule.runtime.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
-import static org.mule.runtime.http.api.HttpConstants.HttpStatus.OK;
-import static org.mule.service.http.impl.AllureConstants.HttpFeature.HttpStory.STREAMING;
-import static org.mule.service.http.impl.functional.FillAndWaitStream.RESPONSE_SIZE;
-import static org.mule.tck.SimpleUnitTestSupportSchedulerService.UNIT_TEST_THREAD_GROUP;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.slf4j.MDC;
+
+import io.qameta.allure.Description;
+import io.qameta.allure.Issue;
+import io.qameta.allure.Story;
 
 @Story(STREAMING)
 @DisplayName("Validates HTTP client behaviour against a streaming server.")
@@ -241,6 +244,7 @@ public class HttpClientStreamingTestCase extends AbstractHttpClientTestCase {
     }
   }
 
+  @Override
   protected HttpRequestOptions getDefaultOptions(int responseTimeout) {
     return HttpRequestOptions.builder().responseTimeout(responseTimeout).build();
   }
